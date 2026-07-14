@@ -383,7 +383,7 @@ function DetailPanel({ credential, onClose, onEdit, onDelete }) {
                       ? <Check size={11} className="text-green-400" />
                       : <Clipboard size={11} />
                     }
-                    {f.name.replace(/_/g, ' ')}
+                    {{copyState === 'copied' ? 'Copied!' : 'Copy to clipboard'}
                   </button>
                 )
               })}

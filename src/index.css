@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand accent — overridable via BRAND_PRIMARY / BRAND_PRIMARY_SOFT */
+  --color-brand:       #0CA5E9;
+  --color-brand-soft:  #24ACE3;
+
+  /* Near-black surfaces — intentionally hard to tell apart */
+  --color-canvas:      #080808;
+  --color-surface:     #111111;
+  --color-surface-hi:  #1A1A1A;
+
+  /* Borders and text */
+  --color-edge:        #222222;
+  --color-content:     #ECECEC;
+  --color-subtle:      #555555;
+}
+
+html {
+  background-color: var(--color-canvas);
+  color: var(--color-content);
+}
+
+/* ── Leaflet base overrides ─────────────────────────────────────────── */
+.leaflet-container        { background: #080808; }
+.leaflet-control-zoom a   { background: #111; color: #ececec; border-color: #222; }
+.leaflet-control-zoom a:hover { background: #1a1a1a; }
+
+/* ── Site tooltip ───────────────────────────────────────────────────── */
+.site-tooltip.leaflet-tooltip {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  padding: 0;
+  color: #ececec;
+}
+.site-tooltip.leaflet-tooltip::before {
+  border-top-color: #222;
+}
+
+/* ── Site marker ────────────────────────────────────────────────────── */
+.site-icon-root {
+  background: transparent !important;
+  border: none !important;
+}
+
+.site-wrapper {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* breathing outer ring — stays at fixed size, pulses opacity */
+@keyframes site-ring-breathe {
+  0%, 100% { opacity: 0;    transform: translate(-50%, -50%) scale(0.7); }
+  50%       { opacity: 0.45; transform: translate(-50%, -50%) scale(1);   }
+}
+
+.site-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1px solid rgba(12, 165, 233, 0.7);
+  animation: site-ring-breathe 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* solid centre dot */
+.site-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #0CA5E9;
+  box-shadow: 0 0 6px rgba(12, 165, 233, 0.85), 0 0 2px rgba(12, 165, 233, 0.5);
+}

@@ -384,8 +384,9 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
         <Controls style={{ background: '#111', border: '1px solid #222' }} />
         <MiniMap
           nodeColor={(n) => {
-            if (n.type === 'siteNode')            return '#0CA5E9'
-            if (n.type === 'externalManagedNode') return 'rgba(12,165,233,0.4)'
+            const brand = getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim()
+            if (n.type === 'siteNode')            return brand
+            if (n.type === 'externalManagedNode') return brand + '66'
             return '#1e1e1e'
           }}
           style={{ background: '#0a0a0a', border: '1px solid #222' }}

@@ -254,8 +254,9 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
         <Controls style={{ background: '#111', border: '1px solid #222' }} />
         <MiniMap
           nodeColor={(n) => {
-            if (n.type === 'centerNode')   return '#0CA5E9'
-            if (n.type === 'managedNode')  return 'rgba(12,165,233,0.5)'
+            const brand = getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim()
+            if (n.type === 'centerNode')   return brand
+            if (n.type === 'managedNode')  return brand + '80'
             return '#2a2a2a'
           }}
           style={{ background: '#0e0e0e', border: '1px solid #222' }}

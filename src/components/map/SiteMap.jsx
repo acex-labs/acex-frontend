@@ -2,19 +2,13 @@ import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Pseudo-random phase offset from coordinates so dots don't all breathe in sync
-function phase(lat, lng) {
-  return ((Math.abs(lat * 31 + lng * 17)) % 30) / 10  // 0 – 3 s
-}
-
-function makeSiteIcon(phaseDelay) {
+function makeSiteIcon() {
   return L.divIcon({
     className:  'site-icon-root',
     iconSize:   [22, 22],
     iconAnchor: [11, 11],
     html: `
       <div class="site-wrapper">
-        <div class="site-ring" style="animation-delay:${phaseDelay.toFixed(2)}s"></div>
         <div class="site-dot"></div>
       </div>
     `,
@@ -39,7 +33,7 @@ export default function SiteMap({ sites = [], onSiteClick }) {
         <Marker
           key={site.id ?? site.name}
           position={[site.latitude, site.longitude]}
-          icon={makeSiteIcon(phase(site.latitude, site.longitude))}
+          icon={makeSiteIcon()}
           eventHandlers={{ click: () => onSiteClick?.(site) }}
         >
           <Tooltip

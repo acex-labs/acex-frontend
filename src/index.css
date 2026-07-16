@@ -54,23 +54,6 @@ html {
   justify-content: center;
 }
 
-/* breathing outer ring — stays at fixed size, pulses opacity */
-@keyframes site-ring-breathe {
-  0%, 100% { opacity: 0;    transform: translate(-50%, -50%) scale(0.7); }
-  50%       { opacity: 0.45; transform: translate(-50%, -50%) scale(1);   }
-}
-
-.site-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  border: 1px solid rgba(12, 165, 233, 0.7);
-  animation: site-ring-breathe 2s ease-in-out infinite;
-  pointer-events: none;
-}
 
 /* solid centre dot */
 .site-dot {
@@ -78,6 +61,6 @@ html {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #0CA5E9;
-  box-shadow: 0 0 6px rgba(12, 165, 233, 0.85), 0 0 2px rgba(12, 165, 233, 0.5);
+  background: var(--color-brand);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-brand) 85%, transparent), 0 0 2px color-mix(in srgb, var(--color-brand) 50%, transparent);
 }

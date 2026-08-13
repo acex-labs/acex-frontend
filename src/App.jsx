@@ -1,22 +1,25 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
-import DashboardPage from './pages/DashboardPage'
-import NodesPage from './pages/network/NodesPage'
-import NodePage from './pages/network/NodePage'
-import SitesPage from './pages/network/SitesPage'
-import SitePage from './pages/network/SitePage'
-import RegionsPage from './pages/network/RegionsPage'
-import LogicalNodesPage from './pages/network/LogicalNodesPage'
-import AssetsPage from './pages/network/AssetsPage'
-import ContactsPage from './pages/network/ContactsPage'
-import ContactPage from './pages/network/ContactPage'
-import NEDsPage from './pages/network/NEDsPage'
-import CredentialsPage from './pages/settings/CredentialsPage'
-import ConfigMapsPage from './pages/configs/ConfigMapsPage'
-import TranslatorPage from './pages/configs/TranslatorPage'
-import TelemetryAgentsPage from './pages/settings/TelemetryAgentsPage'
-import CollectionAgentsPage from './pages/settings/CollectionAgentsPage'
+import { AiProvider } from './context/AiContext'
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const NodesPage = lazy(() => import('./pages/network/NodesPage'))
+const NodePage = lazy(() => import('./pages/network/NodePage'))
+const SitesPage = lazy(() => import('./pages/network/SitesPage'))
+const SitePage = lazy(() => import('./pages/network/SitePage'))
+const RegionsPage = lazy(() => import('./pages/network/RegionsPage'))
+const LogicalNodesPage = lazy(() => import('./pages/network/LogicalNodesPage'))
+const AssetsPage = lazy(() => import('./pages/network/AssetsPage'))
+const ContactsPage = lazy(() => import('./pages/network/ContactsPage'))
+const ContactPage = lazy(() => import('./pages/network/ContactPage'))
+const NEDsPage = lazy(() => import('./pages/network/NEDsPage'))
+const CredentialsPage = lazy(() => import('./pages/settings/CredentialsPage'))
+const ConfigMapsPage = lazy(() => import('./pages/configs/ConfigMapsPage'))
+const TranslatorPage = lazy(() => import('./pages/configs/TranslatorPage'))
+const TelemetryAgentsPage = lazy(() => import('./pages/settings/TelemetryAgentsPage'))
+const CollectionAgentsPage = lazy(() => import('./pages/settings/CollectionAgentsPage'))
 
 function Placeholder({ title }) {
   return (
@@ -27,13 +30,12 @@ function Placeholder({ title }) {
   )
 }
 
-import { AiProvider } from './context/AiContext'
-
 export default function App() {
   return (
     <RequireAuth>
       <AiProvider>
       <Layout>
+      <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
 
@@ -71,6 +73,7 @@ export default function App() {
         <Route path="/settings/collection-agents" element={<CollectionAgentsPage />} />
         <Route path="/settings/about" element={<Placeholder title="About" />} />
       </Routes>
+      </Suspense>
       </Layout>
       </AiProvider>
     </RequireAuth>

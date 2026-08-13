@@ -25,24 +25,34 @@ export const fetchObservedConfig = (nodeId, output = 'rendered') =>
 export const fetchObservedHistory = (nodeId) =>
   apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/`)
 
-export const fetchObservedByHash = (nodeId, hash, output = 'rendered') =>
-  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/${hash}`)
+export const fetchObservedById = (nodeId, configId, output = 'rendered') =>
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/${configId}`)
     .then(data => {
       if (data && typeof data.content === 'string')
         return { ...data, content: atob(data.content) }
       return data
     })
 
-export const fetchObservedDiff = (nodeId, hashA, hashB) =>
-  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/diff?a=${hashA}&b=${hashB}`)
+export const fetchObservedDiff = (nodeId, idA, idB) =>
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/diff?a=${idA}&b=${idB}`)
 
-export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash, snapBHash, snapATimestamp, snapBTimestamp, onToken, onDone, signal }) {
-  const res = await fetch(`${API_URL}/api/v1/ai_ops/ai/config_analysis/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, diff, node_hostname: nodeHostname, snap_a_hash: snapAHash, snap_b_hash: snapBHash, snap_a_timestamp: snapATimestamp, snap_b_timestamp: snapBTimestamp }),
-    signal,
-  })
+export const AI_UNAVAILABLE_MESSAGE = 'AI features aren\'t enabled for this environment. Ask an administrator to turn on the AI Ops service.'
+
+async function streamAiResponse(url, body, { onToken, onDone, signal }) {
+  let res
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (e) {
+    if (e.name === 'AbortError') throw e
+    throw new Error(AI_UNAVAILABLE_MESSAGE)
+  }
+  // 404/502/503 typically mean the ai_ops service isn't deployed or running behind the gateway.
+  if ([404, 502, 503].includes(res.status)) throw new Error(AI_UNAVAILABLE_MESSAGE)
   if (!res.ok) throw new Error(`API error ${res.status}`)
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
@@ -62,30 +72,20 @@ export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash
   onDone?.()
 }
 
+export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash, snapBHash, snapATimestamp, snapBTimestamp, onToken, onDone, signal }) {
+  return streamAiResponse(
+    `${API_URL}/api/v1/ai_ops/ai/config_analysis/`,
+    { task, diff, node_hostname: nodeHostname, snap_a_hash: snapAHash, snap_b_hash: snapBHash, snap_a_timestamp: snapATimestamp, snap_b_timestamp: snapBTimestamp },
+    { onToken, onDone, signal },
+  )
+}
+
 export async function streamAsk({ prompt, messages, context, onToken, onDone, signal }) {
-  const res = await fetch(`${API_URL}/api/v1/ai_ops/ai/ask/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, messages, ...(context ? { context } : {}) }),
-    signal,
-  })
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try { const d = JSON.parse(line.slice(6)); if (d.content) onToken(d.content) } catch {}
-      }
-    }
-  }
-  onDone?.()
+  return streamAiResponse(
+    `${API_URL}/api/v1/ai_ops/ai/ask/`,
+    { prompt, messages, ...(context ? { context } : {}) },
+    { onToken, onDone, signal },
+  )
 }
 
 export const fetchIntentDiff = (nodeId) =>

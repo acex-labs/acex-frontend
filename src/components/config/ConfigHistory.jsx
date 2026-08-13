@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchObservedHistory, fetchObservedByHash, fetchObservedDiff, streamConfigAnalysis, streamAsk } from '../../api/config'
+import { fetchObservedHistory, fetchObservedById, fetchObservedDiff, streamConfigAnalysis, streamAsk } from '../../api/config'
 import AiPanel from '../ai/AiPanel'
 import ConfigViewer from './ConfigViewer'
 import StructuredConfig from './StructuredConfig'
@@ -140,8 +140,8 @@ function DiffLine({ line }) {
 
 export default function ConfigHistory({ nodeId }) {
   const [compareMode, setCompareMode] = useState(false)
-  const [selectedHash, setSelectedHash] = useState(null)
-  const [checkedHashes, setCheckedHashes] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
+  const [checkedIds, setCheckedIds] = useState([])
   const [view, setView] = useState('rendered')
 
   const { data: history, isLoading: histLoading } = useQuery({
@@ -153,40 +153,40 @@ export default function ConfigHistory({ nodeId }) {
     ? [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     : []
 
-  const activeHash = selectedHash ?? sorted[0]?.hash
+  const activeId = selectedId ?? sorted[0]?.id
 
-  const toggleCheck = (hash) => {
-    setCheckedHashes(prev => {
-      if (prev.includes(hash)) return prev.filter(h => h !== hash)
-      if (prev.length >= 2) return [prev[1], hash]
-      return [...prev, hash]
+  const toggleCheck = (id) => {
+    setCheckedIds(prev => {
+      if (prev.includes(id)) return prev.filter(i => i !== id)
+      if (prev.length >= 2) return [prev[1], id]
+      return [...prev, id]
     })
   }
 
   // Sort selected pair chronologically: older = from, newer = to
-  const selectedSnaps = checkedHashes
-    .map(h => sorted.find(s => s.hash === h))
+  const selectedSnaps = checkedIds
+    .map(id => sorted.find(s => s.id === id))
     .filter(Boolean)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
   const snapFrom = selectedSnaps[0]
   const snapTo   = selectedSnaps[1]
 
   const { data: snapshot, isLoading: snapLoading } = useQuery({
-    queryKey: ['config-snapshot', nodeId, activeHash],
-    queryFn: () => fetchObservedByHash(nodeId, activeHash),
-    enabled: !compareMode && !!activeHash,
+    queryKey: ['config-snapshot', nodeId, activeId],
+    queryFn: () => fetchObservedById(nodeId, activeId),
+    enabled: !compareMode && !!activeId,
   })
 
   const { data: diff, isLoading: diffLoading } = useQuery({
-    queryKey: ['config-diff', nodeId, snapFrom?.hash, snapTo?.hash],
-    queryFn: () => fetchObservedDiff(nodeId, snapFrom.hash, snapTo.hash),
+    queryKey: ['config-diff', nodeId, snapFrom?.id, snapTo?.id],
+    queryFn: () => fetchObservedDiff(nodeId, snapFrom.id, snapTo.id),
     enabled: compareMode && !!snapFrom && !!snapTo,
   })
 
   const handleToggleCompare = () => {
     setCompareMode(m => !m)
     if (!compareMode && sorted.length >= 2)
-      setCheckedHashes([sorted[0].hash, sorted[1].hash])
+      setCheckedIds([sorted[0].id, sorted[1].id])
   }
 
   if (histLoading)
@@ -210,11 +210,11 @@ export default function ConfigHistory({ nodeId }) {
         </div>
         <div className="overflow-y-auto flex-1">
           {sorted.map((snap, i) => {
-            const isViewSelected = !compareMode && snap.hash === activeHash
-            const isChecked = compareMode && checkedHashes.includes(snap.hash)
+            const isViewSelected = !compareMode && snap.id === activeId
+            const isChecked = compareMode && checkedIds.includes(snap.id)
             return (
-              <div key={snap.hash}
-                onClick={() => compareMode ? toggleCheck(snap.hash) : setSelectedHash(snap.hash)}
+              <div key={snap.id}
+                onClick={() => compareMode ? toggleCheck(snap.id) : setSelectedId(snap.id)}
                 className={['px-3 py-2.5 border-b border-edge/50 transition-colors cursor-pointer flex items-start gap-2.5',
                   isViewSelected || isChecked ? 'bg-brand/10' : 'hover:bg-surface-hi'].join(' ')}>
                 {compareMode && (
@@ -258,7 +258,7 @@ export default function ConfigHistory({ nodeId }) {
               </>
             ) : (
               <span className="text-subtle">
-                {checkedHashes.length === 0 ? 'Select two snapshots to compare' : 'Select one more snapshot'}
+                {checkedIds.length === 0 ? 'Select two snapshots to compare' : 'Select one more snapshot'}
               </span>
             )}
           </div>

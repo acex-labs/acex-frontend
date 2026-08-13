@@ -1,6 +1,16 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+function useSiteInitialData(id) {
+  const queryClient = useQueryClient()
+  return () => {
+    for (const [key, data] of queryClient.getQueriesData({ queryKey: ['sites'] })) {
+      const found = data?.items?.find(s => String(s.id) === String(id))
+      if (found) return found
+    }
+  }
+}
 import { ChevronLeft, MapPin, Mail, Phone, Plus, X } from 'lucide-react'
 import { fetchSite, fetchNodes, fetchContactAssignments, fetchContacts, createContactAssignment, deleteContactAssignment } from '../../api/inventory'
 import { apiFetch } from '../../api/client'
@@ -305,10 +315,13 @@ export default function SitePage() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
+  const getInitialData = useSiteInitialData(id)
 
   const { data: site, isLoading } = useQuery({
     queryKey: ['site', id],
     queryFn: () => fetchSite(id),
+    initialData: getInitialData,
+    initialDataUpdatedAt: 0,
   })
 
   const siteName = site?.name

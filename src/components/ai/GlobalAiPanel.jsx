@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { X, Sparkles } from 'lucide-react'
+import { X, Sparkles, TriangleAlert } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamAsk } from '../../api/config'
 import { useAiStore } from '../../context/AiContext'
+import ThinkingDots from './ThinkingDots'
 
 // Maps URL path patterns to human-readable page names.
 // More specific patterns must come before generic ones.
@@ -43,14 +44,14 @@ export function AiToggleButton() {
     <button
       onClick={() => setOpen(o => !o)}
       className={[
-        'fixed bottom-5 right-5 z-50 flex items-center justify-center rounded-full w-10 h-10 shadow-lg transition-colors',
+        'fixed bottom-5 right-5 z-50 flex items-center justify-center rounded-full w-11 h-11 shadow-lg transition-colors',
         open
           ? 'bg-brand text-white'
-          : 'bg-surface border border-edge text-subtle hover:text-content',
+          : 'bg-surface border-2 border-brand text-brand hover:bg-brand/10',
       ].join(' ')}
       title={open ? 'Close AI' : 'Open AI'}
     >
-      <Sparkles size={16} />
+      <Sparkles size={18} />
     </button>
   )
 }
@@ -94,6 +95,15 @@ export default function GlobalAiPanel() {
     })
   }, [setMessages])
 
+  const failStreaming = useCallback((message) => {
+    setStreaming(false)
+    setMessages(prev => {
+      const last = prev[prev.length - 1]
+      if (!last || last.role !== 'assistant') return prev
+      return [...prev.slice(0, -1), { role: 'assistant', content: message, error: true }]
+    })
+  }, [setMessages])
+
   // Builds context at call time — always reflects the current page state.
   // Pages may set explicit pageName/tabName/pageContext via usePageAiContext;
   // otherwise we derive them from the URL and read visible text from the DOM.
@@ -129,8 +139,8 @@ export default function GlobalAiPanel() {
     try {
       await streamAsk({ prompt: label, context: buildContext(), messages: [], signal, onToken, onDone })
     } catch (e) {
-      if (e.name !== 'AbortError') appendToken('\n[Error: ' + e.message + ']')
-      finishStreaming()
+      if (e.name !== 'AbortError') failStreaming(e.message)
+      else finishStreaming()
     }
   }, [buildContext])
 
@@ -148,8 +158,8 @@ export default function GlobalAiPanel() {
     try {
       await streamAsk({ prompt: text, context: buildContext(), messages: history, signal, onToken, onDone })
     } catch (e) {
-      if (e.name !== 'AbortError') appendToken('\n[Error: ' + e.message + ']')
-      finishStreaming()
+      if (e.name !== 'AbortError') failStreaming(e.message)
+      else finishStreaming()
     }
   }, [input, messages, streaming, buildContext])
 
@@ -227,6 +237,13 @@ export default function GlobalAiPanel() {
                         <span className="text-brand/50 select-none shrink-0 mt-0.5">›</span>
                         <span className="whitespace-pre-wrap text-subtle">{msg.content}</span>
                       </div>
+                    ) : msg.error ? (
+                      <div className="flex items-start gap-2 text-amber-500 bg-amber-500/10 border border-amber-500/25 rounded px-2.5 py-2">
+                        <TriangleAlert size={13} className="shrink-0 mt-0.5" />
+                        <span className="whitespace-pre-wrap">{msg.content}</span>
+                      </div>
+                    ) : msg.streaming && !msg.content ? (
+                      <ThinkingDots />
                     ) : (
                       <div className="text-content">
                         <ReactMarkdown

@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import ThinkingDots from './ThinkingDots'
 
 /**
  * Generic AI chat panel that can be dropped in on any page.
@@ -59,6 +60,15 @@ export default function AiPanel({
     })
   }, [])
 
+  const failStreaming = useCallback((message) => {
+    setStreaming(false)
+    setMessages(prev => {
+      const last = prev[prev.length - 1]
+      if (!last || last.role !== 'assistant') return prev
+      return [...prev.slice(0, -1), { role: 'assistant', content: message, error: true }]
+    })
+  }, [])
+
   const beginStream = () => {
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
@@ -74,8 +84,8 @@ export default function AiPanel({
     try {
       await onStarterClick?.(key, { onToken, onDone, signal })
     } catch (e) {
-      if (e.name !== 'AbortError') appendToken('\n[Error: ' + e.message + ']')
-      finishStreaming()
+      if (e.name !== 'AbortError') failStreaming(e.message)
+      else finishStreaming()
     }
   }, [onStarterClick])
 
@@ -93,8 +103,8 @@ export default function AiPanel({
     try {
       await onSend?.(text, history, { onToken, onDone, signal })
     } catch (e) {
-      if (e.name !== 'AbortError') appendToken('\n[Error: ' + e.message + ']')
-      finishStreaming()
+      if (e.name !== 'AbortError') failStreaming(e.message)
+      else finishStreaming()
     }
   }, [input, messages, streaming, onSend])
 
@@ -169,6 +179,13 @@ export default function AiPanel({
                         <span className="text-brand/50 select-none mr-1.5">›</span>
                         <span className="whitespace-pre-wrap text-subtle">{msg.content}</span>
                       </>
+                    ) : msg.error ? (
+                      <div className="flex items-start gap-2 text-amber-500 bg-amber-500/10 border border-amber-500/25 rounded px-2.5 py-2">
+                        <TriangleAlert size={13} className="shrink-0 mt-0.5" />
+                        <span className="whitespace-pre-wrap">{msg.content}</span>
+                      </div>
+                    ) : msg.streaming && !msg.content ? (
+                      <ThinkingDots />
                     ) : (
                       <div className="text-content">
                         <ReactMarkdown

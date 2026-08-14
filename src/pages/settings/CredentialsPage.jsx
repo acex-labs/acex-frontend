@@ -42,9 +42,9 @@ const CRED_TYPES = {
     color: 'emerald',
     fields: [
       { name: 'username', sensitive: false },
-      { name: 'auth_protocol', sensitive: false },
+      { name: 'auth_protocol', sensitive: false, options: ['MD5', 'SHA', 'SHA224', 'SHA256', 'SHA384', 'SHA512'] },
       { name: 'auth_password', sensitive: true },
-      { name: 'priv_protocol', sensitive: false },
+      { name: 'priv_protocol', sensitive: false, options: ['DES', 'AES', 'AES192', 'AES192C', 'AES256', 'AES256C'] },
       { name: 'priv_password', sensitive: true },
     ],
   },
@@ -110,13 +110,24 @@ function DynamicFields({ credType, values, onChange, showSensitive = true }) {
     <>
       {typeDef.fields.map(f => (
         <FormField key={f.name} label={f.name.replace(/_/g, ' ')}>
-          <input
-            type={f.sensitive && showSensitive ? 'password' : 'text'}
-            autoComplete="off"
-            value={values[f.name] ?? ''}
-            onChange={e => onChange(f.name, e.target.value)}
-            className={INPUT_CLS}
-          />
+          {f.options ? (
+            <select
+              value={values[f.name] ?? ''}
+              onChange={e => onChange(f.name, e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="">—</option>
+              {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          ) : (
+            <input
+              type={f.sensitive && showSensitive ? 'password' : 'text'}
+              autoComplete="off"
+              value={values[f.name] ?? ''}
+              onChange={e => onChange(f.name, e.target.value)}
+              className={INPUT_CLS}
+            />
+          )}
         </FormField>
       ))}
     </>

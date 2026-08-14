@@ -5,9 +5,23 @@ import { API_URL } from '../../config'
 const TABS = ['Local', 'Docker Compose', 'Kubernetes']
 const IMAGE = 'ghcr.io/acex-labs/acex-collection-agent:latest'
 
-function buildSnippets(agentType, agentId, agentName) {
+function buildSnippets(agentType, agentId, agentName, agent) {
   const envVar = agentType === 'telemetry' ? 'TELEMETRY_AGENT_ID' : 'COLLECTION_AGENT_ID'
   const slug = agentName.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+  // Namespaced app label — used consistently for metadata labels, selectors
+  // and the Service selector so it can't collide with other apps in the cluster.
+  const appLabel = agentType === 'telemetry' ? `acex-telemetry-${slug}` : `acex-collection-${slug}`
+
+  // Receiver listeners (SNMP trap / syslog) — only for telemetry agents
+  const caps = agent?.capabilities ?? []
+  const listeners = []
+  if (caps.includes('snmp_trap')) listeners.push({ name: 'snmp-trap', port: agent?.snmp_trap_port ?? 162 })
+  if (caps.includes('syslog_rfc5424')) listeners.push({ name: 'syslog', port: agent?.syslog_port ?? 514 })
+  const hasReceivers = agentType === 'telemetry' && listeners.length > 0
+
+  // docker run port flags / compose ports list
+  const dockerPortFlags = listeners.map(l => `  -p ${l.port}:${l.port}/udp \\`).join('\n')
+  const composePorts = listeners.map(l => `      - "${l.port}:${l.port}/udp"`).join('\n')
 
   const localCollection = `docker run -d --name ${slug} \\
   -e ACEX_API_URL=${API_URL} \\
@@ -29,29 +43,50 @@ docker run -d --name ${slug}-sidecar \\
 # Start Telegraf (reads config from the shared volume)
 docker run -d --name ${slug}-telegraf \\
   -v ${slug}-config:/etc/telegraf \\
-  --restart unless-stopped \\
+${hasReceivers ? `${dockerPortFlags}\n` : ''}  --restart unless-stopped \\
   telegraf:latest`
+
+  const k8sContainerPorts = hasReceivers
+    ? `          ports:\n${listeners.map(l => `            - name: ${l.name}\n              containerPort: ${l.port}\n              protocol: UDP`).join('\n')}\n`
+    : ''
+
+  const k8sService = `---
+# Exposes the Telegraf receiver(s) (${listeners.map(l => l.name).join(', ')}) outside the cluster.
+# Point your network devices at the Service's external IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${slug}
+spec:
+  type: LoadBalancer
+  selector:
+    app: ${appLabel}
+  ports:
+${listeners.map(l => `    - name: ${l.name}
+      port: ${l.port}
+      targetPort: ${l.port}
+      protocol: UDP`).join('\n')}`
 
   const k8sTelemetry = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${slug}
   labels:
-    app: acex-telemetry
+    app: ${appLabel}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ${slug}
+      app: ${appLabel}
   template:
     metadata:
       labels:
-        app: ${slug}
+        app: ${appLabel}
     spec:
       containers:
         - name: telegraf
           image: telegraf:latest
-          volumeMounts:
+${k8sContainerPorts}          volumeMounts:
             - name: telegraf-config
               mountPath: /etc/telegraf
         - name: acex-collection-agent
@@ -66,23 +101,23 @@ spec:
               mountPath: /etc/telegraf
       volumes:
         - name: telegraf-config
-          emptyDir: {}`
+          emptyDir: {}${hasReceivers ? `\n${k8sService}` : ''}`
 
   const k8sCollection = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${slug}
   labels:
-    app: acex-collection-agent
+    app: ${appLabel}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ${slug}
+      app: ${appLabel}
   template:
     metadata:
       labels:
-        app: ${slug}
+        app: ${appLabel}
     spec:
       containers:
         - name: collection-agent
@@ -96,7 +131,7 @@ spec:
   const composeTelemetry = `services:
   telegraf:
     image: telegraf:latest
-    volumes:
+${hasReceivers ? `    ports:\n${composePorts}\n` : ''}    volumes:
       - telegraf-config:/etc/telegraf
     restart: unless-stopped
 
@@ -127,10 +162,10 @@ volumes:
   }
 }
 
-function DeployModal({ agentType, agentId, agentName, onClose }) {
+function DeployModal({ agentType, agentId, agentName, agent, onClose }) {
   const [tab, setTab] = useState('Kubernetes')
   const [copied, setCopied] = useState(false)
-  const snippets = buildSnippets(agentType, agentId, agentName)
+  const snippets = buildSnippets(agentType, agentId, agentName, agent)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(snippets[tab])
@@ -138,8 +173,12 @@ function DeployModal({ agentType, agentId, agentName, onClose }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const caps = agent?.capabilities ?? []
+  const hasReceivers = agentType === 'telemetry' && (caps.includes('snmp_trap') || caps.includes('syslog_rfc5424'))
+
   const desc = agentType === 'telemetry'
-    ? 'The ACEX sidecar polls the Telegraf config from ACEX and writes it to a shared volume. Telegraf reads the config as normal.'
+    ? 'The ACEX sidecar polls the Telegraf config from ACEX and writes it to a shared volume. Telegraf reads the config as normal.' +
+      (hasReceivers ? ' This agent receives SNMP traps and/or syslog, so the manifests publish the Telegraf UDP listener ports (LoadBalancer on Kubernetes, port mappings on Docker).' : '')
     : 'The agent polls its manifest from ACEX, collects device data via SSH, and uploads the results back to ACEX.'
 
   return (
@@ -214,7 +253,7 @@ function DeployModal({ agentType, agentId, agentName, onClose }) {
   )
 }
 
-export default function DeployInstructionsPanel({ agentType, agentId, agentName }) {
+export default function DeployInstructionsPanel({ agentType, agentId, agentName, agent }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -231,6 +270,7 @@ export default function DeployInstructionsPanel({ agentType, agentId, agentName 
           agentType={agentType}
           agentId={agentId}
           agentName={agentName}
+          agent={agent}
           onClose={() => setOpen(false)}
         />
       )}

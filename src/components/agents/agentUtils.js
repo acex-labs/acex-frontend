@@ -42,3 +42,41 @@ export function formatInterval(seconds) {
 export function statusClasses(variant) {
   return STATUS_CLASSES[variant] ?? STATUS_CLASSES.gray
 }
+
+// ── SNMP / syslog receiver form helpers ──────────────────────────────────────
+
+export const SNMP_SYSLOG_DEFAULTS = {
+  snmp_version: '2c',
+  snmp_trap_port: 162,
+  syslog_port: 514,
+  snmpv3_sec_level: '',
+  snmpv3_sec_name: '',
+  snmpv2c_credential_id: '',
+  snmpv3_credential_id: '',
+}
+
+export function snmpSyslogFormFromAgent(agent) {
+  return {
+    snmp_version: agent.snmp_version ?? '2c',
+    snmp_trap_port: agent.snmp_trap_port ?? 162,
+    syslog_port: agent.syslog_port ?? 514,
+    snmpv3_sec_level: agent.snmpv3_sec_level ?? '',
+    snmpv3_sec_name: agent.snmpv3_sec_name ?? '',
+    snmpv2c_credential_id: agent.snmpv2c_credential_id ?? '',
+    snmpv3_credential_id: agent.snmpv3_credential_id ?? '',
+  }
+}
+
+/** Convert form state (empty strings) to an API payload (nulls). */
+export function snmpSyslogPayload(form) {
+  const credId = (v) => (v !== '' && v != null ? Number(v) : null)
+  return {
+    snmp_version: form.snmp_version,
+    snmp_trap_port: Number(form.snmp_trap_port) || 162,
+    syslog_port: Number(form.syslog_port) || 514,
+    snmpv3_sec_level: form.snmpv3_sec_level || null,
+    snmpv3_sec_name: form.snmpv3_sec_name || null,
+    snmpv2c_credential_id: credId(form.snmpv2c_credential_id),
+    snmpv3_credential_id: credId(form.snmpv3_credential_id),
+  }
+}

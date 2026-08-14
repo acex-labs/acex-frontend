@@ -21,6 +21,12 @@ export const createTelemetryAgent = (payload) =>
     body: JSON.stringify(payload),
   })
 
+export const updateTelemetryAgent = (id, payload) =>
+  apiFetch(`/api/v1/observability/agents/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+
 export const deleteTelemetryAgent = (id) =>
   apiFetch(`/api/v1/observability/agents/${id}`, { method: 'DELETE' })
 

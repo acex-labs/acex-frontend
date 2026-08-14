@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Plus, X, ExternalLink } from 'lucide-react'
 import {
-  fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent,
+  fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent, updateTelemetryAgent,
   addAgentNode, removeAgentNode,
   addAgentRule, removeAgentRule,
   addAgentOutput, removeAgentOutput,
@@ -16,6 +16,9 @@ import MatchRulesPanel from '../../components/agents/MatchRulesPanel'
 import NodeAssignmentPanel from '../../components/agents/NodeAssignmentPanel'
 import ResolvedNodesModal from '../../components/agents/ResolvedNodesModal'
 import DeployInstructionsPanel from '../../components/agents/DeployInstructionsPanel'
+import SnmpSyslogSettingsPanel from '../../components/agents/SnmpSyslogSettingsPanel'
+import SnmpSyslogFields from '../../components/agents/SnmpSyslogFields'
+import { SNMP_SYSLOG_DEFAULTS, snmpSyslogPayload } from '../../components/agents/agentUtils'
 import { getAgentStatus, getConfigSyncStatus, timeAgo, statusClasses } from '../../components/agents/agentUtils'
 import { API_URL } from '../../config'
 
@@ -62,7 +65,8 @@ export default function TelemetryAgentsPage() {
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', description: '', capabilities: [...ALL_CAPS] })
+  const emptyCreateForm = () => ({ name: '', description: '', capabilities: [...ALL_CAPS], ...SNMP_SYSLOG_DEFAULTS })
+  const [createForm, setCreateForm] = useState(emptyCreateForm)
 
   // Add output modal
   const [showAddOutput, setShowAddOutput] = useState(false)
@@ -91,8 +95,21 @@ export default function TelemetryAgentsPage() {
   // ── Mutations ─────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: createTelemetryAgent,
-    onSuccess: () => { invalidate(); setShowCreate(false); setCreateForm({ name: '', description: '', capabilities: [...ALL_CAPS] }) },
+    onSuccess: () => { invalidate(); setShowCreate(false); setCreateForm(emptyCreateForm()) },
   })
+
+  const handleCreate = () => {
+    const { name, description, capabilities } = createForm
+    const payload = {
+      name,
+      description: description || null,
+      capabilities,
+      ...(capabilities.includes('snmp_trap') || capabilities.includes('syslog_rfc5424')
+        ? snmpSyslogPayload(createForm)
+        : {}),
+    }
+    createMutation.mutate(payload)
+  }
 
   const handleDelete = async () => {
     if (!selected) return
@@ -137,6 +154,11 @@ export default function TelemetryAgentsPage() {
 
   const handleRemoveOutput = async (outputId) => {
     await removeAgentOutput(selected.id, outputId)
+    invalidate()
+  }
+
+  const handleUpdateAgent = async (payload) => {
+    await updateTelemetryAgent(selected.id, payload)
     invalidate()
   }
 
@@ -248,6 +270,7 @@ export default function TelemetryAgentsPage() {
               onOpenAddOutput={() => setShowAddOutput(true)}
               onRemoveOutput={handleRemoveOutput}
               onBrowseResolved={() => setShowResolved(true)}
+              onUpdateAgent={handleUpdateAgent}
             />
           </div>
         </div>
@@ -275,7 +298,7 @@ export default function TelemetryAgentsPage() {
           form={createForm}
           onChange={setCreateForm}
           onToggleCap={toggleCap}
-          onSave={() => createMutation.mutate(createForm)}
+          onSave={handleCreate}
           saving={createMutation.isPending}
           onClose={() => setShowCreate(false)}
         />
@@ -303,7 +326,7 @@ export default function TelemetryAgentsPage() {
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
-function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onOpenAddOutput, onRemoveOutput, onBrowseResolved }) {
+function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onOpenAddOutput, onRemoveOutput, onBrowseResolved, onUpdateAgent }) {
   const status   = getAgentStatus(agent)
   const sync     = getConfigSyncStatus(agent)
   const explicit = agent.nodes ?? []
@@ -393,6 +416,13 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
             )}
           </Section>
 
+          {/* SNMP / Syslog receivers */}
+          {((agent.capabilities ?? []).includes('snmp_trap') || (agent.capabilities ?? []).includes('syslog_rfc5424')) && (
+            <Section title="SNMP / Syslog">
+              <SnmpSyslogSettingsPanel agent={agent} onSave={onUpdateAgent} />
+            </Section>
+          )}
+
           {/* Match rules */}
           <Section title="Match Rules">
             <MatchRulesPanel
@@ -431,6 +461,7 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
               agentType="telemetry"
               agentId={agent.id}
               agentName={agent.name}
+              agent={agent}
             />
           </div>
         </div>
@@ -558,6 +589,18 @@ function CreateModal({ form, onChange, onToggleCap, onSave, saving, onClose }) {
               })}
             </div>
           </div>
+
+          {(form.capabilities.includes('snmp_trap') || form.capabilities.includes('syslog_rfc5424')) && (
+            <div className="border-t border-edge pt-3">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-subtle mb-2">SNMP / Syslog Receivers</label>
+              <SnmpSyslogFields
+                form={form}
+                onChange={(key, val) => onChange(p => ({ ...p, [key]: val }))}
+                hasSnmpTrap={form.capabilities.includes('snmp_trap')}
+                hasSyslog={form.capabilities.includes('syslog_rfc5424')}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-edge">

@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamAsk } from '../../api/config'
 import { useAiStore } from '../../context/AiContext'
+import ModelPicker from './ModelPicker'
+import SessionUsageBar from './SessionUsageBar'
 import ThinkingDots from './ThinkingDots'
 
 // Maps URL path patterns to human-readable page names.
@@ -57,12 +59,13 @@ export function AiToggleButton() {
 }
 
 export default function GlobalAiPanel() {
-  const { open, setOpen, messages, setMessages, pageContext, pageName, tabName, starters, placeholder } = useAiStore()
+  const { open, setOpen, messages, setMessages, pageContext, pageName, tabName, starters, placeholder, requestModel } = useAiStore()
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
 
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [liveChars, setLiveChars] = useState(0)
   const abortRef = useRef(null)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -78,10 +81,20 @@ export default function GlobalAiPanel() {
   }, [open, hasConversation])
 
   const appendToken = useCallback((token) => {
+    setLiveChars(c => { const n = c + token.length; if (n % 40 < token.length) console.debug('[AI] liveChars:', n); return n })
     setMessages(prev => {
       const last = prev[prev.length - 1]
       if (!last || last.role !== 'assistant') return prev
       return [...prev.slice(0, -1), { ...last, content: last.content + token }]
+    })
+  }, [setMessages])
+
+  const attachUsage = useCallback((usage) => {
+    console.debug('[AI] attachUsage called with:', usage)
+    setMessages(prev => {
+      const last = prev[prev.length - 1]
+      if (!last || last.role !== 'assistant') return prev
+      return [...prev.slice(0, -1), { ...last, usage }]
     })
   }, [setMessages])
 
@@ -129,26 +142,27 @@ export default function GlobalAiPanel() {
     if (abortRef.current) abortRef.current.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    setLiveChars(0)
     setStreaming(true)
-    return { signal: ctrl.signal, onToken: appendToken, onDone: finishStreaming }
+    return { signal: ctrl.signal, onToken: appendToken, onUsage: attachUsage, onDone: finishStreaming }
   }
 
   const runStarter = useCallback(async (label) => {
-    const { signal, onToken, onDone } = beginStream()
+    const { signal, onToken, onUsage, onDone } = beginStream()
     setMessages([{ role: 'assistant', content: '', streaming: true }])
     try {
-      await streamAsk({ prompt: label, context: buildContext(), messages: [], signal, onToken, onDone })
+      await streamAsk({ prompt: label, context: buildContext(), messages: [], model: requestModel, signal, onToken, onUsage, onDone })
     } catch (e) {
       if (e.name !== 'AbortError') failStreaming(e.message)
       else finishStreaming()
     }
-  }, [buildContext])
+  }, [buildContext, requestModel])
 
   const send = useCallback(async () => {
     const text = input.trim()
     if (!text || streaming) return
     const history = [...messages]
-    const { signal, onToken, onDone } = beginStream()
+    const { signal, onToken, onUsage, onDone } = beginStream()
     setMessages(prev => [
       ...prev,
       { role: 'user', content: text },
@@ -156,12 +170,12 @@ export default function GlobalAiPanel() {
     ])
     setInput('')
     try {
-      await streamAsk({ prompt: text, context: buildContext(), messages: history, signal, onToken, onDone })
+      await streamAsk({ prompt: text, context: buildContext(), messages: history, model: requestModel, signal, onToken, onUsage, onDone })
     } catch (e) {
       if (e.name !== 'AbortError') failStreaming(e.message)
       else finishStreaming()
     }
-  }, [input, messages, streaming, buildContext])
+  }, [input, messages, streaming, buildContext, requestModel])
 
   const clear = () => {
     abortRef.current?.abort()
@@ -180,6 +194,7 @@ export default function GlobalAiPanel() {
           <div className="flex items-center px-4 shrink-0 border-b border-edge" style={{ height: 44 }}>
             <span className="text-[11px] font-semibold text-subtle uppercase tracking-widest">AI Assistant</span>
             <div className="ml-auto flex items-center gap-3">
+              <ModelPicker />
               {hasConversation && (
                 <button onClick={clear} className="text-[10px] text-subtle hover:text-content">
                   Clear
@@ -209,10 +224,11 @@ export default function GlobalAiPanel() {
               )}
               {starters.length === 0 && (
                 <div className="flex-1 flex items-center justify-center">
-                  <p className="text-[11px] text-subtle/50">Navigate to a page to get started</p>
+                  <p className="text-[11px] text-subtle/50">Say hi! 👋</p>
                 </div>
               )}
-              <div className="mt-auto flex items-center border-t border-edge/50 px-4 shrink-0" style={{ height: 44 }}>
+              <SessionUsageBar messages={messages} streaming={streaming} liveTokens={streaming ? Math.round(liveChars / 4) : null} />
+              <div className="flex items-center border-t border-edge/50 px-4 shrink-0" style={{ height: 44 }}>
                 <span className="text-brand/50 font-mono text-[11px] mr-2 select-none">›</span>
                 <input
                   ref={inputRef}
@@ -274,6 +290,7 @@ export default function GlobalAiPanel() {
                 ))}
                 <div ref={bottomRef} />
               </div>
+              <SessionUsageBar messages={messages} streaming={streaming} liveTokens={streaming ? Math.round(liveChars / 4) : null} />
               <div className="flex items-center border-t border-edge/50 px-4 shrink-0" style={{ height: 44 }}>
                 <span className="text-brand/50 font-mono text-[11px] mr-2 select-none">›</span>
                 <input

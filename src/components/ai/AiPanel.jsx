@@ -3,6 +3,9 @@ import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import ThinkingDots from './ThinkingDots'
+import ModelPicker from './ModelPicker'
+import SessionUsageBar from './SessionUsageBar'
+import { useAiStore } from '../../context/AiContext'
 
 /**
  * Generic AI chat panel that can be dropped in on any page.
@@ -28,9 +31,11 @@ export default function AiPanel({
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [liveChars, setLiveChars] = useState(0)
   const abortRef = useRef(null)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const { requestModel } = useAiStore()
 
   const hasConversation = messages.length > 0 || streaming
 
@@ -43,10 +48,19 @@ export default function AiPanel({
   }, [open])
 
   const appendToken = useCallback((token) => {
+    setLiveChars(c => c + token.length)
     setMessages(prev => {
       const last = prev[prev.length - 1]
       if (!last || last.role !== 'assistant') return prev
       return [...prev.slice(0, -1), { ...last, content: last.content + token }]
+    })
+  }, [])
+
+  const attachUsage = useCallback((usage) => {
+    setMessages(prev => {
+      const last = prev[prev.length - 1]
+      if (!last || last.role !== 'assistant') return prev
+      return [...prev.slice(0, -1), { ...last, usage }]
     })
   }, [])
 
@@ -73,16 +87,17 @@ export default function AiPanel({
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    setLiveChars(0)
     setStreaming(true)
-    return { controller, signal: controller.signal, onToken: appendToken, onDone: finishStreaming, context }
+    return { controller, signal: controller.signal, onToken: appendToken, onUsage: attachUsage, onDone: finishStreaming, context, model: requestModel }
   }
 
   const handleStarterClick = useCallback(async (key) => {
-    const { signal, onToken, onDone } = beginStream()
+    const { signal, onToken, onUsage, onDone } = beginStream()
     setOpen(true)
     setMessages([{ role: 'assistant', content: '', streaming: true }])
     try {
-      await onStarterClick?.(key, { onToken, onDone, signal })
+      await onStarterClick?.(key, { onToken, onUsage, onDone, signal })
     } catch (e) {
       if (e.name !== 'AbortError') failStreaming(e.message)
       else finishStreaming()
@@ -93,7 +108,7 @@ export default function AiPanel({
     const text = input.trim()
     if (!text || streaming) return
     const history = [...messages]
-    const { signal, onToken, onDone } = beginStream()
+    const { signal, onToken, onUsage, onDone } = beginStream()
     setMessages(prev => [
       ...prev,
       { role: 'user', content: text },
@@ -101,7 +116,7 @@ export default function AiPanel({
     ])
     setInput('')
     try {
-      await onSend?.(text, history, { onToken, onDone, signal })
+      await onSend?.(text, history, { onToken, onUsage, onDone, signal })
     } catch (e) {
       if (e.name !== 'AbortError') failStreaming(e.message)
       else finishStreaming()
@@ -129,10 +144,15 @@ export default function AiPanel({
           {open ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
           Ask AI
         </button>
-        {open && hasConversation && (
-          <button onClick={clear} className="ml-auto text-[10px] text-subtle hover:text-content">
-            Clear
-          </button>
+        {open && (
+          <div className="ml-auto flex items-center gap-3">
+            <ModelPicker />
+            {hasConversation && (
+              <button onClick={clear} className="text-[10px] text-subtle hover:text-content">
+                Clear
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -216,6 +236,7 @@ export default function AiPanel({
                 ))}
                 <div ref={bottomRef} />
               </div>
+              <SessionUsageBar messages={messages} streaming={streaming} liveTokens={streaming ? Math.round(liveChars / 4) : null} />
               <div className="flex items-center border-t border-edge/50 px-4 shrink-0" style={{ height: 36 }}>
                 <span className="text-brand/50 font-mono text-[11px] mr-2 select-none">›</span>
                 <input

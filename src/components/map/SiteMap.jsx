@@ -1,6 +1,7 @@
 import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { useTheme } from '../../context/ThemeContext'
 
 function makeSiteIcon() {
   return L.divIcon({
@@ -16,6 +17,7 @@ function makeSiteIcon() {
 }
 
 export default function SiteMap({ sites = [], onSiteClick }) {
+  const { resolved } = useTheme()
   const mappable = sites.filter(s => s.latitude != null && s.longitude != null)
 
   return (
@@ -27,7 +29,12 @@ export default function SiteMap({ sites = [], onSiteClick }) {
       scrollWheelZoom
       attributionControl={false}
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+      <TileLayer
+        key={resolved}
+        url={resolved === 'light'
+          ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'}
+      />
 
       {mappable.map(site => (
         <Marker
@@ -43,11 +50,11 @@ export default function SiteMap({ sites = [], onSiteClick }) {
             className="site-tooltip"
           >
             <div style={{ padding: '7px 11px', minWidth: 130 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, color: '#ececec', marginBottom: 2 }}>
+              <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--color-content)', marginBottom: 2 }}>
                 {site.display_name || site.name}
               </div>
               {site.city && (
-                <div style={{ fontSize: 11, color: '#555' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-subtle)' }}>
                   {site.city}{site.country ? `, ${site.country}` : ''}
                 </div>
               )}

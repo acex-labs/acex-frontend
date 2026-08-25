@@ -288,27 +288,27 @@ function PortTooltip({ port, x, y }) {
       <div
         className="rounded-md shadow-2xl px-3 py-2 min-w-[160px] max-w-[260px]"
         style={{
-          backgroundColor: '#0d0d12',
-          border: '1px solid #2a2a38',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-edge)',
         }}
       >
         {/* Port name */}
-        <div className="font-mono text-[11px] text-white font-semibold mb-1.5 break-all">
+        <div className="font-mono text-[11px] text-content font-semibold mb-1.5 break-all">
           {ifaceName}
         </div>
 
         {/* Mode row */}
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: modeInfo.color }} />
-          <span className="text-[11px] text-zinc-400">{modeInfo.label}</span>
+          <span className="text-[11px] text-subtle">{modeInfo.label}</span>
           {vlan != null && (
-            <span className="ml-auto text-[11px] font-mono text-zinc-200">VLAN {vlan}</span>
+            <span className="ml-auto text-[11px] font-mono text-content">VLAN {vlan}</span>
           )}
         </div>
 
         {/* Trunk VLANs */}
         {allowedVlans.length > 0 && (
-          <div className="mt-0.5 text-[10px] text-zinc-500">
+          <div className="mt-0.5 text-[10px] text-subtle">
             VLANs: {allowedVlans.slice(0, 10).join(', ')}{allowedVlans.length > 10 ? ` +${allowedVlans.length - 10} more` : ''}
           </div>
         )}
@@ -320,19 +320,19 @@ function PortTooltip({ port, x, y }) {
 
         {/* Description */}
         {description && (
-          <div className="mt-0.5 text-[10px] text-zinc-500 truncate">{description}</div>
+          <div className="mt-0.5 text-[10px] text-subtle truncate">{description}</div>
         )}
 
         {/* LLDP neighbor */}
         {lldp && (
-          <div className="mt-1.5 pt-1.5 border-t border-zinc-800">
-            <div className="text-[10px] text-zinc-600 mb-0.5">LLDP neighbor</div>
-            <div className="text-[11px] text-zinc-200 font-medium">{lldp.remote_device}</div>
+          <div className="mt-1.5 pt-1.5 border-t border-edge">
+            <div className="text-[10px] text-subtle mb-0.5">LLDP neighbor</div>
+            <div className="text-[11px] text-content font-medium">{lldp.remote_device}</div>
             {lldp.remote_interface && (
-              <div className="text-[10px] font-mono text-zinc-500">{lldp.remote_interface}</div>
+              <div className="text-[10px] font-mono text-subtle">{lldp.remote_interface}</div>
             )}
             {lldp.discovery_protocol === 'cdp' && (
-              <div className="text-[9px] text-zinc-600 mt-0.5">via CDP</div>
+              <div className="text-[9px] text-subtle/70 mt-0.5">via CDP</div>
             )}
           </div>
         )}

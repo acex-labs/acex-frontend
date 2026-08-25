@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
+import { useTheme } from '../../context/ThemeContext'
 
 function PythonCode({ code }) {
+  const { resolved } = useTheme()
+  const theme = resolved === 'light' ? themes.nightOwlLight : themes.nightOwl
   return (
-    <Highlight theme={themes.nightOwl} code={code.trimEnd()} language="python">
+    <Highlight theme={theme} code={code.trimEnd()} language="python">
       {({ style, tokens, getLineProps, getTokenProps }) => (
         <pre
           style={{ ...style, background: 'transparent', margin: 0 }}
@@ -12,7 +15,7 @@ function PythonCode({ code }) {
         >
           {tokens.map((line, i) => (
             <div key={i} {...getLineProps({ line })}>
-              <span className="inline-block w-9 select-none text-right pr-4 text-[11px] text-white/15">
+              <span className="inline-block w-9 select-none text-right pr-4 text-[11px] text-subtle/50">
                 {i + 1}
               </span>
               {line.map((token, j) => (
@@ -36,16 +39,16 @@ export default function CodeOutput({ code, loading, placeholder = 'Generated cod
   }
 
   return (
-    <div className="flex flex-col h-full rounded-md border border-edge overflow-hidden" style={{ background: '#011627' }}>
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 shrink-0">
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+    <div className="flex flex-col h-full rounded-md border border-edge overflow-hidden bg-surface">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-edge shrink-0">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-subtle">
           Python
         </span>
         {code && (
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 text-[11px] transition-colors"
-            style={{ color: copied ? '#4ade80' : 'rgba(255,255,255,0.4)' }}
+            style={{ color: copied ? '#16a34a' : 'var(--color-subtle)' }}
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
             {copied ? 'Copied' : 'Copy'}

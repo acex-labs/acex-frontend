@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Highlight, themes } from 'prism-react-renderer'
 import { fetchComponentCatalog } from '../../api/configComponents'
 import CatalogPanel from '../../components/configMap/CatalogPanel'
+import { useTheme } from '../../context/ThemeContext'
 
 function exampleCode(component) {
   const req  = component.fields.filter(f => f.required)
@@ -47,6 +48,8 @@ function TypeBadge({ type, isReference, referenceTarget }) {
 function ComponentDetail({ component }) {
   const req = component.fields.filter(f => f.required)
   const opt = component.fields.filter(f => !f.required)
+  const { resolved } = useTheme()
+  const prismTheme = resolved === 'light' ? themes.nightOwlLight : themes.nightOwl
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -102,14 +105,14 @@ function ComponentDetail({ component }) {
       </div>
 
       {/* Example */}
-      <div className="rounded-md border border-edge overflow-hidden" style={{ background: '#011627' }}>
-        <div className="px-4 py-2.5 border-b border-white/8">
-          <h3 className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+      <div className="rounded-md border border-edge overflow-hidden bg-surface">
+        <div className="px-4 py-2.5 border-b border-edge">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">
             Example
           </h3>
         </div>
         <div className="p-4 overflow-x-auto">
-          <Highlight theme={themes.nightOwl} code={exampleCode(component)} language="python">
+          <Highlight theme={prismTheme} code={exampleCode(component)} language="python">
             {({ style, tokens, getLineProps, getTokenProps }) => (
               <pre style={{ ...style, background: 'transparent', margin: 0 }} className="text-[12.5px] leading-relaxed font-mono">
                 {tokens.map((line, i) => (

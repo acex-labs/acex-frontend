@@ -19,6 +19,7 @@ import FloatingEdge from '../../components/topology/FloatingEdge'
 import EdgeTooltip from '../../components/topology/EdgeTooltip'
 import { fetchLldpNeighborsBySite } from '../../api/lldp'
 import { fetchNodes } from '../../api/inventory'
+import { useTheme } from '../../context/ThemeContext'
 
 // ── Shared handle/node styles ─────────────────────────────────────────────────
 
@@ -337,6 +338,9 @@ function buildLayout(neighbors, siteNodes) {
 // ── Topology canvas ───────────────────────────────────────────────────────────
 
 function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
+  const { resolved } = useTheme()
+  const colorMode = resolved
+  const light = resolved === 'light'
   const layout = useMemo(
     () => buildLayout(neighbors, siteNodes),
     [neighbors, siteNodes]
@@ -367,12 +371,11 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
         onEdgesChange={onEdgesChange}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        colorMode="dark"
+        colorMode={colorMode}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
         maxZoom={3}
-        style={{ background: '#080808' }}
         onNodeClick={(_, node) => {
           if (node.data?.nodeId) onNavigate(node.id, node.data.nodeId)
         }}
@@ -380,24 +383,24 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
         onEdgeMouseMove={onEdgeMouseMove}
         onEdgeMouseLeave={onEdgeMouseLeave}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="#1a1a1a" />
-        <Controls style={{ background: '#111', border: '1px solid #222' }} />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#1a1a1a'} />
+        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#111', border: '1px solid #222' }} />
         <MiniMap
           nodeColor={(n) => {
             const brand = getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim()
             if (n.type === 'siteNode')            return brand
             if (n.type === 'externalManagedNode') return brand + '66'
-            return '#1e1e1e'
+            return light ? '#b9bec6' : '#1e1e1e'
           }}
-          style={{ background: '#0a0a0a', border: '1px solid #222' }}
-          maskColor="rgba(0,0,0,0.65)"
+          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#0a0a0a', border: '1px solid #222' }}
+          maskColor={light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)'}
           pannable
           zoomable
         />
         <Panel position="top-left">
           <div style={{
-            background: '#111',
-            border: '1px solid #1e1e1e',
+            background: light ? '#fff' : '#111',
+            border: light ? '1px solid #DFE1E5' : '1px solid #1e1e1e',
             borderRadius: 7,
             padding: '8px 12px',
             display: 'flex',
@@ -415,7 +418,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
                   height: 0,
                   borderTop: `1.5px ${dash ? 'dashed' : 'solid'} ${color}`,
                 }} />
-                <span style={{ fontSize: 10, color: '#3a3a3a' }}>{label}</span>
+                <span style={{ fontSize: 10, color: light ? '#6B7280' : '#3a3a3a' }}>{label}</span>
               </div>
             ))}
           </div>

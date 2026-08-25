@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
 import { AiProvider } from './context/AiContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const NodesPage = lazy(() => import('./pages/network/NodesPage'))
@@ -33,6 +34,7 @@ function Placeholder({ title }) {
 export default function App() {
   return (
     <RequireAuth>
+      <ThemeProvider>
       <AiProvider>
       <Layout>
       <Suspense fallback={null}>
@@ -76,6 +78,7 @@ export default function App() {
       </Suspense>
       </Layout>
       </AiProvider>
+      </ThemeProvider>
     </RequireAuth>
   )
 }

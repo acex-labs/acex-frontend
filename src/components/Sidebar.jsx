@@ -6,9 +6,10 @@ import {
   Radio, HardDriveDownload, KeyRound, BookUser, Info,
   FileCode2, Plug, GitBranch, ListChecks, Zap, CalendarClock,
   Eye, Bot, Settings, ChevronDown, Menu, PanelLeftClose,
-  LogOut, UserCircle, Package, TerminalSquare,
+  LogOut, UserCircle, Package, TerminalSquare, Sun, Moon, Monitor,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const SECTIONS = [
   {
@@ -104,6 +105,7 @@ function NavItem({ to, text, icon: Icon, end, collapsed }) {
 export default function Sidebar({ collapsed, onToggle }) {
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { mode, resolved, cycleMode } = useTheme()
   const username = user?.profile?.preferred_username || user?.profile?.email || ''
 
   const findActiveSection = () =>
@@ -198,6 +200,13 @@ export default function Sidebar({ collapsed, onToggle }) {
           {!collapsed && (
             <span className="text-[11px] text-subtle truncate flex-1">{username}</span>
           )}
+          <button
+            onClick={cycleMode}
+            title={`Theme: ${mode} — click to change`}
+            className="text-subtle hover:text-brand transition-colors p-0.5 rounded"
+          >
+            {mode === 'system' ? <Monitor size={12} /> : mode === 'dark' ? <Moon size={12} /> : <Sun size={12} />}
+          </button>
           <button
             onClick={logout}
             title="Logout"

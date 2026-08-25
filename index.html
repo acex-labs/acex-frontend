@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ACEX</title>
+    <script>
+      // Apply saved theme before first paint to avoid a flash of the wrong theme
+      (function () {
+        var mode = localStorage.getItem('acex-theme') || 'system'
+        var resolved = mode === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          : mode
+        document.documentElement.classList.add(resolved)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

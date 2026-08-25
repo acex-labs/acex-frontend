@@ -19,6 +19,7 @@ import FloatingEdge from '../../components/topology/FloatingEdge'
 import EdgeTooltip from '../../components/topology/EdgeTooltip'
 import { fetchLldpNeighbors } from '../../api/lldp'
 import { fetchSites } from '../../api/inventory'
+import { useTheme } from '../../context/ThemeContext'
 
 function timeAgo(datetime) {
   const diffMs = Date.now() - new Date(datetime).getTime()
@@ -92,7 +93,7 @@ function UnmanagedNode({ data }) {
 const HANDLE_INVIS = { opacity: 0, pointerEvents: 'none', width: 1, height: 1 }
 
 const CENTER_NODE_STYLE = {
-  background: '#111',
+  background: 'var(--color-surface)',
   border: '2px solid #0CA5E9',
   borderRadius: 12,
   padding: '12px 20px',
@@ -102,7 +103,7 @@ const CENTER_NODE_STYLE = {
 }
 
 const MANAGED_NODE_STYLE = {
-  background: '#111',
+  background: 'var(--color-surface)',
   border: '1.5px solid rgba(12,165,233,0.45)',
   borderRadius: 9,
   padding: '10px 16px',
@@ -113,8 +114,8 @@ const MANAGED_NODE_STYLE = {
 }
 
 const UNMANAGED_NODE_STYLE = {
-  background: '#0e0e0e',
-  border: '1.5px dashed #2a2a2a',
+  background: 'var(--color-surface-hi)',
+  border: '1.5px dashed var(--color-edge)',
   borderRadius: 9,
   padding: '10px 16px',
   minWidth: 150,
@@ -210,6 +211,8 @@ function buildLayout(neighbors, hostname) {
 // ── Topology (ReactFlow) view ────────────────────────────────────────────────
 
 function TopologyView({ neighbors, hostname, onNavigate }) {
+  const { resolved } = useTheme()
+  const light = resolved === 'light'
   const layout = useMemo(() => buildLayout(neighbors, hostname), [neighbors, hostname])
   const [nodes, , onNodesChange] = useNodesState(layout.nodes)
   const [edges, , onEdgesChange] = useEdgesState(layout.edges)
@@ -237,12 +240,11 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
         onEdgesChange={onEdgesChange}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        colorMode="dark"
+        colorMode={resolved}
         fitView
         fitViewOptions={{ padding: 0.35 }}
         minZoom={0.15}
         maxZoom={3}
-        style={{ background: '#080808' }}
         onNodeClick={(_, node) => {
           if (node.data?.nodeId) onNavigate(node.data.nodeId)
         }}
@@ -250,24 +252,24 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
         onEdgeMouseMove={onEdgeMouseMove}
         onEdgeMouseLeave={onEdgeMouseLeave}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="#1c1c1c" />
-        <Controls style={{ background: '#111', border: '1px solid #222' }} />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#1c1c1c'} />
+        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#111', border: '1px solid #222' }} />
         <MiniMap
           nodeColor={(n) => {
             const brand = getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim()
             if (n.type === 'centerNode')   return brand
             if (n.type === 'managedNode')  return brand + '80'
-            return '#2a2a2a'
+            return light ? '#b9bec6' : '#2a2a2a'
           }}
-          style={{ background: '#0e0e0e', border: '1px solid #222' }}
-          maskColor="rgba(0,0,0,0.65)"
+          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#0e0e0e', border: '1px solid #222' }}
+          maskColor={light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)'}
           pannable
           zoomable
         />
         <Panel position="top-left">
           <div style={{
-            background: '#111',
-            border: '1px solid #222',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-edge)',
             borderRadius: 7,
             padding: '8px 12px',
             display: 'flex',
@@ -276,11 +278,11 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 20, height: 2, background: 'rgba(12,165,233,0.6)', borderRadius: 2 }} />
-              <span style={{ fontSize: 10, color: '#555' }}>Managed</span>
+              <span style={{ fontSize: 10, color: 'var(--color-subtle)' }}>Managed</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 20, height: 0, borderTop: '1.5px dashed #2a2a2a' }} />
-              <span style={{ fontSize: 10, color: '#555' }}>Unmanaged</span>
+              <div style={{ width: 20, height: 0, borderTop: '1.5px dashed var(--color-edge)' }} />
+              <span style={{ fontSize: 10, color: 'var(--color-subtle)' }}>Unmanaged</span>
             </div>
           </div>
         </Panel>

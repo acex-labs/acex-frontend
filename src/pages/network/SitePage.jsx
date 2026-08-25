@@ -1,4 +1,4 @@
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -276,6 +276,7 @@ function OverviewTab({ site, regions, nodeCount }) {
 }
 
 function NodesTab({ siteName }) {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['nodes', { site: siteName, limit: 100 }],
     queryFn: () => fetchNodes({ site: siteName, limit: 100 }),
@@ -298,8 +299,20 @@ function NodesTab({ siteName }) {
         </thead>
         <tbody>
           {nodes.map(n => (
-            <tr key={n.id} className="border-b border-edge/50 hover:bg-surface-hi transition-colors cursor-pointer">
-              <td className="py-2 pr-6 text-content font-medium">{n.hostname || '—'}</td>
+            <tr
+              key={n.id}
+              onClick={() => navigate(`/network/nodes/${n.id}`)}
+              className="border-b border-edge/50 hover:bg-surface-hi transition-colors cursor-pointer"
+            >
+              <td className="py-2 pr-6">
+                <Link
+                  to={`/network/nodes/${n.id}`}
+                  onClick={e => e.stopPropagation()}
+                  className="text-content font-medium hover:text-brand transition-colors"
+                >
+                  {n.hostname || '—'}
+                </Link>
+              </td>
               <td className="py-2 pr-6 text-subtle">{n.role || '—'}</td>
               <td className="py-2 pr-6 text-subtle">{n.status || '—'}</td>
               <td className="py-2 pr-6 text-subtle">{n.ned_id || '—'}</td>

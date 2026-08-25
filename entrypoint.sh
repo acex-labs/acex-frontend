@@ -3,26 +3,32 @@ set -e
 
 API_URL="${API_URL:-http://localhost:80}"
 
-BRAND_LINES=""
+BRAND_RULE=""
 if [ -n "$BRAND_PRIMARY" ]; then
-  BRAND_LINES="$BRAND_LINES
-  s.setProperty('--brand', '$BRAND_PRIMARY');"
+  BRAND_RULE="$BRAND_RULE  --brand: $BRAND_PRIMARY;"
 fi
 if [ -n "$BRAND_PRIMARY_SOFT" ]; then
-  BRAND_LINES="$BRAND_LINES
-  s.setProperty('--brand-soft', '$BRAND_PRIMARY_SOFT');"
+  BRAND_RULE="$BRAND_RULE  --brand-soft: $BRAND_PRIMARY_SOFT;"
+fi
+
+BRAND_SCRIPT=""
+if [ -n "$BRAND_RULE" ]; then
+  BRAND_SCRIPT="
+(function () {
+  // Inject a high-specificity rule so the brand accent overrides both the
+  // default (dark) theme and the :root.light theme, without relying on
+  // inline styles or load order.
+  var el = document.createElement('style');
+  el.textContent = ':root, :root.light {' + '$BRAND_RULE' + ' }';
+  document.head.appendChild(el);
+})();"
 fi
 
 cat > /usr/share/nginx/html/config.js << EOF
 window.RUNTIME_CONFIG = {
   API_URL: "$API_URL"
 };
-(function () {
-  // Brand accent can be overridden at runtime via BRAND_PRIMARY /
-  // BRAND_PRIMARY_SOFT env vars. Surface/text colors are intentionally NOT
-  // set here — they are controlled by the light/dark theme (ThemeContext).
-  var s = document.documentElement.style;$BRAND_LINES
-})();
+$BRAND_SCRIPT
 EOF
 
 exec "$@"

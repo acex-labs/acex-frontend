@@ -19,7 +19,7 @@
 /* ── Light theme ────────────────────────────────────────────────────── */
 /* Applied via .light on <html> (see ThemeContext). All components use
    the semantic tokens above, so overriding the variables is enough. */
-html.light {
+:root.light {
   /* Brand accent — slightly deeper for contrast on light surfaces */
   --color-brand:       #0284C7;
   --color-brand-soft:  #0CA5E9;

@@ -39,19 +39,19 @@ function SiteNode({ data }) {
     <>
       {HANDLES_ALL()}
       <div style={{
-        background: '#111',
-        border: '2px solid rgba(12,165,233,0.75)',
+        background: 'var(--surface)',
+        border: '2px solid color-mix(in srgb, var(--brand) 75%, transparent)',
         borderRadius: 10,
         padding: '10px 18px',
         minWidth: 160,
         textAlign: 'center',
-        boxShadow: '0 0 18px rgba(12,165,233,0.18)',
+        boxShadow: '0 0 18px color-mix(in srgb, var(--brand) 18%, transparent)',
         cursor: 'pointer',
       }}>
-        <div style={{ fontSize: 9, color: '#0CA5E9', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, marginBottom: 4 }}>
+        <div style={{ fontSize: 9, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, marginBottom: 4 }}>
           On-site
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#ECECEC' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--content)' }}>
           {data.label}
         </div>
       </div>
@@ -64,18 +64,18 @@ function ExternalManagedNode({ data }) {
     <>
       {HANDLES_ALL()}
       <div style={{
-        background: '#0d0d0d',
-        border: '1.5px solid rgba(12,165,233,0.3)',
+        background: 'var(--surface)',
+        border: '1.5px solid color-mix(in srgb, var(--brand) 30%, transparent)',
         borderRadius: 9,
         padding: '9px 14px',
         minWidth: 145,
         textAlign: 'center',
         cursor: 'pointer',
       }}>
-        <div style={{ fontSize: 9, color: 'rgba(12,165,233,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
+        <div style={{ fontSize: 9, color: 'color-mix(in srgb, var(--brand) 55%, transparent)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
           External ↗
         </div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#aaa' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'color-mix(in srgb, var(--content) 70%, var(--subtle))' }}>
           {data.label}
         </div>
       </div>
@@ -88,17 +88,17 @@ function UnmanagedNode({ data }) {
     <>
       {HANDLES_ALL()}
       <div style={{
-        background: '#0a0a0a',
-        border: '1.5px dashed #222',
+        background: 'var(--surface-hi)',
+        border: '1.5px dashed var(--edge)',
         borderRadius: 9,
         padding: '9px 14px',
         minWidth: 145,
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 9, color: '#333', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
+        <div style={{ fontSize: 9, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
           Unmanaged
         </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#555' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--subtle)' }}>
           {data.label}
         </div>
       </div>

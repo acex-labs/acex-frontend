@@ -59,7 +59,7 @@ function SiteNode({ data }) {
   )
 }
 
-function ExternalManagedNode({ data }) {
+function OffSiteNode({ data }) {
   return (
     <>
       {HANDLES_ALL()}
@@ -73,7 +73,7 @@ function ExternalManagedNode({ data }) {
         cursor: 'pointer',
       }}>
         <div style={{ fontSize: 9, color: 'color-mix(in srgb, var(--brand) 55%, transparent)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
-          External ↗
+          Off-site ↗
         </div>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'color-mix(in srgb, var(--content) 70%, var(--subtle))' }}>
           {data.label}
@@ -108,7 +108,7 @@ function UnmanagedNode({ data }) {
 
 const NODE_TYPES = {
   siteNode:             SiteNode,
-  externalManagedNode:  ExternalManagedNode,
+  offSiteNode:          OffSiteNode,
   unmanagedNode:        UnmanagedNode,
 }
 
@@ -240,7 +240,7 @@ function buildLayout(neighbors, siteNodes) {
     if (n.remote_node_id) {
       tgtGid = siteNodeIds.has(n.remote_node_id) ? `site-${n.remote_node_id}` : `ext-${n.remote_node_id}`
       if (!graphNodeMap.has(tgtGid)) {
-        graphNodeMap.set(tgtGid, { gid: tgtGid, type: 'externalManagedNode', label: n.remote_device, nodeId: n.remote_node_id })
+        graphNodeMap.set(tgtGid, { gid: tgtGid, type: 'offSiteNode', label: n.remote_device, nodeId: n.remote_node_id })
       }
     } else {
       tgtGid = `unmanaged-${n.remote_device}`
@@ -291,7 +291,7 @@ function buildLayout(neighbors, siteNodes) {
     currentY += Math.ceil(gids.length / PER_ROW) * ROW_SPACING
   }
 
-  // External managed nodes below site layers
+  // Off-site (managed) nodes below site layers
   const extGids = [...graphNodeMap.keys()].filter(g => g.startsWith('ext-'))
   if (extGids.length) {
     layerPositions(extGids, currentY).forEach(([gid, pos]) => positions.set(gid, pos))
@@ -389,7 +389,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
           nodeColor={(n) => {
             const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()
             if (n.type === 'siteNode')            return brand
-            if (n.type === 'externalManagedNode') return brand + '66'
+            if (n.type === 'offSiteNode')         return brand + '66'
             return light ? '#b9bec6' : '#1e1e1e'
           }}
           style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#0a0a0a', border: '1px solid #222' }}
@@ -409,7 +409,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
           }}>
             {[
               { color: 'rgba(12,165,233,0.7)', dash: false,  label: 'On-site link' },
-              { color: 'rgba(12,165,233,0.3)', dash: false,  label: 'External managed' },
+              { color: 'rgba(12,165,233,0.3)', dash: false,  label: 'Off-site (managed)' },
               { color: '#222',                  dash: true,   label: 'Unmanaged' },
             ].map(({ color, dash, label }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -510,7 +510,7 @@ export default function SiteTopologyTab({ siteName }) {
           ].join(' ')}
         >
           {showExternal ? <Eye size={12} /> : <EyeOff size={12} />}
-          {showExternal ? `Hide external (${stats.externalCount})` : 'Show external'}
+          {showExternal ? `Hide off-site (${stats.externalCount})` : 'Show off-site'}
         </button>
 
         <div className="ml-auto text-[11px] text-subtle flex items-center gap-3">

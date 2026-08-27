@@ -5,7 +5,7 @@ import {
   fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent, updateTelemetryAgent,
   addAgentNode, removeAgentNode,
   addAgentRule, removeAgentRule,
-  addAgentOutput, removeAgentOutput,
+  fetchObservabilityOutputs,
 } from '../../api/observability'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
@@ -31,9 +31,6 @@ const CAPABILITIES = [
 ]
 
 const ALL_CAPS = CAPABILITIES.map(c => c.value)
-
-const INFLUXDB_VERSIONS = ['v1', 'v2', 'v3']
-const EMPTY_OUTPUT = { influxdb_version: 'v2', url: 'http://localhost:8086', token: '', organization: '', bucket: '', database: '', username: '', password: '' }
 
 const DEFAULTS = { name: '', limit: 50, offset: 0 }
 const FILTERS  = [{ key: 'name', label: 'Name', width: '180px' }]
@@ -67,10 +64,6 @@ export default function TelemetryAgentsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const emptyCreateForm = () => ({ name: '', description: '', capabilities: [...ALL_CAPS], ...SNMP_SYSLOG_DEFAULTS })
   const [createForm, setCreateForm] = useState(emptyCreateForm)
-
-  // Add output modal
-  const [showAddOutput, setShowAddOutput] = useState(false)
-  const [outputForm, setOutputForm] = useState({ ...EMPTY_OUTPUT })
 
   // Browse resolved nodes
   const [showResolved, setShowResolved] = useState(false)
@@ -142,18 +135,6 @@ export default function TelemetryAgentsPage() {
 
   const handleRemoveRule = async (ruleId) => {
     await removeAgentRule(selected.id, ruleId)
-    invalidate()
-  }
-
-  const handleAddOutput = async () => {
-    await addAgentOutput(selected.id, outputForm)
-    invalidate()
-    setShowAddOutput(false)
-    setOutputForm({ ...EMPTY_OUTPUT })
-  }
-
-  const handleRemoveOutput = async (outputId) => {
-    await removeAgentOutput(selected.id, outputId)
     invalidate()
   }
 
@@ -267,8 +248,6 @@ export default function TelemetryAgentsPage() {
               onRemoveNode={handleRemoveNode}
               onAddRule={handleAddRule}
               onRemoveRule={handleRemoveRule}
-              onOpenAddOutput={() => setShowAddOutput(true)}
-              onRemoveOutput={handleRemoveOutput}
               onBrowseResolved={() => setShowResolved(true)}
               onUpdateAgent={handleUpdateAgent}
             />
@@ -304,15 +283,6 @@ export default function TelemetryAgentsPage() {
         />
       )}
 
-      {showAddOutput && selected && (
-        <AddOutputModal
-          form={outputForm}
-          onChange={setOutputForm}
-          onSave={handleAddOutput}
-          onClose={() => setShowAddOutput(false)}
-        />
-      )}
-
       {showResolved && selected && (
         <ResolvedNodesModal
           resolvedNodes={selected.resolved_nodes ?? []}
@@ -326,13 +296,12 @@ export default function TelemetryAgentsPage() {
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
-function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onOpenAddOutput, onRemoveOutput, onBrowseResolved, onUpdateAgent }) {
+function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onBrowseResolved, onUpdateAgent }) {
   const status   = getAgentStatus(agent)
   const sync     = getConfigSyncStatus(agent)
   const explicit = agent.nodes ?? []
   const resolved = agent.resolved_nodes ?? []
   const rules    = agent.rules ?? []
-  const outputs  = agent.outputs ?? []
 
   return (
     <div className="border-b border-edge">
@@ -446,9 +415,9 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Output destinations */}
-          <Section title="Output Destinations">
-            <OutputsPanel outputs={outputs} onAdd={onOpenAddOutput} onRemove={onRemoveOutput} />
+          {/* Backend-default InfluxDB output */}
+          <Section title="Backend InfluxDB Output">
+            <BackendOutputsPanel />
           </Section>
 
           {/* Deploy */}
@@ -470,59 +439,51 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
   )
 }
 
-// ── Outputs Panel ─────────────────────────────────────────────────────────────
+// ── Backend Outputs Panel ────────────────────────────────────────────────────
+// Read-only: InfluxDB output is a backend-wide setting (env vars / app.py),
+// applied to every agent's generated config — not editable per agent here.
 
-function OutputsPanel({ outputs, onAdd, onRemove }) {
+function BackendOutputsPanel() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['observability-outputs'],
+    queryFn: fetchObservabilityOutputs,
+    staleTime: 30000,
+  })
+
+  const groups = Object.entries(data?.groups ?? {})
+
+  if (isLoading) {
+    return <p className="text-xs text-subtle/50">Loading…</p>
+  }
+
+  if (groups.length === 0) {
+    return <p className="text-xs text-subtle/50">No backend-default InfluxDB output configured.</p>
+  }
+
   return (
-    <>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">Destinations</span>
-        <button
-          onClick={onAdd}
-          className="text-xs text-subtle hover:text-content transition-colors px-2 py-1 rounded hover:bg-surface-hi"
-        >
-          Add output
-        </button>
-      </div>
-
-      {outputs.length === 0 ? (
-        <p className="text-xs text-subtle/50">No outputs. Generated config will have no output destinations.</p>
-      ) : (
-        <div className="space-y-1.5">
-          {outputs.map(out => (
-            <div
-              key={out.id}
-              className="group flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-400/5 border border-emerald-400/15"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-4 rounded-full bg-emerald-400/60 shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-content">{out.url}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-400/10">
-                      {out.influxdb_version}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-subtle">
-                    {out.influxdb_version === 'v2'
-                      ? [out.organization, out.bucket].filter(Boolean).join(' / ') || 'No org/bucket'
-                      : out.influxdb_version === 'v3'
-                        ? [out.organization, out.database].filter(Boolean).join(' / ') || 'No org/database'
-                        : out.database || 'No database'}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => onRemove(out.id)}
-                className="opacity-0 group-hover:opacity-100 text-xs text-red-400/60 hover:text-red-400 transition-all"
+    <div className="space-y-3">
+      {groups.map(([name, outputs]) => (
+        <div key={name}>
+          {groups.length > 1 && (
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-subtle mb-1.5">{name}</span>
+          )}
+          <div className="space-y-1.5">
+            {outputs.map((out, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-400/5 border border-emerald-400/15"
               >
-                Remove
-              </button>
-            </div>
-          ))}
+                <div className="w-1 h-4 rounded-full bg-emerald-400/60 shrink-0" />
+                <span className="text-xs font-medium text-content">{out.url}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-400/10">
+                  {out.version}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
-    </>
+      ))}
+    </div>
   )
 }
 
@@ -620,101 +581,3 @@ function CreateModal({ form, onChange, onToggleCap, onSave, saving, onClose }) {
   )
 }
 
-// ── Add Output Modal ──────────────────────────────────────────────────────────
-
-function AddOutputModal({ form, onChange, onSave, onClose }) {
-  const set = (key, val) => onChange(p => ({ ...p, [key]: val }))
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-canvas border border-edge rounded-xl w-[480px] shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
-          <div>
-            <h3 className="text-sm font-semibold text-content">Add Output Destination</h3>
-            <p className="text-[11px] text-subtle mt-0.5">Configure where telemetry data is sent.</p>
-          </div>
-          <button onClick={onClose} className="p-1 rounded text-subtle hover:text-content hover:bg-surface-hi transition-colors">
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-3">
-          {/* Version selector */}
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-subtle mb-2">InfluxDB Version</label>
-            <div className="flex gap-1">
-              {INFLUXDB_VERSIONS.map(v => (
-                <button
-                  key={v}
-                  onClick={() => set('influxdb_version', v)}
-                  className={[
-                    'px-4 py-1.5 text-xs rounded border transition-colors',
-                    form.influxdb_version === v
-                      ? 'text-content border-edge bg-surface-hi'
-                      : 'text-subtle border-edge/50 hover:text-content hover:bg-surface-hi',
-                  ].join(' ')}
-                >
-                  {v.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Field label="URL *" value={form.url} onChange={v => set('url', v)} placeholder="http://localhost:8086" />
-
-          {form.influxdb_version === 'v2' && <>
-            <Field label="Token" value={form.token} onChange={v => set('token', v)} type="password" />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Organization" value={form.organization} onChange={v => set('organization', v)} />
-              <Field label="Bucket" value={form.bucket} onChange={v => set('bucket', v)} />
-            </div>
-          </>}
-
-          {form.influxdb_version === 'v3' && <>
-            <Field label="Token" value={form.token} onChange={v => set('token', v)} type="password" />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Organization" value={form.organization} onChange={v => set('organization', v)} />
-              <Field label="Database" value={form.database} onChange={v => set('database', v)} />
-            </div>
-          </>}
-
-          {form.influxdb_version === 'v1' && <>
-            <Field label="Database" value={form.database} onChange={v => set('database', v)} />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Username" value={form.username} onChange={v => set('username', v)} />
-              <Field label="Password" value={form.password} onChange={v => set('password', v)} type="password" />
-            </div>
-          </>}
-        </div>
-
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-edge">
-          <button onClick={onClose} className="px-4 py-1.5 text-xs text-subtle hover:text-content hover:bg-surface-hi rounded transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!form.url}
-            className="px-4 py-1.5 text-xs font-medium text-content bg-surface-hi hover:bg-edge rounded border border-edge transition-colors disabled:opacity-40"
-          >
-            Add output
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, value, onChange, type = 'text', placeholder = '' }) {
-  return (
-    <div>
-      <label className="block text-[10px] font-semibold uppercase tracking-wider text-subtle mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full h-7 px-2.5 text-xs rounded border border-edge bg-surface-hi text-content placeholder:text-subtle/50 focus:outline-none focus:border-brand/50 transition-colors"
-      />
-    </div>
-  )
-}

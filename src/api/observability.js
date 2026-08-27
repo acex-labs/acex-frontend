@@ -45,11 +45,5 @@ export const addAgentRule = (agentId, rule) =>
 export const removeAgentRule = (agentId, ruleId) =>
   apiFetch(`/api/v1/observability/agents/${agentId}/rules/${ruleId}`, { method: 'DELETE' })
 
-export const addAgentOutput = (agentId, output) =>
-  apiFetch(`/api/v1/observability/agents/${agentId}/outputs`, {
-    method: 'POST',
-    body: JSON.stringify(output),
-  })
-
-export const removeAgentOutput = (agentId, outputId) =>
-  apiFetch(`/api/v1/observability/agents/${agentId}/outputs/${outputId}`, { method: 'DELETE' })
+export const fetchObservabilityOutputs = () =>
+  apiFetch('/api/v1/observability/outputs')

@@ -60,6 +60,11 @@ html {
 .leaflet-container        { background: var(--canvas); }
 .leaflet-control-zoom a   { background: var(--surface); color: var(--content); border-color: var(--edge); }
 .leaflet-control-zoom a:hover { background: var(--surface-hi); }
+.leaflet-control-attribution {
+  background: var(--surface) !important;
+  color: var(--subtle);
+}
+.leaflet-control-attribution a { color: var(--subtle); }
 
 /* ── Site tooltip ───────────────────────────────────────────────────── */
 .site-tooltip.leaflet-tooltip {

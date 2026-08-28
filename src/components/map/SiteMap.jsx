@@ -27,13 +27,19 @@ export default function SiteMap({ sites = [], onSiteClick }) {
       minZoom={2}
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom
-      attributionControl={false}
     >
       <TileLayer
         key={resolved}
+        attribution="Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS User Community"
         url={resolved === 'light'
-          ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-          : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'}
+          ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+          : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'}
+      />
+      <TileLayer
+        key={`${resolved}-ref`}
+        url={resolved === 'light'
+          ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+          : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'}
       />
 
       {mappable.map(site => (

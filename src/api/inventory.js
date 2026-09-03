@@ -157,3 +157,37 @@ export const updateCredential = (id, data) =>
 
 export const deleteCredential = (id) =>
   apiFetch(`/api/v1/inventory/credentials/${id}`, { method: 'DELETE' })
+
+// ── Node ↔ Credential mapping ────────────────────────────────────────────────
+
+export const fetchNodeCredentials = (nodeId) =>
+  apiFetch(`/api/v1/inventory/nodes/${nodeId}/credentials`)
+
+export const assignNodeCredential = (nodeId, credentialId) =>
+  apiFetch(`/api/v1/inventory/nodes/${nodeId}/credentials`, {
+    method: 'POST',
+    body: JSON.stringify({ credential_id: credentialId }),
+  })
+
+export const removeNodeCredential = (nodeId, credentialId) =>
+  apiFetch(`/api/v1/inventory/nodes/${nodeId}/credentials/${credentialId}`, { method: 'DELETE' })
+
+// ── Management Connections ───────────────────────────────────────────────────
+
+export const fetchManagementConnections = (nodeId) =>
+  apiFetch(`/api/v1/inventory/management_connections?${buildQs({ node_id: nodeId })}`)
+
+export const createManagementConnection = (data) =>
+  apiFetch('/api/v1/inventory/management_connections', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateManagementConnection = (id, patch) =>
+  apiFetch(`/api/v1/inventory/management_connections/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
+export const deleteManagementConnection = (id) =>
+  apiFetch(`/api/v1/inventory/management_connections/${id}`, { method: 'DELETE' })

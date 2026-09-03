@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
-import { fetchNode } from '../../api/inventory'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ChevronLeft, ArrowLeftRight, Plus, X } from 'lucide-react'
+import {
+  fetchNode,
+  fetchCredentials,
+  fetchNodeCredentials,
+  assignNodeCredential,
+  removeNodeCredential,
+  fetchManagementConnections,
+  createManagementConnection,
+  updateManagementConnection,
+  deleteManagementConnection,
+} from '../../api/inventory'
 import { usePageAiContext } from '../../context/AiContext'
 import ChangeAssetModal from '../../components/nodes/ChangeAssetModal'
 import VendorIcon from '../../components/ui/VendorIcon'
@@ -120,11 +130,20 @@ function AssetCard({ asset, onChangeAsset }) {
     <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between shrink-0">
-        <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Asset</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Asset</h3>
+          {asset && (
+            <span className="flex items-center gap-1 text-[10px] text-green-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              Active
+            </span>
+          )}
+        </div>
         <button
           onClick={onChangeAsset}
-          className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+          className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
         >
+          <ArrowLeftRight size={11} />
           Change
         </button>
       </div>
@@ -185,7 +204,316 @@ function AssetCard({ asset, onChangeAsset }) {
   )
 }
 
-function OverviewTab({ data, onChangeAsset }) {
+const CONNECTION_TYPES = ['ssh', 'telnet']
+
+function TypeBadge({ children }) {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-surface-hi text-subtle shrink-0">
+      {children}
+    </span>
+  )
+}
+
+function DeleteConfirm({ onConfirm, onCancel, pending }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={onConfirm}
+        disabled={pending}
+        className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+      >
+        Confirm
+      </button>
+      <button
+        onClick={onCancel}
+        className="px-1.5 py-0.5 rounded text-[10px] border border-edge text-subtle hover:text-content transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  )
+}
+
+function ManagementConnectionsCard({ nodeId }) {
+  const queryClient = useQueryClient()
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ connection_type: 'ssh', target_ip: '', primary: false })
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['management_connections', nodeId],
+    queryFn: () => fetchManagementConnections(nodeId),
+  })
+  const connections = Array.isArray(data) ? data : (data?.items ?? [])
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['management_connections', nodeId] })
+
+  const createMutation = useMutation({
+    mutationFn: (payload) => createManagementConnection(payload),
+    onSuccess: () => {
+      invalidate()
+      setAdding(false)
+    },
+  })
+
+  const setPrimaryMutation = useMutation({
+    mutationFn: (id) => updateManagementConnection(id, { primary: true }),
+    onSuccess: invalidate,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteManagementConnection(id),
+    onSuccess: () => {
+      invalidate()
+      setConfirmDeleteId(null)
+    },
+  })
+
+  const openAdd = () => {
+    setForm({ connection_type: 'ssh', target_ip: '', primary: connections.length === 0 })
+    setAdding(true)
+  }
+
+  return (
+    <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
+      <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between shrink-0">
+        <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Management Connections</h3>
+        {!adding && (
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+          >
+            <Plus size={11} />
+            Add
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="px-4 py-3 text-xs text-subtle animate-pulse">Loading…</div>
+      ) : connections.length === 0 && !adding ? (
+        <div className="px-4 py-3 text-xs text-subtle">No management connections configured.</div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          {connections.map(conn => (
+            <div key={conn.id} className="px-4 py-2.5 border-b border-edge/50 last:border-0 flex items-center gap-2">
+              <TypeBadge>{conn.connection_type}</TypeBadge>
+              <span className="text-xs text-content font-mono truncate">{conn.target_ip || '—'}</span>
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {conn.primary ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-green-500/10 text-green-400">
+                    Primary
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setPrimaryMutation.mutate(conn.id)}
+                    disabled={setPrimaryMutation.isPending}
+                    className="text-[10px] text-brand hover:text-brand/80 font-semibold transition-colors disabled:opacity-40"
+                  >
+                    Set primary
+                  </button>
+                )}
+                {confirmDeleteId === conn.id ? (
+                  <DeleteConfirm
+                    pending={deleteMutation.isPending}
+                    onConfirm={() => deleteMutation.mutate(conn.id)}
+                    onCancel={() => setConfirmDeleteId(null)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(conn.id)}
+                    className="text-subtle hover:text-red-400 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {adding && (
+            <div className="px-4 py-3 border-b border-edge/50 last:border-0 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={form.connection_type}
+                  onChange={e => setForm(f => ({ ...f, connection_type: e.target.value }))}
+                  className="bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content outline-none focus:border-brand/50 transition-colors"
+                >
+                  {CONNECTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input
+                  type="text"
+                  placeholder="IP or hostname"
+                  value={form.target_ip}
+                  onChange={e => setForm(f => ({ ...f, target_ip: e.target.value }))}
+                  autoFocus
+                  className="bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-[11px] text-subtle">
+                <input
+                  type="checkbox"
+                  checked={form.primary}
+                  onChange={e => setForm(f => ({ ...f, primary: e.target.checked }))}
+                  className="accent-brand"
+                />
+                Set as primary
+              </label>
+              {createMutation.isError && (
+                <div className="text-[11px] text-red-400">Failed to add connection.</div>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => createMutation.mutate({ node_id: Number(nodeId), ...form })}
+                  disabled={!form.target_ip || createMutation.isPending}
+                  className="px-2.5 py-1 text-[11px] font-semibold bg-brand text-white rounded disabled:opacity-40 transition-opacity"
+                >
+                  {createMutation.isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setAdding(false)}
+                  className="px-2.5 py-1 text-[11px] text-subtle hover:text-content border border-edge rounded transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NodeCredentialsCard({ nodeId }) {
+  const queryClient = useQueryClient()
+  const [adding, setAdding] = useState(false)
+  const [selectedCredentialId, setSelectedCredentialId] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['node_credentials', nodeId],
+    queryFn: () => fetchNodeCredentials(nodeId),
+  })
+  const mapped = Array.isArray(data) ? data : (data?.items ?? [])
+
+  const { data: credData } = useQuery({
+    queryKey: ['credentials-picker'],
+    queryFn: () => fetchCredentials({ limit: 1000 }),
+    enabled: adding,
+  })
+  const allCredentials = credData?.items ?? (Array.isArray(credData) ? credData : [])
+  const mappedIds = new Set(mapped.map(m => m.credential_id))
+  const available = allCredentials.filter(c => !mappedIds.has(c.id))
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['node_credentials', nodeId] })
+
+  const assignMutation = useMutation({
+    mutationFn: (credentialId) => assignNodeCredential(nodeId, credentialId),
+    onSuccess: () => {
+      invalidate()
+      setAdding(false)
+      setSelectedCredentialId('')
+    },
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: (credentialId) => removeNodeCredential(nodeId, credentialId),
+    onSuccess: () => {
+      invalidate()
+      setConfirmDeleteId(null)
+    },
+  })
+
+  const openAdd = () => {
+    setSelectedCredentialId('')
+    setAdding(true)
+  }
+
+  return (
+    <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
+      <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between shrink-0">
+        <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Credentials</h3>
+        {!adding && (
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+          >
+            <Plus size={11} />
+            Add
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="px-4 py-3 text-xs text-subtle animate-pulse">Loading…</div>
+      ) : mapped.length === 0 && !adding ? (
+        <div className="px-4 py-3 text-xs text-subtle">No credentials mapped to this node.</div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          {mapped.map(nc => (
+            <div key={nc.id} className="px-4 py-2.5 border-b border-edge/50 last:border-0 flex items-center gap-2">
+              <TypeBadge>{nc.credential_type ?? '—'}</TypeBadge>
+              <span className="text-xs text-content truncate">{nc.credential_name ?? `#${nc.credential_id}`}</span>
+              <div className="ml-auto shrink-0">
+                {confirmDeleteId === nc.credential_id ? (
+                  <DeleteConfirm
+                    pending={removeMutation.isPending}
+                    onConfirm={() => removeMutation.mutate(nc.credential_id)}
+                    onCancel={() => setConfirmDeleteId(null)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(nc.credential_id)}
+                    className="text-subtle hover:text-red-400 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {adding && (
+            <div className="px-4 py-3 border-b border-edge/50 last:border-0 space-y-2">
+              <select
+                value={selectedCredentialId}
+                onChange={e => setSelectedCredentialId(e.target.value)}
+                autoFocus
+                className="w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content outline-none focus:border-brand/50 transition-colors"
+              >
+                <option value="">Select a credential…</option>
+                {available.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.credential_type})</option>
+                ))}
+              </select>
+              {assignMutation.isError && (
+                <div className="text-[11px] text-red-400">Failed to map credential.</div>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => assignMutation.mutate(Number(selectedCredentialId))}
+                  disabled={!selectedCredentialId || assignMutation.isPending}
+                  className="px-2.5 py-1 text-[11px] font-semibold bg-brand text-white rounded disabled:opacity-40 transition-opacity"
+                >
+                  {assignMutation.isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setAdding(false)}
+                  className="px-2.5 py-1 text-[11px] text-subtle hover:text-content border border-edge rounded transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OverviewTab({ data, nodeId, onChangeAsset }) {
   const ln = data.logical_node ?? {}
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -202,6 +530,8 @@ function OverviewTab({ data, onChangeAsset }) {
         <Field label="Sequence" value={ln.sequence} />
       </Card>
       <AssetCard asset={data.asset} onChangeAsset={onChangeAsset} />
+      <ManagementConnectionsCard nodeId={nodeId} />
+      <NodeCredentialsCard nodeId={nodeId} />
     </div>
   )
 }
@@ -288,7 +618,7 @@ export default function NodePage() {
         ) : (
           <>
             {activeTab === 'overview' && (
-              <OverviewTab data={data} onChangeAsset={() => setShowChangeAsset(true)} />
+              <OverviewTab data={data} nodeId={id} onChangeAsset={() => setShowChangeAsset(true)} />
             )}
             {activeTab === 'configuration' && (
               <ConfigurationTab nodeId={id} logicalNodeId={data?.logical_node_id} onContextChange={setTabContext} />

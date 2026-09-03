@@ -100,7 +100,7 @@ export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash
 
 export async function streamAsk({ prompt, messages, context, model, onToken, onUsage, onDone, signal }) {
   return streamAiResponse(
-    `${API_URL}/api/v1/ai_ops/ai/ask/`,
+    `${API_URL}/api/v1/ai_ops/ai/ask`,
     { prompt, messages, ...(context ? { context } : {}), ...(model ? { model } : {}) },
     { onToken, onUsage, onDone, signal },
   )

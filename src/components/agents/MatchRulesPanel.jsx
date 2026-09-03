@@ -22,7 +22,7 @@ export default function MatchRulesPanel({ rules = [], onAdd, onRemove }) {
   const handleOpen = () => {
     setForm(EMPTY_RULE)
     setShowModal(true)
-    apiFetch('/api/v1/inventory/regions/?limit=1000')
+    apiFetch('/api/v1/inventory/regions?limit=1000')
       .then(d => setRegions(d.items ?? []))
       .catch(() => {})
   }

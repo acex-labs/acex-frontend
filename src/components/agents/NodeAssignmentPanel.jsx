@@ -21,7 +21,7 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
     setShowModal(true)
     setLoading(true)
     const alreadyMapped = new Set([...nodes, ...resolvedNodes])
-    apiFetch('/api/v1/inventory/node_instances/?limit=1000')
+    apiFetch('/api/v1/inventory/node_instances?limit=1000')
       .then(d => {
         const list = d.items ?? (Array.isArray(d) ? d : [])
         setAllNodes(list.filter(n => !alreadyMapped.has(n.id)))

@@ -119,7 +119,7 @@ export default function NodesPage() {
         Object.entries({ ...filterParams, limit: PAGE, offset }).forEach(([k, v]) => {
           if (v !== '' && v !== undefined && v !== null) qs.append(k, v)
         })
-        const data = await apiFetch(`/api/v1/inventory/node_instances/?${qs}`)
+        const data = await apiFetch(`/api/v1/inventory/node_instances?${qs}`)
         ;(data.items ?? []).forEach(item => {
           allIds.add(item.id)
           nodeInfoCache.current.set(item.id, { asset_ref_id: item.asset_ref_id, asset_ref_type: item.asset_ref_type })

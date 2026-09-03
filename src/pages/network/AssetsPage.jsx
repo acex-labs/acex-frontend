@@ -45,7 +45,7 @@ export default function AssetsPage() {
   const total = data?.total ?? 0
 
   const bulk = useBulkSelect({
-    endpoint: '/api/v1/inventory/assets/',
+    endpoint: '/api/v1/inventory/assets',
     params,
     total,
   })

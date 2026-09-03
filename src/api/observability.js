@@ -9,14 +9,14 @@ function buildQs(params) {
 }
 
 export const fetchTelemetryAgents = ({ name, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/observability/agents/?${buildQs({ name, limit, offset })}`)
+  apiFetch(`/api/v1/observability/agents?${buildQs({ name, limit, offset })}`)
     .then(data => {
       if (Array.isArray(data)) return { items: data, total: data.length }
       return { items: data.items ?? [], total: data.total ?? 0 }
     })
 
 export const createTelemetryAgent = (payload) =>
-  apiFetch('/api/v1/observability/agents/', {
+  apiFetch('/api/v1/observability/agents', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

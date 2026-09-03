@@ -23,7 +23,7 @@ export const fetchObservedConfig = (nodeId, output = 'rendered') =>
     })
 
 export const fetchObservedHistory = (nodeId) =>
-  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/`)
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed`)
 
 export const fetchObservedById = (nodeId, configId, output = 'rendered') =>
   apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/${configId}`)

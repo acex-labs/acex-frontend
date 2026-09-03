@@ -341,7 +341,7 @@ export default function SitePage() {
 
   const { data: assignmentsData } = useQuery({
     queryKey: ['site-regions', id],
-    queryFn: () => apiFetch(`/api/v1/inventory/region_assignments/?site_name=${encodeURIComponent(siteName)}`),
+    queryFn: () => apiFetch(`/api/v1/inventory/region_assignments?site_name=${encodeURIComponent(siteName)}`),
     enabled: !!siteName,
   })
   const regions = (Array.isArray(assignmentsData) ? assignmentsData : []).map(a => a.region_name)

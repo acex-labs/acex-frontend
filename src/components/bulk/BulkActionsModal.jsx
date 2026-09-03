@@ -12,7 +12,7 @@ export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
 
   const { data: neds = [] } = useQuery({
     queryKey: ['neds'],
-    queryFn: () => apiFetch('/api/v1/neds/'),
+    queryFn: () => apiFetch('/api/v1/neds'),
     staleTime: 300_000,
   })
 

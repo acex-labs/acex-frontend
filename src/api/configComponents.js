@@ -1,7 +1,7 @@
 import { apiFetch } from './client'
 
 export const fetchComponentCatalog = () =>
-  apiFetch('/api/v1/config_components/')
+  apiFetch('/api/v1/config_components')
 
 export const generateConfigMap = (body) =>
   apiFetch('/api/v1/config_components/generate', {
@@ -18,10 +18,10 @@ export const reconcileConfigMap = (nodeInstanceId, body) =>
   })
 
 export const searchNodeInstances = (hostname) =>
-  apiFetch(`/api/v1/inventory/node_instances/?hostname=${encodeURIComponent(hostname)}&limit=15`)
+  apiFetch(`/api/v1/inventory/node_instances?hostname=${encodeURIComponent(hostname)}&limit=15`)
 
 export const fetchDrivers = () =>
-  apiFetch('/api/v1/neds/')
+  apiFetch('/api/v1/neds')
 
 export const translateConfig = (body) =>
   apiFetch('/api/v1/config_components/translate', {

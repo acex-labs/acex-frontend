@@ -46,7 +46,7 @@ export default function SitesPage() {
   const total = data?.total ?? 0
 
   const bulk = useBulkSelect({
-    endpoint: '/api/v1/inventory/sites/',
+    endpoint: '/api/v1/inventory/sites',
     params,
     total,
     rowKey: 'name',

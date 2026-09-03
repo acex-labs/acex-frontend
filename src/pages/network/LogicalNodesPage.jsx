@@ -45,7 +45,7 @@ export default function LogicalNodesPage() {
   const total = data?.total ?? 0
 
   const bulk = useBulkSelect({
-    endpoint: '/api/v1/inventory/logical_nodes/',
+    endpoint: '/api/v1/inventory/logical_nodes',
     params,
     total,
   })

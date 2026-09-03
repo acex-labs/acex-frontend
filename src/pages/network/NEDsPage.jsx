@@ -22,7 +22,7 @@ function NEDCard({ ned }) {
 export default function NEDsPage() {
   const { data: neds = [], isLoading } = useQuery({
     queryKey: ['neds'],
-    queryFn: () => apiFetch('/api/v1/neds/'),
+    queryFn: () => apiFetch('/api/v1/neds'),
     staleTime: 300_000,
   })
 

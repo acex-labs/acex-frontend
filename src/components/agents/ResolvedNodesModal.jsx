@@ -15,7 +15,7 @@ export default function ResolvedNodesModal({ resolvedNodes = [], explicitNodes =
   const { data: nodeData, isLoading } = useQuery({
     queryKey: ['nodes-for-resolved', resolvedNodes],
     queryFn: () =>
-      apiFetch(`/api/v1/inventory/node_instances/?limit=10000`)
+      apiFetch(`/api/v1/inventory/node_instances?limit=10000`)
         .then(d => {
           const all = d.items ?? (Array.isArray(d) ? d : [])
           // Build a map of only the resolved nodes

@@ -63,7 +63,7 @@ export default function DashboardPage() {
           <div style={{ height: 'calc(100% - 37px)' }}>
             <SiteMap
               sites={sites}
-              onSiteClick={site => navigate('/network/sites')}
+              onSiteClick={site => navigate(`/network/sites/${site.id}`)}
             />
           </div>
         </div>

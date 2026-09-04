@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Sidebar from './Sidebar'
 import GlobalAiPanel, { AiToggleButton } from './ai/GlobalAiPanel'
+import BugReportWidget from './BugReportWidget'
 
 export default function Layout({ children }) {
   const [collapsed, setCollapsed] = useState(
@@ -23,6 +24,7 @@ export default function Layout({ children }) {
       </main>
       <GlobalAiPanel />
       <AiToggleButton />
+      <BugReportWidget />
     </div>
   )
 }

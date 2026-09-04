@@ -93,8 +93,11 @@ export default function BugReportWidget() {
       </Dialog.Trigger>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-        <Dialog.Content className="fixed z-50 bottom-36 right-5 w-[380px] bg-surface border border-edge rounded-xl shadow-2xl p-5 flex flex-col gap-4 focus:outline-none">
+        <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm" style={{ zIndex: 9998 }} />
+        <Dialog.Content
+          className="fixed bottom-20 right-5 w-[380px] bg-surface border border-edge rounded-xl shadow-2xl p-5 flex flex-col gap-4 focus:outline-none"
+          style={{ zIndex: 9999, maxHeight: 'calc(100vh - 7rem)', overflowY: 'auto' }}
+        >
           <div className="flex items-center justify-between">
             <Dialog.Title className="text-sm font-semibold text-content flex items-center gap-2">
               <Bug size={15} className="text-red-400" />

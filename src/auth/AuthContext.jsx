@@ -33,9 +33,7 @@ export function AuthProvider({ children }) {
 
   const um = getUserManager()
   const login = um ? () => um.signinRedirect() : () => {}
-  const logout = um
-    ? () => um.removeUser().then(() => um.signoutRedirect())
-    : () => {}
+  const logout = um ? () => um.signoutRedirect() : () => {}
   const isAuthenticated = !!um && !!user && !user.expired
 
   return (

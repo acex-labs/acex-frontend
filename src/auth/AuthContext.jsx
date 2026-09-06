@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
   const logout = um
     ? () => um.removeUser().then(() => um.signoutRedirect())
     : () => {}
-  const isAuthenticated = !um || (!!user && !user.expired)
+  const isAuthenticated = !!um && !!user && !user.expired
 
   return (
     <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout }}>

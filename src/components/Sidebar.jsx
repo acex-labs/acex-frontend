@@ -7,7 +7,6 @@ import {
   FileCode2, Plug, GitBranch, ListChecks, Zap, CalendarClock,
   Eye, Bot, Settings, ChevronDown, Menu, PanelLeftClose,
   LogOut, UserCircle, Package, TerminalSquare, Sun, Moon, Monitor,
-  Building2, Users,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -67,14 +66,6 @@ const SECTIONS = [
     items: [
       { to: '/autopilot/ai-ops', text: 'AI Ops', icon: Sparkles },
       { to: '/autopilot/agents', text: 'Agents', icon: Bot },
-    ],
-  },
-  {
-    label: 'Platform',
-    icon: Building2,
-    items: [
-      { to: '/platform/workspaces', text: 'Workspaces', icon: Cloud },
-      { to: '/platform/customers', text: 'Customers', icon: Users },
     ],
   },
   {

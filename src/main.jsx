@@ -48,6 +48,14 @@ async function bootstrap() {
           console.error('OIDC callback error:', err)
           await getUserManager().clearStaleState()
         }
+      } else if (params.has('state') && !params.has('code')) {
+        // Post-logout redirect from KC — clear local session state
+        try {
+          await getUserManager().signoutRedirectCallback()
+        } catch {
+          // Not a logout callback, ignore
+        }
+        window.history.replaceState({}, '', '/')
       }
     }
   } catch (err) {

@@ -21,6 +21,8 @@ const ConfigMapsPage = lazy(() => import('./pages/configs/ConfigMapsPage'))
 const TranslatorPage = lazy(() => import('./pages/configs/TranslatorPage'))
 const TelemetryAgentsPage = lazy(() => import('./pages/settings/TelemetryAgentsPage'))
 const CollectionAgentsPage = lazy(() => import('./pages/settings/CollectionAgentsPage'))
+const WorkspacesPage = lazy(() => import('./pages/platform/WorkspacesPage'))
+const CustomersPage = lazy(() => import('./pages/platform/CustomersPage'))
 
 function Placeholder({ title }) {
   return (
@@ -74,6 +76,9 @@ export default function App() {
         <Route path="/settings/telemetry-agents" element={<TelemetryAgentsPage />} />
         <Route path="/settings/collection-agents" element={<CollectionAgentsPage />} />
         <Route path="/settings/about" element={<Placeholder title="About" />} />
+
+        <Route path="/platform/workspaces" element={<WorkspacesPage />} />
+        <Route path="/platform/customers" element={<CustomersPage />} />
       </Routes>
       </Suspense>
       </Layout>

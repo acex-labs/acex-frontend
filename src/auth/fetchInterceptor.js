@@ -1,4 +1,4 @@
-import { API_URL } from '../config'
+import { API_URL, NAAS_API_URL } from '../config'
 import { getUserManager } from './oidc'
 
 export function installFetchInterceptor() {
@@ -7,7 +7,7 @@ export function installFetchInterceptor() {
   window.fetch = async (input, init = {}) => {
     const url = input instanceof Request ? input.url : String(input)
 
-    if (url.startsWith(API_URL)) {
+    if (url.startsWith(API_URL) || url.startsWith(NAAS_API_URL)) {
       const um = getUserManager()
       if (um) {
         const user = await um.getUser()

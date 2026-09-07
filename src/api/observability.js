@@ -47,3 +47,13 @@ export const removeAgentRule = (agentId, ruleId) =>
 
 export const fetchObservabilityOutputs = () =>
   apiFetch('/api/v1/observability/outputs')
+
+export const fetchGrafanaDashboards = () =>
+  apiFetch('/api/v1/observability/grafana/dashboards')
+
+export const fetchAgentConfig = async (id) => {
+  const { API_URL } = await import('../config.js')
+  const res = await fetch(`${API_URL}/api/v1/observability/agents/${id}/config`)
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  return res.text()
+}

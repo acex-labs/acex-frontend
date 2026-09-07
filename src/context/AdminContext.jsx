@@ -1,49 +1,36 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { fetchCustomer, updateCustomerSettings } from '../api/naas'
 
 const AdminContext = createContext(null)
+const STORAGE_KEY = 'naas-admin-mode'
 
 function getRoles(user) {
   if (!user) return []
   return user.profile?.realm_access?.roles ?? []
 }
 
-function getTenant() {
-  const parts = window.location.hostname.split('.')
-  // e.g. berget.naas.acebit.cloud → "berget"; localhost → null
-  return parts.length > 1 ? parts[0] : null
+function readStorage() {
+  try { return localStorage.getItem(STORAGE_KEY) === 'true' } catch { return false }
+}
+
+function writeStorage(val) {
+  try { localStorage.setItem(STORAGE_KEY, String(val)) } catch {}
 }
 
 export function AdminProvider({ children }) {
   const { user } = useAuth()
-  const roles = getRoles(user)
-  const isAdmin = roles.includes('naas-admin')
+  const isAdmin = getRoles(user).includes('naas-admin')
 
-  const [isAdminMode, setAdminMode] = useState(false)
-
-  const tenant = getTenant()
-
-  // Load persisted setting from the Customer CRD on mount (once user is available)
-  useEffect(() => {
-    if (!isAdmin || !tenant) return
-    fetchCustomer(tenant)
-      .then(cust => {
-        if (cust?.settings?.naasAdminEnabled) setAdminMode(true)
-      })
-      .catch(() => {}) // non-critical — fall back to local state
-  }, [isAdmin, tenant])
+  const [isAdminMode, setAdminMode] = useState(readStorage)
 
   const toggleAdminMode = useCallback(() => {
     if (!isAdmin) return
     setAdminMode(prev => {
       const next = !prev
-      if (tenant) {
-        updateCustomerSettings(tenant, { naasAdminEnabled: next }).catch(() => {})
-      }
+      writeStorage(next)
       return next
     })
-  }, [isAdmin, tenant])
+  }, [isAdmin])
 
   const value = useMemo(
     () => ({ isAdmin, isAdminMode: isAdmin && isAdminMode, toggleAdminMode }),

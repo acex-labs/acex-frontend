@@ -3,6 +3,7 @@ set -e
 
 API_URL="${API_URL:-http://localhost:80}"
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3001}"
+NAAS_ADMIN_URL="${NAAS_ADMIN_URL:-}"
 
 BRAND_RULE=""
 if [ -n "$BRAND_PRIMARY" ]; then
@@ -28,7 +29,8 @@ fi
 cat > /usr/share/nginx/html/config.js << EOF
 window.RUNTIME_CONFIG = {
   API_URL: "$API_URL",
-  GRAFANA_URL: "$GRAFANA_URL"
+  GRAFANA_URL: "$GRAFANA_URL",
+  NAAS_ADMIN_URL: "$NAAS_ADMIN_URL"
 };
 $BRAND_SCRIPT
 EOF

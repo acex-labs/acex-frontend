@@ -13,7 +13,7 @@ export const ObserveModule = {
   routes: [
     { path: '/observe/icmp',           placeholder: 'ICMP' },
     { path: '/observe/telemetry',      placeholder: 'Telemetry' },
-    { path: '/observe/dashboards',     placeholder: 'Dashboards' },
-    { path: '/observe/config-history', placeholder: 'Config History' },
+    { path: '/observe/dashboards',     load: () => import('../../pages/observe/DashboardsPage') },
+    { path: '/observe/config-history', load: () => import('../../pages/observe/ConfigHistoryPage') },
   ],
 }

@@ -32,3 +32,5 @@ export const updateCustomer = (name, { active }) =>
   naasFetch(`/customers/${name}`, { method: 'PATCH', body: JSON.stringify({ active }) })
 export const deleteCustomer = (name) =>
   naasFetch(`/customers/${name}`, { method: 'DELETE' })
+export const updateCustomerSettings = (name, settings) =>
+  naasFetch(`/customers/${name}/settings`, { method: 'PATCH', body: JSON.stringify(settings) })

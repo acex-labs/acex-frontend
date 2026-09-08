@@ -1,11 +1,13 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Phone } from 'lucide-react'
+import { Mail, Phone, Plus } from 'lucide-react'
 import { fetchContacts } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import Pagination from '../../components/table/Pagination'
+import CreateContactModal from '../../components/contacts/CreateContactModal'
 
 const DEFAULTS = {
   name: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
@@ -17,7 +19,9 @@ const FILTERS = [
 
 export default function ContactsPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['contacts', params],
@@ -33,6 +37,15 @@ export default function ContactsPage() {
       <PageHeader
         title="Contacts"
         description={total > 0 ? `${total} contacts` : undefined}
+        actions={
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-brand text-white hover:bg-brand/90 transition-colors"
+          >
+            <Plus size={12} />
+            Add Contact
+          </button>
+        }
       />
       <TableToolbar
         filters={FILTERS}
@@ -108,6 +121,12 @@ export default function ContactsPage() {
         total={total}
         onChange={offset => setParams({ offset })}
       />
+      {showCreate && (
+        <CreateContactModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['contacts'] })}
+        />
+      )}
     </div>
   )
 }

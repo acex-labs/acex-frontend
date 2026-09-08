@@ -38,18 +38,111 @@ export const fetchSites = ({ name, city, country, region, limit = 50, offset = 0
 export const fetchSite = (id) =>
   apiFetch(`/api/v1/inventory/sites/${id}`)
 
+export const createSite = (data) =>
+  apiFetch('/api/v1/inventory/sites', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateSite = (id, patch) =>
+  apiFetch(`/api/v1/inventory/sites/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
 export const fetchRegions = ({ name, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/regions?${buildQs({ name, limit, offset })}`)
+
+export const fetchRegion = (id) =>
+  apiFetch(`/api/v1/inventory/regions/${id}`)
+
+export const createRegion = (data) =>
+  apiFetch('/api/v1/inventory/regions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateRegion = (id, patch) =>
+  apiFetch(`/api/v1/inventory/regions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
+export const fetchRegionAssignments = ({ site_name, region_name } = {}) =>
+  apiFetch(`/api/v1/inventory/region_assignments?${buildQs({ site_name, region_name })}`)
+
+export const createRegionAssignment = ({ region_name, site_name }) =>
+  apiFetch('/api/v1/inventory/region_assignments', {
+    method: 'POST',
+    body: JSON.stringify({ region_name, site_name }),
+  })
+
+export const deleteRegionAssignment = (id) =>
+  apiFetch(`/api/v1/inventory/region_assignments/${id}`, { method: 'DELETE' })
 
 export const fetchLogicalNodes = ({ hostname, site, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, limit, offset })}`)
 
+export const fetchLogicalNode = (id) =>
+  apiFetch(`/api/v1/inventory/logical_nodes/${id}`)
+
+export const createLogicalNode = (data) =>
+  apiFetch('/api/v1/inventory/logical_nodes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateLogicalNode = (id, patch) =>
+  apiFetch(`/api/v1/inventory/logical_nodes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
+export const deleteLogicalNode = (id) =>
+  apiFetch(`/api/v1/inventory/logical_nodes/${id}`, { method: 'DELETE' })
+
 export const fetchAssets = ({ vendor, os, hardware_model, assigned, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, assigned, limit, offset })}`)
+
+export const fetchAsset = (id) =>
+  apiFetch(`/api/v1/inventory/assets/${id}`)
+
+export const createAsset = (data) =>
+  apiFetch('/api/v1/inventory/assets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateAsset = (id, patch) =>
+  apiFetch(`/api/v1/inventory/assets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
+export const deleteAsset = (id) =>
+  apiFetch(`/api/v1/inventory/assets/${id}`, { method: 'DELETE' })
 
 export const fetchAssetClusters = ({ assigned, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/asset_clusters?${buildQs({ assigned, limit, offset })}`)
     .then(data => Array.isArray(data) ? { items: data, total: data.length } : data)
+
+export const fetchAssetCluster = (id) =>
+  apiFetch(`/api/v1/inventory/asset_clusters/${id}`)
+
+export const createAssetCluster = (data) =>
+  apiFetch('/api/v1/inventory/asset_clusters', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updateAssetCluster = (id, patch) =>
+  apiFetch(`/api/v1/inventory/asset_clusters/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+
+export const deleteAssetCluster = (id) =>
+  apiFetch(`/api/v1/inventory/asset_clusters/${id}`, { method: 'DELETE' })
 
 export const updateNodeInstance = (id, patch) =>
   apiFetch(`/api/v1/inventory/node_instances/${id}`, {
@@ -79,6 +172,12 @@ export const fetchContacts = ({ name, limit = 50, offset = 0 } = {}) =>
 
 export const fetchContact = (id) =>
   apiFetch(`/api/v1/inventory/contacts/${id}`)
+
+export const createContact = (data) =>
+  apiFetch('/api/v1/inventory/contacts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 
 export const updateContact = (id, data) =>
   apiFetch(`/api/v1/inventory/contacts/${id}`, {

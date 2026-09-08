@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Layers } from 'lucide-react'
+import { Layers, Plus } from 'lucide-react'
 import { fetchLogicalNodes } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import { useBulkSelect } from '../../hooks/useBulkSelect'
@@ -11,6 +11,7 @@ import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
+import CreateLogicalNodeModal from '../../components/logicalNodes/CreateLogicalNodeModal'
 
 const DEFAULTS = {
   hostname: '', site: '',
@@ -34,6 +35,7 @@ export default function LogicalNodesPage() {
   const navigate = useNavigate()
   const [params, setParams] = useQueryParams(DEFAULTS)
   const [showActionsModal, setShowActionsModal] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['logical-nodes', params],
@@ -56,18 +58,27 @@ export default function LogicalNodesPage() {
         title="Logical Nodes"
         description={total > 0 ? `${total} logical nodes` : undefined}
         actions={
-          <button
-            onClick={bulk.toggleBulkMode}
-            className={[
-              'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
-              bulk.bulkMode
-                ? 'bg-brand/10 border-brand/40 text-brand'
-                : 'border-edge text-subtle hover:text-content',
-            ].join(' ')}
-          >
-            <Layers size={12} />
-            {bulk.bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
-          </button>
+          <>
+            <button
+              onClick={bulk.toggleBulkMode}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
+                bulk.bulkMode
+                  ? 'bg-brand/10 border-brand/40 text-brand'
+                  : 'border-edge text-subtle hover:text-content',
+              ].join(' ')}
+            >
+              <Layers size={12} />
+              {bulk.bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-brand text-white hover:bg-brand/90 transition-colors"
+            >
+              <Plus size={12} />
+              Add Logical Node
+            </button>
+          </>
         }
       />
       <TableToolbar
@@ -96,7 +107,7 @@ export default function LogicalNodesPage() {
         sortKey={params.sort}
         sortOrder={params.order}
         onSort={(key, order) => setParams({ sort: key, order, offset: 0 })}
-        onRowClick={bulk.bulkMode ? undefined : row => navigate(`/network/nodes?hostname=${encodeURIComponent(row.hostname)}`)}
+        onRowClick={bulk.bulkMode ? undefined : row => navigate(`/network/logical-nodes/${row.id}`)}
         selection={bulk.bulkMode ? {
           ids: bulk.selectedIds,
           onToggle: bulk.toggleId,
@@ -116,6 +127,12 @@ export default function LogicalNodesPage() {
           entity="logical node"
           entityPlural="logical nodes"
           onClose={() => setShowActionsModal(false)}
+        />
+      )}
+      {showCreate && (
+        <CreateLogicalNodeModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={(created) => navigate(`/network/logical-nodes/${created.id}`)}
         />
       )}
     </div>

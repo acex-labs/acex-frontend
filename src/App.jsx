@@ -12,7 +12,10 @@ const SitesPage = lazy(() => import('./pages/network/SitesPage'))
 const SitePage = lazy(() => import('./pages/network/SitePage'))
 const RegionsPage = lazy(() => import('./pages/network/RegionsPage'))
 const LogicalNodesPage = lazy(() => import('./pages/network/LogicalNodesPage'))
+const LogicalNodePage = lazy(() => import('./pages/network/LogicalNodePage'))
 const AssetsPage = lazy(() => import('./pages/network/AssetsPage'))
+const AssetPage = lazy(() => import('./pages/network/AssetPage'))
+const AssetClusterPage = lazy(() => import('./pages/network/AssetClusterPage'))
 const ContactsPage = lazy(() => import('./pages/network/ContactsPage'))
 const ContactPage = lazy(() => import('./pages/network/ContactPage'))
 const NEDsPage = lazy(() => import('./pages/network/NEDsPage'))
@@ -47,7 +50,10 @@ export default function App() {
         <Route path="/network/sites/:id" element={<SitePage />} />
         <Route path="/network/regions" element={<RegionsPage />} />
         <Route path="/network/logical-nodes" element={<LogicalNodesPage />} />
+        <Route path="/network/logical-nodes/:id" element={<LogicalNodePage />} />
         <Route path="/network/assets" element={<AssetsPage />} />
+        <Route path="/network/assets/:id" element={<AssetPage />} />
+        <Route path="/network/asset-clusters/:id" element={<AssetClusterPage />} />
         <Route path="/network/contacts" element={<ContactsPage />} />
         <Route path="/network/contacts/:id" element={<ContactPage />} />
         <Route path="/configs/neds" element={<NEDsPage />} />

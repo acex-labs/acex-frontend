@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Layers } from 'lucide-react'
+import { Layers, Plus } from 'lucide-react'
 import { fetchSites } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import { useBulkSelect } from '../../hooks/useBulkSelect'
@@ -11,6 +11,7 @@ import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
+import CreateSiteModal from '../../components/sites/CreateSiteModal'
 
 const DEFAULTS = {
   name: '', city: '', country: '', region: '',
@@ -33,8 +34,10 @@ const COLUMNS = [
 
 export default function SitesPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
   const [showActionsModal, setShowActionsModal] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['sites', params],
@@ -58,18 +61,27 @@ export default function SitesPage() {
         title="Sites"
         description={total > 0 ? `${total} sites` : undefined}
         actions={
-          <button
-            onClick={bulk.toggleBulkMode}
-            className={[
-              'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
-              bulk.bulkMode
-                ? 'bg-brand/10 border-brand/40 text-brand'
-                : 'border-edge text-subtle hover:text-content',
-            ].join(' ')}
-          >
-            <Layers size={12} />
-            {bulk.bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
-          </button>
+          <>
+            <button
+              onClick={bulk.toggleBulkMode}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
+                bulk.bulkMode
+                  ? 'bg-brand/10 border-brand/40 text-brand'
+                  : 'border-edge text-subtle hover:text-content',
+              ].join(' ')}
+            >
+              <Layers size={12} />
+              {bulk.bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-brand text-white hover:bg-brand/90 transition-colors"
+            >
+              <Plus size={12} />
+              Add Site
+            </button>
+          </>
         }
       />
       <TableToolbar
@@ -117,6 +129,15 @@ export default function SitesPage() {
           selectedCount={bulk.selectedIds.size}
           entity="site"
           onClose={() => setShowActionsModal(false)}
+        />
+      )}
+      {showCreate && (
+        <CreateSiteModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={(created) => {
+            queryClient.invalidateQueries({ queryKey: ['sites'] })
+            navigate(`/network/sites/${created.id}`)
+          }}
         />
       )}
     </div>

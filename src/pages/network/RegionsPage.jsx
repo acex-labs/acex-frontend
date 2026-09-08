@@ -1,6 +1,6 @@
 import { useState, Fragment } from 'react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { fetchRegions, fetchSites } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
@@ -8,6 +8,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import Pagination from '../../components/table/Pagination'
 import SiteMap from '../../components/map/SiteMap'
+import RegionFormModal from '../../components/regions/RegionFormModal'
 
 const DEFAULTS = {
   name: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
@@ -62,8 +63,11 @@ function RegionSites({ regionName }) {
 }
 
 export default function RegionsPage() {
+  const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
   const [expanded, setExpanded] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [editRegion, setEditRegion] = useState(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['regions', params],
@@ -73,6 +77,8 @@ export default function RegionsPage() {
 
   const regions = data?.items ?? []
   const total = data?.total ?? 0
+
+  const invalidateRegions = () => queryClient.invalidateQueries({ queryKey: ['regions'] })
 
   const toggleExpand = (row) => {
     setExpanded(prev => prev === row.name ? null : row.name)
@@ -89,6 +95,19 @@ export default function RegionsPage() {
       ),
     },
     ...COLUMNS,
+    {
+      key: '_actions',
+      label: '',
+      render: (_, row) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); setEditRegion(row) }}
+          className="flex items-center gap-1 text-[11px] text-subtle hover:text-content transition-colors"
+        >
+          <Pencil size={11} />
+          Edit
+        </button>
+      ),
+    },
   ]
 
   return (
@@ -96,6 +115,15 @@ export default function RegionsPage() {
       <PageHeader
         title="Regions"
         description={total > 0 ? `${total} regions` : undefined}
+        actions={
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-brand text-white hover:bg-brand/90 transition-colors"
+          >
+            <Plus size={12} />
+            Add Region
+          </button>
+        }
       />
       <TableToolbar
         filters={FILTERS}
@@ -155,6 +183,19 @@ export default function RegionsPage() {
         total={total}
         onChange={offset => setParams({ offset })}
       />
+      {showCreate && (
+        <RegionFormModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={invalidateRegions}
+        />
+      )}
+      {editRegion && (
+        <RegionFormModal
+          region={editRegion}
+          onClose={() => setEditRegion(null)}
+          onSuccess={invalidateRegions}
+        />
+      )}
     </div>
   )
 }

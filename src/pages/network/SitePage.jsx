@@ -11,9 +11,20 @@ function useSiteInitialData(id) {
     }
   }
 }
-import { ChevronLeft, MapPin, Mail, Phone, Plus, X } from 'lucide-react'
-import { fetchSite, fetchNodes, fetchContactAssignments, fetchContacts, createContactAssignment, deleteContactAssignment } from '../../api/inventory'
-import { apiFetch } from '../../api/client'
+import { ChevronLeft, MapPin, Mail, Phone, Plus, X, Pencil, Check } from 'lucide-react'
+import {
+  fetchSite,
+  updateSite,
+  fetchNodes,
+  fetchContactAssignments,
+  fetchContacts,
+  createContactAssignment,
+  deleteContactAssignment,
+  fetchRegions,
+  fetchRegionAssignments,
+  createRegionAssignment,
+  deleteRegionAssignment,
+} from '../../api/inventory'
 import { usePageAiContext } from '../../context/AiContext'
 import SiteMap from '../../components/map/SiteMap'
 import SiteTopologyTab from './SiteTopologyTab'
@@ -45,6 +56,20 @@ function Field({ label, value }) {
     <div className="flex gap-4 py-2 border-b border-edge last:border-0">
       <dt className="w-28 shrink-0 text-[11px] text-subtle">{label}</dt>
       <dd className="text-xs text-content">{value}</dd>
+    </div>
+  )
+}
+
+function EditField({ label, value, onChange, type = 'text' }) {
+  return (
+    <div className="flex gap-4 py-1.5 border-b border-edge last:border-0 items-center">
+      <label className="w-28 shrink-0 text-[11px] text-subtle">{label}</label>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
+      />
     </div>
   )
 }
@@ -223,7 +248,131 @@ function ContactsCard({ siteName }) {
   )
 }
 
-function OverviewTab({ site, regions, nodeCount }) {
+function RegionRow({ region, onRemove, removing }) {
+  return (
+    <div className="flex items-center gap-2 py-1.5 group">
+      <RegionBadge name={region.display_name || region.name} />
+      <button
+        onClick={() => onRemove(region.assignmentId)}
+        disabled={removing}
+        title="Remove region"
+        className="opacity-0 group-hover:opacity-100 p-0.5 text-subtle hover:text-red-400 transition-all shrink-0 disabled:opacity-30"
+      >
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
+function RegionsCard({ siteId, siteName }) {
+  const queryClient = useQueryClient()
+  const [showPicker, setShowPicker] = useState(false)
+  const [filter, setFilter] = useState('')
+
+  const { data: assignments, isLoading: loadingAssignments } = useQuery({
+    queryKey: ['site-regions', siteId],
+    queryFn: () => fetchRegionAssignments({ site_name: siteName }),
+    enabled: !!siteName,
+  })
+
+  const { data: allRegionsData } = useQuery({
+    queryKey: ['regions-all'],
+    queryFn: () => fetchRegions({ limit: 1000 }),
+    enabled: !!siteName,
+  })
+
+  const allRegions = allRegionsData?.items ?? []
+  const assignmentList = Array.isArray(assignments) ? assignments : []
+  const assignedNames = new Set(assignmentList.map(a => a.region_name))
+  const assignedRegions = assignmentList.map(a => {
+    const region = allRegions.find(r => r.name === a.region_name)
+    return { name: a.region_name, display_name: region?.display_name, assignmentId: a.id }
+  })
+  const availableRegions = allRegions.filter(r => !assignedNames.has(r.name))
+  const filteredAvailable = filter
+    ? availableRegions.filter(r => (r.display_name || r.name).toLowerCase().includes(filter.toLowerCase()))
+    : availableRegions
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['site-regions', siteId] })
+
+  const addMutation = useMutation({
+    mutationFn: (region_name) => createRegionAssignment({ region_name, site_name: siteName }),
+    onSuccess: () => {
+      invalidate()
+      setFilter('')
+      setShowPicker(false)
+    },
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: deleteRegionAssignment,
+    onSuccess: invalidate,
+  })
+
+  if (loadingAssignments) return null
+
+  return (
+    <div className="bg-surface border border-edge rounded-md overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between">
+        <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Regions</h3>
+        <button
+          onClick={() => setShowPicker(p => !p)}
+          className="flex items-center gap-1 text-[10px] text-subtle hover:text-content transition-colors"
+        >
+          <Plus size={10} />
+          Add
+        </button>
+      </div>
+
+      {showPicker && (
+        <div className="border-b border-edge px-3 py-2 space-y-1.5">
+          <input
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="Filter regions…"
+            autoFocus
+            className="w-full bg-surface-hi border border-edge rounded px-2.5 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
+          />
+          <div className="max-h-40 overflow-y-auto rounded border border-edge bg-canvas">
+            {filteredAvailable.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-subtle">
+                {availableRegions.length === 0 ? 'All regions assigned.' : 'No matches.'}
+              </div>
+            ) : (
+              filteredAvailable.map(r => (
+                <button
+                  key={r.id ?? r.name}
+                  onClick={() => addMutation.mutate(r.name)}
+                  disabled={addMutation.isPending}
+                  className="w-full text-left px-3 py-2 text-xs border-b border-edge/50 last:border-0 hover:bg-surface-hi transition-colors disabled:opacity-50"
+                >
+                  <span className="text-content font-medium">{r.display_name || r.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-1">
+        {assignedRegions.length === 0 && !showPicker ? (
+          <div className="py-2.5 text-xs text-subtle">No regions assigned.</div>
+        ) : (
+          assignedRegions.map(r => (
+            <RegionRow
+              key={r.assignmentId}
+              region={r}
+              onRemove={removeMutation.mutate}
+              removing={removeMutation.isPending}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange }) {
   const hasCoords = site.latitude != null && site.longitude != null
 
   return (
@@ -231,24 +380,31 @@ function OverviewTab({ site, regions, nodeCount }) {
       {/* Left: info */}
       <div className="space-y-4">
         <Card title="Site">
-          <Field label="Name"         value={site.name} />
-          <Field label="Display Name" value={site.display_name} />
-          <Field label="Address"      value={site.address} />
-          <Field label="City"         value={site.city} />
-          <Field label="Country"      value={site.country} />
-          {hasCoords && (
-            <Field label="Coords" value={`${site.latitude}, ${site.longitude}`} />
+          {editing ? (
+            <>
+              <Field label="Name" value={site.name} />
+              <EditField label="Display Name" value={draft.display_name} onChange={v => onDraftChange('display_name', v)} />
+              <EditField label="Address"      value={draft.address}      onChange={v => onDraftChange('address', v)} />
+              <EditField label="City"         value={draft.city}         onChange={v => onDraftChange('city', v)} />
+              <EditField label="Country"      value={draft.country}      onChange={v => onDraftChange('country', v)} />
+              <EditField label="Latitude"  type="number" value={draft.latitude}  onChange={v => onDraftChange('latitude', v)} />
+              <EditField label="Longitude" type="number" value={draft.longitude} onChange={v => onDraftChange('longitude', v)} />
+            </>
+          ) : (
+            <>
+              <Field label="Name"         value={site.name} />
+              <Field label="Display Name" value={site.display_name} />
+              <Field label="Address"      value={site.address} />
+              <Field label="City"         value={site.city} />
+              <Field label="Country"      value={site.country} />
+              {hasCoords && (
+                <Field label="Coords" value={`${site.latitude}, ${site.longitude}`} />
+              )}
+            </>
           )}
         </Card>
 
-        {regions.length > 0 && (
-          <div className="bg-surface border border-edge rounded-md p-4">
-            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-3">Regions</h3>
-            <div className="flex flex-wrap gap-2">
-              {regions.map(r => <RegionBadge key={r} name={r} />)}
-            </div>
-          </div>
-        )}
+        <RegionsCard siteId={siteId} siteName={site.name} />
 
         <ContactsCard siteName={site.name} />
 
@@ -326,9 +482,12 @@ function NodesTab({ siteName }) {
 
 export default function SitePage() {
   const { id } = useParams()
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
   const getInitialData = useSiteInitialData(id)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(null)
 
   const { data: site, isLoading } = useQuery({
     queryKey: ['site', id],
@@ -341,10 +500,46 @@ export default function SitePage() {
 
   const { data: assignmentsData } = useQuery({
     queryKey: ['site-regions', id],
-    queryFn: () => apiFetch(`/api/v1/inventory/region_assignments?site_name=${encodeURIComponent(siteName)}`),
+    queryFn: () => fetchRegionAssignments({ site_name: siteName }),
     enabled: !!siteName,
   })
   const regions = (Array.isArray(assignmentsData) ? assignmentsData : []).map(a => a.region_name)
+
+  const updateMutation = useMutation({
+    mutationFn: (patch) => updateSite(id, patch),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['site', id], updated)
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
+      setEditing(false)
+    },
+  })
+
+  const startEdit = () => {
+    setDraft({
+      display_name: site.display_name,
+      address: site.address,
+      city: site.city,
+      country: site.country,
+      latitude: site.latitude,
+      longitude: site.longitude,
+    })
+    setEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setDraft(null)
+    setEditing(false)
+    updateMutation.reset()
+  }
+
+  const setDraftField = (key, value) => setDraft(d => ({ ...d, [key]: value }))
+
+  const saveEdit = () => {
+    const patch = { ...draft }
+    patch.latitude = patch.latitude !== '' && patch.latitude != null ? Number(patch.latitude) : null
+    patch.longitude = patch.longitude !== '' && patch.longitude != null ? Number(patch.longitude) : null
+    updateMutation.mutate(patch)
+  }
 
   const { data: nodeData } = useQuery({
     queryKey: ['nodes-count', id],
@@ -376,12 +571,47 @@ export default function SitePage() {
           <ChevronLeft size={11} />
           Sites
         </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-semibold text-content">
-            {isLoading ? '—' : (site?.display_name || site?.name || name)}
-          </h1>
-          {site?.name && site.name !== site?.display_name && (
-            <span className="text-[10px] text-subtle font-mono">{site.name}</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm font-semibold text-content">
+              {isLoading ? '—' : (site?.display_name || site?.name || name)}
+            </h1>
+            {site?.name && site.name !== site?.display_name && (
+              <span className="text-[10px] text-subtle font-mono">{site.name}</span>
+            )}
+          </div>
+
+          {!isLoading && site && !editing && (
+            <button
+              onClick={startEdit}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
+            >
+              <Pencil size={11} />
+              Edit
+            </button>
+          )}
+
+          {editing && (
+            <div className="flex items-center gap-2">
+              {updateMutation.isError && (
+                <span className="text-[11px] text-red-400">Save failed.</span>
+              )}
+              <button
+                onClick={cancelEdit}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
+              >
+                <X size={11} />
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={updateMutation.isPending}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs bg-brand text-white font-semibold disabled:opacity-40 transition-opacity"
+              >
+                <Check size={11} />
+                {updateMutation.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -414,7 +644,14 @@ export default function SitePage() {
           <>
             {activeTab === 'overview' && (
               <div className="overflow-auto flex-1">
-                <OverviewTab site={site} regions={regions} nodeCount={nodeCount} />
+                <OverviewTab
+                  site={site}
+                  siteId={id}
+                  nodeCount={nodeCount}
+                  editing={editing}
+                  draft={draft}
+                  onDraftChange={setDraftField}
+                />
               </div>
             )}
             {activeTab === 'nodes' && (

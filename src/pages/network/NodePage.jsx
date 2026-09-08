@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ArrowLeftRight, Plus, X } from 'lucide-react'
+import { ChevronLeft, ArrowLeftRight, Plus, X, Trash2, Pencil } from 'lucide-react'
 import {
   fetchNode,
+  updateNodeInstance,
+  deleteNodeInstance,
   fetchCredentials,
   fetchNodeCredentials,
   assignNodeCredential,
@@ -91,11 +93,43 @@ const STATUS_STYLES = {
   decommissioned:  'bg-red-500/10 text-red-400',
 }
 
+const NODE_STATUSES = ['planned', 'init', 'active', 'decommissioned']
+
 function StatusBadge({ status }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${STATUS_STYLES[status] ?? 'bg-surface-hi text-subtle'}`}>
       {status}
     </span>
+  )
+}
+
+function StatusEditor({ status, onChange, pending }) {
+  const [editing, setEditing] = useState(false)
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex items-center gap-1 group"
+        title="Change status"
+      >
+        <StatusBadge status={status} />
+        <Pencil size={10} className="text-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
+      </button>
+    )
+  }
+
+  return (
+    <select
+      autoFocus
+      value={status}
+      disabled={pending}
+      onChange={e => { onChange(e.target.value); setEditing(false) }}
+      onBlur={() => setEditing(false)}
+      className="bg-surface-hi border border-edge rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-content outline-none focus:border-brand/50 transition-colors"
+    >
+      {NODE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
   )
 }
 
@@ -109,12 +143,13 @@ function Field({ label, value }) {
   )
 }
 
-function Card({ title, children, className = '' }) {
+function Card({ title, titleAction, children, className = '' }) {
   return (
     <div className={`bg-surface border border-edge rounded-md overflow-hidden ${className}`}>
       {title && (
-        <div className="px-4 py-2.5 border-b border-edge shrink-0">
+        <div className="px-4 py-2.5 border-b border-edge shrink-0 flex items-center justify-between">
           <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">{title}</h3>
+          {titleAction}
         </div>
       )}
       <dl className="px-4 py-1 overflow-y-auto flex-1">{children}</dl>
@@ -125,6 +160,7 @@ function Card({ title, children, className = '' }) {
 function AssetCard({ asset, onChangeAsset }) {
   const isCluster = asset?.type === 'asset_cluster'
   const units = isCluster ? (asset.assets ?? []) : []
+  const assetHref = asset ? (isCluster ? `/network/asset-clusters/${asset.id}` : `/network/assets/${asset.id}`) : null
 
   return (
     <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
@@ -139,13 +175,23 @@ function AssetCard({ asset, onChangeAsset }) {
             </span>
           )}
         </div>
-        <button
-          onClick={onChangeAsset}
-          className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
-        >
-          <ArrowLeftRight size={11} />
-          Change
-        </button>
+        <div className="flex items-center gap-3">
+          {assetHref && (
+            <Link
+              to={assetHref}
+              className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+            >
+              Edit
+            </Link>
+          )}
+          <button
+            onClick={onChangeAsset}
+            className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+          >
+            <ArrowLeftRight size={11} />
+            Change
+          </button>
+        </div>
       </div>
 
       {!asset ? (
@@ -523,7 +569,18 @@ function OverviewTab({ data, nodeId, onChangeAsset }) {
         <Field label="Created" value={data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
       </Card>
-      <Card title="Logical Node" className="flex flex-col">
+      <Card
+        title="Logical Node"
+        className="flex flex-col"
+        titleAction={data.logical_node_id && (
+          <Link
+            to={`/network/logical-nodes/${data.logical_node_id}`}
+            className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+          >
+            Edit
+          </Link>
+        )}
+      >
         <Field label="Hostname" value={ln.hostname} />
         <Field label="Site"     value={ln.site} />
         <Field label="Role"     value={ln.role} />
@@ -538,14 +595,33 @@ function OverviewTab({ data, nodeId, onChangeAsset }) {
 
 export default function NodePage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
   const [showChangeAsset, setShowChangeAsset] = useState(false)
   const [tabContext, setTabContext] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['node', id],
     queryFn: () => fetchNode(id),
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (status) => updateNodeInstance(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['node', id] })
+      queryClient.invalidateQueries({ queryKey: ['nodes'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteNodeInstance(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nodes'] })
+      navigate('/network/nodes')
+    },
   })
 
   const setTab = (tab) => {
@@ -583,11 +659,51 @@ export default function NodePage() {
           <ChevronLeft size={11} />
           Nodes
         </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-semibold text-content">
-            {isLoading ? '—' : hostname}
-          </h1>
-          {data?.status && <StatusBadge status={data.status} />}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm font-semibold text-content">
+              {isLoading ? '—' : hostname}
+            </h1>
+            {data?.status && (
+              <StatusEditor
+                status={data.status}
+                pending={statusMutation.isPending}
+                onChange={(status) => statusMutation.mutate(status)}
+              />
+            )}
+          </div>
+
+          {!isLoading && data && (
+            deleteConfirm ? (
+              <div className="flex items-center gap-1">
+                {deleteMutation.isError && (
+                  <span className="text-[11px] text-red-400 mr-1">Delete failed.</span>
+                )}
+                <span className="text-[11px] text-red-400">Delete?</span>
+                <button
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                  className="px-2 py-1 rounded text-[11px] bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  className="px-2 py-1 rounded text-[11px] border border-edge text-subtle hover:text-content transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-red-400 transition-colors"
+              >
+                <Trash2 size={11} />
+                Delete
+              </button>
+            )
+          )}
         </div>
       </div>
 

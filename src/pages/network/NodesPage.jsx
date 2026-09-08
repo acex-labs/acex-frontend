@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Layers } from 'lucide-react'
+import { Layers, Plus } from 'lucide-react'
 import { fetchNodes } from '../../api/inventory'
 import { apiFetch } from '../../api/client'
 import { useQueryParams } from '../../hooks/useQueryParams'
@@ -12,6 +12,7 @@ import Pagination from '../../components/table/Pagination'
 import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkActionsModal from '../../components/bulk/BulkActionsModal'
 import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
+import CreateNodeModal from '../../components/nodes/CreateNodeModal'
 
 const DEFAULTS = {
   hostname: '', site: '', region: '', role: '', id: '',
@@ -38,6 +39,7 @@ const COLUMNS = [
 
 export default function NodesPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
 
   // ── Bulk mode ─────────────────────────────────────────────────
@@ -45,6 +47,7 @@ export default function NodesPage() {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [actionSpec, setActionSpec] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   // Cache node → {asset_ref_id, asset_ref_type} so Set NED doesn't need extra fetches
   const nodeInfoCache = useRef(new Map())
@@ -170,18 +173,27 @@ export default function NodesPage() {
         title="Nodes"
         description={total > 0 ? `${total} nodes` : undefined}
         actions={
-          <button
-            onClick={toggleBulkMode}
-            className={[
-              'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
-              bulkMode
-                ? 'bg-brand/10 border-brand/40 text-brand'
-                : 'border-edge text-subtle hover:text-content',
-            ].join(' ')}
-          >
-            <Layers size={12} />
-            {bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
-          </button>
+          <>
+            <button
+              onClick={toggleBulkMode}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
+                bulkMode
+                  ? 'bg-brand/10 border-brand/40 text-brand'
+                  : 'border-edge text-subtle hover:text-content',
+              ].join(' ')}
+            >
+              <Layers size={12} />
+              {bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-brand text-white hover:bg-brand/90 transition-colors"
+            >
+              <Plus size={12} />
+              Add Node
+            </button>
+          </>
         }
       />
 
@@ -241,6 +253,16 @@ export default function NodesPage() {
           actionSpec={actionSpec}
           nodeInfoCache={nodeInfoCache.current}
           onClose={handleConfirmClose}
+        />
+      )}
+
+      {showCreate && (
+        <CreateNodeModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={(created) => {
+            queryClient.invalidateQueries({ queryKey: ['nodes'] })
+            navigate(`/network/nodes/${created.id}`)
+          }}
         />
       )}
     </div>

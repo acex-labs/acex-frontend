@@ -56,15 +56,15 @@ function MembersCard({ cluster, clusterId }) {
   })
   const available = unassignedData?.items ?? []
 
-  const invalidate = (updated) => {
-    queryClient.setQueryData(['asset-cluster', String(clusterId)], updated)
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['asset-cluster', String(clusterId)] })
     queryClient.invalidateQueries({ queryKey: ['asset-clusters'] })
   }
 
   const addMutation = useMutation({
     mutationFn: (assetId) => updateAssetCluster(clusterId, { asset_ids: [...memberIds, assetId] }),
-    onSuccess: (updated) => {
-      invalidate(updated)
+    onSuccess: () => {
+      invalidate()
       setAdding(false)
       setSelectedAssetId('')
     },
@@ -72,8 +72,8 @@ function MembersCard({ cluster, clusterId }) {
 
   const removeMutation = useMutation({
     mutationFn: (assetId) => updateAssetCluster(clusterId, { asset_ids: memberIds.filter(id => id !== assetId) }),
-    onSuccess: (updated) => {
-      invalidate(updated)
+    onSuccess: () => {
+      invalidate()
       setConfirmRemoveId(null)
     },
   })
@@ -183,8 +183,8 @@ export default function AssetClusterPage() {
 
   const mutation = useMutation({
     mutationFn: (data) => updateAssetCluster(id, data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['asset-cluster', id], updated)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset-cluster', id] })
       queryClient.invalidateQueries({ queryKey: ['asset-clusters'] })
       setEditing(false)
     },

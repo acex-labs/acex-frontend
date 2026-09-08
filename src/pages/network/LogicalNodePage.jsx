@@ -94,8 +94,8 @@ export default function LogicalNodePage() {
 
   const mutation = useMutation({
     mutationFn: (data) => updateLogicalNode(id, data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['logical-node', id], updated)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['logical-node', id] })
       queryClient.invalidateQueries({ queryKey: ['logical-nodes'] })
       setEditing(false)
     },

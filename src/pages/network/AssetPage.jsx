@@ -54,8 +54,8 @@ export default function AssetPage() {
 
   const mutation = useMutation({
     mutationFn: (data) => updateAsset(id, data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['asset', id], updated)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset', id] })
       queryClient.invalidateQueries({ queryKey: ['assets'] })
       setEditing(false)
     },

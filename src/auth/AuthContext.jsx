@@ -34,7 +34,12 @@ export function AuthProvider({ children }) {
   const um = getUserManager()
   const login = um ? () => um.signinRedirect() : () => {}
   const logout = um ? () => um.signoutRedirect() : () => {}
-  const isAuthenticated = !!um && !!user && !user.expired
+  // `um` is only ever set (in main.jsx's bootstrap) when the backend's own
+  // GET /api/v1/auth/config reports `enabled: true` — so `!um` isn't a
+  // client-side guess, it's mirroring a server-asserted flag. When the
+  // backend says auth is off (local/dev backends with no OIDC configured),
+  // we must not gate the UI behind a login that can never succeed.
+  const isAuthenticated = !um || (!!user && !user.expired)
 
   return (
     <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout }}>

@@ -507,8 +507,8 @@ export default function SitePage() {
 
   const updateMutation = useMutation({
     mutationFn: (patch) => updateSite(id, patch),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['site', id], updated)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site', id] })
       queryClient.invalidateQueries({ queryKey: ['sites'] })
       setEditing(false)
     },

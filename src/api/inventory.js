@@ -144,11 +144,20 @@ export const updateAssetCluster = (id, patch) =>
 export const deleteAssetCluster = (id) =>
   apiFetch(`/api/v1/inventory/asset_clusters/${id}`, { method: 'DELETE' })
 
+export const createNodeInstance = (data) =>
+  apiFetch('/api/v1/inventory/node_instances', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
 export const updateNodeInstance = (id, patch) =>
   apiFetch(`/api/v1/inventory/node_instances/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
   })
+
+export const deleteNodeInstance = (id) =>
+  apiFetch(`/api/v1/inventory/node_instances/${id}`, { method: 'DELETE' })
 
 export const fetchStats = () =>
   Promise.all([

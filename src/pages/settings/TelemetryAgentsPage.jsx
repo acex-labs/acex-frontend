@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Plus, X, ExternalLink } from 'lucide-react'
+import { Plus, X, FileCode2 } from 'lucide-react'
 import {
   fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent, updateTelemetryAgent,
   addAgentNode, removeAgentNode,
   addAgentRule, removeAgentRule,
   fetchObservabilityOutputs,
+  fetchAgentConfig,
 } from '../../api/observability'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
@@ -20,7 +21,6 @@ import SnmpSyslogSettingsPanel from '../../components/agents/SnmpSyslogSettingsP
 import SnmpSyslogFields from '../../components/agents/SnmpSyslogFields'
 import { SNMP_SYSLOG_DEFAULTS, snmpSyslogPayload } from '../../components/agents/agentUtils'
 import { getAgentStatus, getConfigSyncStatus, timeAgo, statusClasses } from '../../components/agents/agentUtils'
-import { API_URL } from '../../config'
 
 const CAPABILITIES = [
   { value: 'snmp',          label: 'SNMP'          },
@@ -302,6 +302,7 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
   const explicit = agent.nodes ?? []
   const resolved = agent.resolved_nodes ?? []
   const rules    = agent.rules ?? []
+  const [showConfig, setShowConfig] = useState(false)
 
   return (
     <div className="border-b border-edge">
@@ -317,15 +318,16 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
           {agent.description && <p className="text-xs text-subtle mt-0.5">{agent.description}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={`${API_URL}/api/v1/observability/agents/${agent.id}/config`}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 px-3 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
           >
-            <ExternalLink size={11} />
+            <FileCode2 size={11} />
             View config
-          </a>
+          </button>
+          {showConfig && (
+            <AgentConfigModal agentId={agent.id} agentName={agent.name} onClose={() => setShowConfig(false)} />
+          )}
           <button
             onClick={onDelete}
             disabled={deleting}
@@ -483,6 +485,44 @@ function BackendOutputsPanel() {
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Agent Config Modal ────────────────────────────────────────────────────────
+
+function AgentConfigModal({ agentId, agentName, onClose }) {
+  const { data: config, isLoading, isError } = useQuery({
+    queryKey: ['agent-config', agentId],
+    queryFn: () => fetchAgentConfig(agentId),
+    staleTime: 30_000,
+  })
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="bg-canvas border border-edge rounded-xl shadow-2xl flex flex-col"
+        style={{ width: '720px', maxHeight: '80vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-edge shrink-0">
+          <div className="flex items-center gap-2">
+            <FileCode2 size={13} className="text-subtle" />
+            <h3 className="text-sm font-semibold text-content">{agentName} — telegraf config</h3>
+          </div>
+          <button onClick={onClose} className="p-1 rounded text-subtle hover:text-content hover:bg-surface-hi transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {isLoading && <p className="px-5 py-4 text-xs text-subtle animate-pulse">Loading…</p>}
+          {isError && <p className="px-5 py-4 text-xs text-red-400">Failed to load config.</p>}
+          {config && (
+            <pre className="px-5 py-4 text-[11px] leading-5 font-mono text-content whitespace-pre overflow-x-auto">
+              {config}
+            </pre>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

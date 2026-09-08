@@ -4,26 +4,10 @@ import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
 import { AiProvider } from './context/AiContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { AdminProvider } from './context/AdminContext'
+import { MODULES } from './modules'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
-const NodesPage = lazy(() => import('./pages/network/NodesPage'))
-const NodePage = lazy(() => import('./pages/network/NodePage'))
-const SitesPage = lazy(() => import('./pages/network/SitesPage'))
-const SitePage = lazy(() => import('./pages/network/SitePage'))
-const RegionsPage = lazy(() => import('./pages/network/RegionsPage'))
-const LogicalNodesPage = lazy(() => import('./pages/network/LogicalNodesPage'))
-const LogicalNodePage = lazy(() => import('./pages/network/LogicalNodePage'))
-const AssetsPage = lazy(() => import('./pages/network/AssetsPage'))
-const AssetPage = lazy(() => import('./pages/network/AssetPage'))
-const AssetClusterPage = lazy(() => import('./pages/network/AssetClusterPage'))
-const ContactsPage = lazy(() => import('./pages/network/ContactsPage'))
-const ContactPage = lazy(() => import('./pages/network/ContactPage'))
-const NEDsPage = lazy(() => import('./pages/network/NEDsPage'))
-const CredentialsPage = lazy(() => import('./pages/settings/CredentialsPage'))
-const ConfigMapsPage = lazy(() => import('./pages/configs/ConfigMapsPage'))
-const TranslatorPage = lazy(() => import('./pages/configs/TranslatorPage'))
-const TelemetryAgentsPage = lazy(() => import('./pages/settings/TelemetryAgentsPage'))
-const CollectionAgentsPage = lazy(() => import('./pages/settings/CollectionAgentsPage'))
 
 function Placeholder({ title }) {
   return (
@@ -34,56 +18,34 @@ function Placeholder({ title }) {
   )
 }
 
+// Build route elements from all registered modules
+const moduleRoutes = MODULES.flatMap(m =>
+  m.routes.map(r => ({
+    path: r.path,
+    element: r.load
+      ? lazy(r.load)
+      : () => <Placeholder title={r.placeholder ?? r.path} />,
+  }))
+)
+
 export default function App() {
   return (
     <RequireAuth>
       <ThemeProvider>
+      <AdminProvider>
       <AiProvider>
       <Layout>
       <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-
-        <Route path="/network/nodes" element={<NodesPage />} />
-        <Route path="/network/nodes/:id" element={<NodePage />} />
-        <Route path="/network/sites" element={<SitesPage />} />
-        <Route path="/network/sites/:id" element={<SitePage />} />
-        <Route path="/network/regions" element={<RegionsPage />} />
-        <Route path="/network/logical-nodes" element={<LogicalNodesPage />} />
-        <Route path="/network/logical-nodes/:id" element={<LogicalNodePage />} />
-        <Route path="/network/assets" element={<AssetsPage />} />
-        <Route path="/network/assets/:id" element={<AssetPage />} />
-        <Route path="/network/asset-clusters/:id" element={<AssetClusterPage />} />
-        <Route path="/network/contacts" element={<ContactsPage />} />
-        <Route path="/network/contacts/:id" element={<ContactPage />} />
-        <Route path="/configs/neds" element={<NEDsPage />} />
-
-        <Route path="/configs/config-maps" element={<ConfigMapsPage />} />
-        <Route path="/configs/translator" element={<TranslatorPage />} />
-        <Route path="/network/import" element={<Placeholder title="Import" />} />
-        <Route path="/configs/drivers" element={<Placeholder title="Drivers" />} />
-
-        <Route path="/operations/workflows" element={<Placeholder title="Workflows" />} />
-        <Route path="/operations/bulk-actions" element={<Placeholder title="Bulk Actions" />} />
-        <Route path="/operations/triggers" element={<Placeholder title="Triggers" />} />
-        <Route path="/operations/scheduled" element={<Placeholder title="Scheduled" />} />
-
-        <Route path="/observe/icmp" element={<Placeholder title="ICMP" />} />
-        <Route path="/observe/telemetry" element={<Placeholder title="Telemetry" />} />
-        <Route path="/observe/dashboards" element={<Placeholder title="Dashboards" />} />
-        <Route path="/observe/config-history" element={<Placeholder title="Config History" />} />
-
-        <Route path="/autopilot/ai-ops" element={<Placeholder title="AI Ops" />} />
-        <Route path="/autopilot/agents" element={<Placeholder title="Agents" />} />
-
-        <Route path="/settings/credentials" element={<CredentialsPage />} />
-        <Route path="/settings/telemetry-agents" element={<TelemetryAgentsPage />} />
-        <Route path="/settings/collection-agents" element={<CollectionAgentsPage />} />
-        <Route path="/settings/about" element={<Placeholder title="About" />} />
+        {moduleRoutes.map(({ path, element: Component }) => (
+          <Route key={path} path={path} element={<Component />} />
+        ))}
       </Routes>
       </Suspense>
       </Layout>
       </AiProvider>
+      </AdminProvider>
       </ThemeProvider>
     </RequireAuth>
   )

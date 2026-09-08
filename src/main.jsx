@@ -48,10 +48,21 @@ async function bootstrap() {
           console.error('OIDC callback error:', err)
           await getUserManager().clearStaleState()
         }
+      } else if (params.has('state') && !params.has('code')) {
+        // Post-logout redirect from KC — clear local session state
+        try {
+          await getUserManager().signoutRedirectCallback()
+        } catch {
+          // Not a logout callback, ignore
+        }
+        window.history.replaceState({}, '', '/')
       }
     }
   } catch (err) {
-    console.warn('Could not fetch auth config, running without auth:', err.message)
+    console.error('Could not fetch auth config:', err.message)
+    document.getElementById('root').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">Failed to load — please refresh or contact support.</div>'
+    return
   }
 
   renderApp()

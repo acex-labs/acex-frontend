@@ -6,7 +6,7 @@ import VendorIcon from '../ui/VendorIcon'
 
 const INPUT_CLS = 'bg-surface-hi border border-edge rounded px-2.5 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors w-full'
 
-const NODE_STATUSES = ['planned', 'init', 'active', 'decommissioned']
+const NODE_STATUSES = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
 
 function FormField({ label, required, children }) {
   return (

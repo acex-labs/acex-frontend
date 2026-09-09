@@ -50,6 +50,9 @@ export const updateSite = (id, patch) =>
     body: JSON.stringify(patch),
   })
 
+export const deleteSite = (id) =>
+  apiFetch(`/api/v1/inventory/sites/${id}`, { method: 'DELETE' })
+
 export const fetchRegions = ({ name, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/regions?${buildQs({ name, limit, offset })}`)
 
@@ -67,6 +70,9 @@ export const updateRegion = (id, patch) =>
     method: 'PATCH',
     body: JSON.stringify(patch),
   })
+
+export const deleteRegion = (id) =>
+  apiFetch(`/api/v1/inventory/regions/${id}`, { method: 'DELETE' })
 
 export const fetchRegionAssignments = ({ site_name, region_name } = {}) =>
   apiFetch(`/api/v1/inventory/region_assignments?${buildQs({ site_name, region_name })}`)

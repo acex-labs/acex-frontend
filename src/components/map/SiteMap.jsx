@@ -21,7 +21,8 @@ export default function SiteMap({ sites = [], onSiteClick }) {
   const mappable = sites.filter(s => s.latitude != null && s.longitude != null)
 
   return (
-    <MapContainer
+    <div className="relative isolate" style={{ height: '100%', width: '100%' }}>
+      <MapContainer
       center={[20, 15]}
       zoom={2}
       minZoom={2}
@@ -69,5 +70,6 @@ export default function SiteMap({ sites = [], onSiteClick }) {
         </Marker>
       ))}
     </MapContainer>
+    </div>
   )
 }

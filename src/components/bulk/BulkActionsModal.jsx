@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { apiFetch } from '../../api/client'
 
-const STATUS_OPTIONS = ['planned', 'init', 'active', 'decommissioned']
+const STATUS_OPTIONS = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
 
 export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
   const [action, setAction] = useState('ned')

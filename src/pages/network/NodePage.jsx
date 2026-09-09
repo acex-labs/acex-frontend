@@ -90,10 +90,11 @@ const STATUS_STYLES = {
   active:          'bg-green-500/10 text-green-400',
   planned:         'bg-surface-hi text-subtle',
   init:            'bg-brand/10 text-brand',
+  maintenance:     'bg-amber-500/10 text-amber-400',
   decommissioned:  'bg-red-500/10 text-red-400',
 }
 
-const NODE_STATUSES = ['planned', 'init', 'active', 'decommissioned']
+const NODE_STATUSES = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
 
 function StatusBadge({ status }) {
   return (

@@ -11,10 +11,11 @@ function useSiteInitialData(id) {
     }
   }
 }
-import { ChevronLeft, MapPin, Mail, Phone, Plus, X, Pencil, Check } from 'lucide-react'
+import { ChevronLeft, MapPin, Mail, Phone, Plus, X, Pencil, Check, Trash2 } from 'lucide-react'
 import {
   fetchSite,
   updateSite,
+  deleteSite,
   fetchNodes,
   fetchContactAssignments,
   fetchContacts,
@@ -71,6 +72,40 @@ function EditField({ label, value, onChange, type = 'text' }) {
         className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
       />
     </div>
+  )
+}
+
+function DeleteControls({ confirming, onStart, onConfirm, onCancel, pending, disabled, disabledTitle }) {
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-red-400">Delete?</span>
+        <button
+          onClick={onConfirm}
+          disabled={pending}
+          className="px-2 py-1 rounded text-[11px] bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+        >
+          Confirm
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-2 py-1 rounded text-[11px] border border-edge text-subtle hover:text-content transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    )
+  }
+  return (
+    <button
+      onClick={onStart}
+      disabled={disabled}
+      title={disabled ? disabledTitle : undefined}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-red-400 disabled:opacity-40 disabled:hover:text-subtle transition-colors"
+    >
+      <Trash2 size={11} />
+      Delete
+    </button>
   )
 }
 
@@ -382,7 +417,7 @@ function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange })
         <Card title="Site">
           {editing ? (
             <>
-              <Field label="Name" value={site.name} />
+              <EditField label="Name" value={draft.name} onChange={v => onDraftChange('name', v)} />
               <EditField label="Display Name" value={draft.display_name} onChange={v => onDraftChange('display_name', v)} />
               <EditField label="Address"      value={draft.address}      onChange={v => onDraftChange('address', v)} />
               <EditField label="City"         value={draft.city}         onChange={v => onDraftChange('city', v)} />
@@ -482,12 +517,14 @@ function NodesTab({ siteName }) {
 
 export default function SitePage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
   const getInitialData = useSiteInitialData(id)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const { data: site, isLoading } = useQuery({
     queryKey: ['site', id],
@@ -514,8 +551,17 @@ export default function SitePage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSite(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
+      navigate('/network/sites')
+    },
+  })
+
   const startEdit = () => {
     setDraft({
+      name: site.name,
       display_name: site.display_name,
       address: site.address,
       city: site.city,
@@ -529,13 +575,15 @@ export default function SitePage() {
   const cancelEdit = () => {
     setDraft(null)
     setEditing(false)
+    setDeleteConfirm(false)
     updateMutation.reset()
   }
 
   const setDraftField = (key, value) => setDraft(d => ({ ...d, [key]: value }))
 
   const saveEdit = () => {
-    const patch = { ...draft }
+    if (!draft.name?.trim()) return
+    const patch = { ...draft, name: draft.name.trim() }
     patch.latitude = patch.latitude !== '' && patch.latitude != null ? Number(patch.latitude) : null
     patch.longitude = patch.longitude !== '' && patch.longitude != null ? Number(patch.longitude) : null
     updateMutation.mutate(patch)
@@ -582,13 +630,27 @@ export default function SitePage() {
           </div>
 
           {!isLoading && site && !editing && (
-            <button
-              onClick={startEdit}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
-            >
-              <Pencil size={11} />
-              Edit
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={startEdit}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
+              >
+                <Pencil size={11} />
+                Edit
+              </button>
+              {deleteMutation.isError && (
+                <span className="text-[11px] text-red-400">Delete failed.</span>
+              )}
+              <DeleteControls
+                confirming={deleteConfirm}
+                onStart={() => setDeleteConfirm(true)}
+                onConfirm={() => deleteMutation.mutate()}
+                onCancel={() => setDeleteConfirm(false)}
+                pending={deleteMutation.isPending}
+                disabled={nodeCount > 0}
+                disabledTitle="Cannot delete: node instances still reference this site."
+              />
+            </div>
           )}
 
           {editing && (
@@ -596,6 +658,18 @@ export default function SitePage() {
               {updateMutation.isError && (
                 <span className="text-[11px] text-red-400">Save failed.</span>
               )}
+              {deleteMutation.isError && (
+                <span className="text-[11px] text-red-400">Delete failed.</span>
+              )}
+              <DeleteControls
+                confirming={deleteConfirm}
+                onStart={() => setDeleteConfirm(true)}
+                onConfirm={() => deleteMutation.mutate()}
+                onCancel={() => setDeleteConfirm(false)}
+                pending={deleteMutation.isPending}
+                disabled={nodeCount > 0}
+                disabledTitle="Cannot delete: node instances still reference this site."
+              />
               <button
                 onClick={cancelEdit}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"

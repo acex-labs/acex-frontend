@@ -12,6 +12,7 @@
   --color-surface-hi:  var(--surface-hi);
   --color-edge:        var(--edge);
   --color-content:     var(--content);
+  --color-heading:     var(--heading);
   --color-subtle:      var(--subtle);
 }
 
@@ -21,15 +22,18 @@
   --brand:       #0CA5E9;
   --brand-soft:  #24ACE3;
 
-  /* Surfaces */
-  --canvas:      #080808;
-  --surface:     #111111;
-  --surface-hi:  #1A1A1A;
+  /* Surfaces — each step a clear stop lighter than the last, so sidebar,
+     main canvas and cards/nodes read as distinct depths instead of one
+     flat plane. */
+  --canvas:      #14161C;
+  --surface:     #1B1E25;
+  --surface-hi:  #262A33;
 
   /* Borders and text */
-  --edge:        #222222;
-  --content:     #ECECEC;
-  --subtle:      #555555;
+  --edge:        #333846;
+  --content:     #E4E4E7;
+  --heading:     #FFFFFF;
+  --subtle:      #7A8090;
 }
 
 /* Light theme — applied via .light on <html> (see ThemeContext) */
@@ -46,6 +50,7 @@
   /* Borders and text */
   --edge:        #DFE1E5;
   --content:     #1A1D21;
+  --heading:     #1A1D21;
   --subtle:      #6B7280;
 
   color-scheme: light;

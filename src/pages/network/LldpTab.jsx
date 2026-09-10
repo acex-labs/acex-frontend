@@ -37,10 +37,10 @@ function CenterNode({ data }) {
     <>
       <Handle type="source" position={Position.Top} style={HANDLE_INVIS} />
       <div style={CENTER_NODE_STYLE}>
-        <div style={{ fontSize: 9, color: '#0CA5E9', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, marginBottom: 5 }}>
+        <div style={{ fontSize: 9, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, marginBottom: 5 }}>
           This Node
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#ECECEC' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--content)' }}>
           {data.hostname}
         </div>
       </div>
@@ -53,14 +53,14 @@ function ManagedNode({ data }) {
     <>
       <Handle type="target" position={Position.Top} style={HANDLE_INVIS} />
       <div style={MANAGED_NODE_STYLE}>
-        <div style={{ fontSize: 9, color: '#0CA5E9', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
+        <div style={{ fontSize: 9, color: 'var(--brand)', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
           Managed ↗
         </div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#ECECEC' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--content)' }}>
           {data.label}
         </div>
         {data.linkCount > 1 && (
-          <div style={{ fontSize: 9, color: '#555', marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--subtle)', marginTop: 4 }}>
             {data.linkCount} links
           </div>
         )}
@@ -74,14 +74,14 @@ function UnmanagedNode({ data }) {
     <>
       <Handle type="target" position={Position.Top} style={HANDLE_INVIS} />
       <div style={UNMANAGED_NODE_STYLE}>
-        <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
+        <div style={{ fontSize: 9, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 4 }}>
           Unmanaged
         </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#888' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'color-mix(in srgb, var(--content) 60%, var(--subtle))' }}>
           {data.label}
         </div>
         {data.linkCount > 1 && (
-          <div style={{ fontSize: 9, color: '#444', marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--subtle)', marginTop: 4 }}>
             {data.linkCount} links
           </div>
         )}
@@ -93,17 +93,17 @@ function UnmanagedNode({ data }) {
 const HANDLE_INVIS = { opacity: 0, pointerEvents: 'none', width: 1, height: 1 }
 
 const CENTER_NODE_STYLE = {
-  background: 'var(--color-surface)',
-  border: '2px solid #0CA5E9',
+  background: 'var(--color-surface-hi)',
+  border: '1.5px solid color-mix(in srgb, var(--brand) 55%, transparent)',
   borderRadius: 12,
   padding: '12px 20px',
   minWidth: 170,
   textAlign: 'center',
-  boxShadow: '0 0 28px rgba(12,165,233,0.25), 0 0 8px rgba(12,165,233,0.12)',
+  boxShadow: '0 0 14px color-mix(in srgb, var(--brand) 14%, transparent)',
 }
 
 const MANAGED_NODE_STYLE = {
-  background: 'var(--color-surface)',
+  background: 'var(--color-surface-hi)',
   border: '1.5px solid rgba(12,165,233,0.45)',
   borderRadius: 9,
   padding: '10px 16px',
@@ -197,7 +197,7 @@ function buildLayout(neighbors, hostname) {
           collectedAt:     conn.collected_at,
         },
         style: {
-          stroke: isManaged ? 'rgba(12,165,233,0.55)' : 'rgba(50,50,50,0.9)',
+          stroke: isManaged ? 'rgba(12,165,233,0.55)' : 'var(--edge)',
           strokeWidth: isManaged ? 2 : 1.5,
           strokeDasharray: isManaged ? undefined : '5 4',
         },
@@ -241,6 +241,7 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         colorMode={resolved}
+        style={{ backgroundColor: 'transparent' }}
         fitView
         fitViewOptions={{ padding: 0.35 }}
         minZoom={0.15}
@@ -252,16 +253,16 @@ function TopologyView({ neighbors, hostname, onNavigate }) {
         onEdgeMouseMove={onEdgeMouseMove}
         onEdgeMouseLeave={onEdgeMouseLeave}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#1c1c1c'} />
-        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#111', border: '1px solid #222' }} />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#2A2E38'} />
+        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: 'var(--surface)', border: '1px solid var(--edge)' }} />
         <MiniMap
           nodeColor={(n) => {
             const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()
             if (n.type === 'centerNode')   return brand
             if (n.type === 'managedNode')  return brand + '80'
-            return light ? '#b9bec6' : '#2a2a2a'
+            return light ? '#b9bec6' : '#2A2E38'
           }}
-          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#0e0e0e', border: '1px solid #222' }}
+          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: 'var(--canvas)', border: '1px solid var(--edge)' }}
           maskColor={light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)'}
           pannable
           zoomable
@@ -398,7 +399,10 @@ export default function LldpTab({ nodeId, hostname, siteName }) {
             <p className="text-xs text-subtle">All {unmanagedCount} neighbors are unmanaged and hidden.</p>
           </div>
         ) : (
-          <div className="flex-1">
+          <div
+            className="flex-1"
+            style={{ background: 'radial-gradient(ellipse at 50% 35%, var(--surface) 0%, var(--canvas) 65%)' }}
+          >
             <TopologyView
               key={filtered.map(n => n.id).join(',')}
               neighbors={filtered}

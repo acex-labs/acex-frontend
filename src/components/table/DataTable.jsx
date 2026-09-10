@@ -80,7 +80,11 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
                   onClick={() => selection ? selection.onToggle(row) : onRowClick?.(row)}
                   className={[
                     'border-b border-edge transition-colors cursor-pointer',
-                    selected ? 'bg-brand/5 hover:bg-brand/8' : 'hover:bg-surface-hi',
+                    selected
+                      ? 'bg-brand/5 hover:bg-brand/8'
+                      : i % 2 === 1
+                        ? 'bg-surface/50 hover:bg-surface-hi'
+                        : 'hover:bg-surface-hi',
                   ].join(' ')}
                 >
                   {selection && (

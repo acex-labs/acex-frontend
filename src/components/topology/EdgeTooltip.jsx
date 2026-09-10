@@ -11,8 +11,8 @@ function Row({ label, value, mono }) {
   if (!value) return null
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 3 }}>
-      <span style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 52 }}>{label}</span>
-      <span style={{ fontSize: 11, color: '#ccc', fontFamily: mono ? 'monospace' : 'inherit' }}>{value}</span>
+      <span style={{ fontSize: 9, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 52 }}>{label}</span>
+      <span style={{ fontSize: 11, color: 'var(--content)', fontFamily: mono ? 'monospace' : 'inherit' }}>{value}</span>
     </div>
   )
 }
@@ -26,8 +26,8 @@ export default function EdgeTooltip({ tooltip }) {
       left: x + 14,
       top: y - 8,
       zIndex: 9999,
-      background: '#141414',
-      border: '1px solid #2a2a2a',
+      background: 'var(--surface-hi)',
+      border: '1px solid var(--edge)',
       borderRadius: 7,
       padding: '8px 12px',
       pointerEvents: 'none',

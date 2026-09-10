@@ -39,13 +39,13 @@ function SiteNode({ data }) {
     <>
       {HANDLES_ALL()}
       <div style={{
-        background: 'var(--surface)',
-        border: '2px solid color-mix(in srgb, var(--brand) 75%, transparent)',
+        background: 'var(--surface-hi)',
+        border: '1.5px solid color-mix(in srgb, var(--brand) 55%, transparent)',
         borderRadius: 10,
         padding: '10px 18px',
         minWidth: 160,
         textAlign: 'center',
-        boxShadow: '0 0 18px color-mix(in srgb, var(--brand) 18%, transparent)',
+        boxShadow: '0 0 14px color-mix(in srgb, var(--brand) 14%, transparent)',
         cursor: 'pointer',
       }}>
         <div style={{ fontSize: 9, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, marginBottom: 4 }}>
@@ -64,7 +64,7 @@ function OffSiteNode({ data }) {
     <>
       {HANDLES_ALL()}
       <div style={{
-        background: 'var(--surface)',
+        background: 'var(--surface-hi)',
         border: '1.5px solid color-mix(in srgb, var(--brand) 30%, transparent)',
         borderRadius: 9,
         padding: '9px 14px',
@@ -326,7 +326,7 @@ function buildLayout(neighbors, siteNodes) {
         ? 'rgba(12,165,233,0.6)'
         : e.isManaged
           ? 'rgba(12,165,233,0.25)'
-          : 'rgba(40,40,40,0.9)',
+          : 'var(--edge)',
       strokeWidth:    e.isSiteInternal ? 2.5 : 1.5,
       strokeDasharray: e.isSiteInternal || e.isManaged ? undefined : '5 4',
     },
@@ -372,6 +372,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         colorMode={colorMode}
+        style={{ backgroundColor: 'transparent' }}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
@@ -383,24 +384,24 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
         onEdgeMouseMove={onEdgeMouseMove}
         onEdgeMouseLeave={onEdgeMouseLeave}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#1a1a1a'} />
-        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#111', border: '1px solid #222' }} />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color={light ? '#c9ccd1' : '#2A2E38'} />
+        <Controls style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: 'var(--surface)', border: '1px solid var(--edge)' }} />
         <MiniMap
           nodeColor={(n) => {
             const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()
             if (n.type === 'siteNode')            return brand
             if (n.type === 'offSiteNode')         return brand + '66'
-            return light ? '#b9bec6' : '#1e1e1e'
+            return light ? '#b9bec6' : '#2A2E38'
           }}
-          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: '#0a0a0a', border: '1px solid #222' }}
+          style={light ? { background: '#fff', border: '1px solid #DFE1E5' } : { background: 'var(--canvas)', border: '1px solid var(--edge)' }}
           maskColor={light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)'}
           pannable
           zoomable
         />
         <Panel position="top-left">
           <div style={{
-            background: light ? '#fff' : '#111',
-            border: light ? '1px solid #DFE1E5' : '1px solid #1e1e1e',
+            background: light ? '#fff' : 'var(--surface)',
+            border: light ? '1px solid #DFE1E5' : '1px solid var(--edge)',
             borderRadius: 7,
             padding: '8px 12px',
             display: 'flex',
@@ -410,7 +411,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
             {[
               { color: 'rgba(12,165,233,0.7)', dash: false,  label: 'On-site link' },
               { color: 'rgba(12,165,233,0.3)', dash: false,  label: 'Off-site (managed)' },
-              { color: '#222',                  dash: true,   label: 'Unmanaged' },
+              { color: light ? '#DFE1E5' : 'var(--edge)', dash: true,   label: 'Unmanaged' },
             ].map(({ color, dash, label }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
@@ -418,7 +419,7 @@ function TopologyCanvas({ neighbors, siteNodes, onNavigate }) {
                   height: 0,
                   borderTop: `1.5px ${dash ? 'dashed' : 'solid'} ${color}`,
                 }} />
-                <span style={{ fontSize: 10, color: light ? '#6B7280' : '#3a3a3a' }}>{label}</span>
+                <span style={{ fontSize: 10, color: 'var(--subtle)' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -524,7 +525,10 @@ export default function SiteTopologyTab({ siteName }) {
       </div>
 
       {/* Graph */}
-      <div className="flex-1">
+      <div
+        className="flex-1"
+        style={{ background: 'radial-gradient(ellipse at 50% 35%, var(--surface) 0%, var(--canvas) 65%)' }}
+      >
         <TopologyCanvas
           key={`${filtered.length}-${siteNodes.length}`}
           neighbors={filtered}

@@ -1,19 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchObservedHistory, fetchObservedById, fetchObservedDiff, streamConfigAnalysis, streamAsk } from '../../api/config'
-import AiPanel from '../ai/AiPanel'
+import { Sparkles } from 'lucide-react'
+import { fetchObservedHistory, fetchObservedById, fetchObservedDiff } from '../../api/config'
+import { useAiStore } from '../../context/AiContext'
 import ConfigViewer from './ConfigViewer'
 import StructuredConfig from './StructuredConfig'
+
+// Unified-diff-style text for the analysis endpoint, built from the
+// structured {type, text} lines the diff API returns.
+function diffToText(lines) {
+  return (lines ?? [])
+    .map(l => (l.type === 'add' ? '+' : l.type === 'remove' ? '-' : ' ') + l.text)
+    .join('\n')
+}
 
 const FORMAT_OPTIONS = [
   { key: 'rendered',   label: 'Rendered' },
   { key: 'functional', label: 'Functional' },
-]
-
-const CONFIG_DIFF_STARTERS = [
-  { key: 'explain',         label: 'Explain changes' },
-  { key: 'risk_assessment', label: 'Risk assessment' },
-  { key: 'alignment',       label: 'Intent alignment' },
 ]
 
 const CONTEXT_LINES = 3
@@ -37,12 +40,6 @@ function formatDate(iso) {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-function diffToText(diffLines) {
-  return (diffLines ?? []).map(l =>
-    (l.type === 'add' ? '+ ' : l.type === 'remove' ? '- ' : '  ') + l.text
-  ).join('\n')
 }
 
 function buildHunks(lines) {
@@ -138,7 +135,8 @@ function DiffLine({ line }) {
   )
 }
 
-export default function ConfigHistory({ nodeId }) {
+export default function ConfigHistory({ nodeId, nodeHostname, onAnalysisContext, onContextChange }) {
+  const { setOpen } = useAiStore()
   const [compareMode, setCompareMode] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [checkedIds, setCheckedIds] = useState([])
@@ -182,6 +180,43 @@ export default function ConfigHistory({ nodeId }) {
     queryFn: () => fetchObservedDiff(nodeId, snapFrom.id, snapTo.id),
     enabled: compareMode && !!snapFrom && !!snapTo,
   })
+
+  // Feed the AI panel the diff it needs for the "explain / risk / alignment"
+  // starters — only once a real, loaded diff between two snapshots exists.
+  useEffect(() => {
+    if (!onAnalysisContext) return
+    if (!compareMode || !diff || diffLoading || !snapFrom || !snapTo) {
+      onAnalysisContext(null)
+      return
+    }
+    onAnalysisContext({
+      diff: diffToText(diff.diff),
+      nodeHostname,
+      snapAHash: snapFrom.hash,
+      snapBHash: snapTo.hash,
+      snapATimestamp: snapFrom.created_at,
+      snapBTimestamp: snapTo.created_at,
+    })
+  }, [onAnalysisContext, compareMode, diff, diffLoading, snapFrom, snapTo, nodeHostname])
+
+  // Short, id-only context for free-form chat (as opposed to the starters
+  // above, which push the full diff text). Lets the model fetch the actual
+  // diff itself via get_observed_config_diff — e.g. when re-checking
+  // something instead of just repeating an earlier answer — without every
+  // chat turn on this tab carrying the full diff text.
+  useEffect(() => {
+    if (!onContextChange) return
+    if (!compareMode || !snapFrom || !snapTo) {
+      onContextChange('')
+      return
+    }
+    onContextChange(
+      `Comparing two configuration snapshots for this node (node_instance_id=${nodeId}):\n` +
+      `  Snapshot A: id=${snapFrom.id}, ${formatDate(snapFrom.created_at)}\n` +
+      `  Snapshot B: id=${snapTo.id}, ${formatDate(snapTo.created_at)}\n` +
+      `Use get_observed_config_diff(node_instance_id, snapshot_a_id, snapshot_b_id) to see the actual diff.`
+    )
+  }, [onContextChange, compareMode, snapFrom, snapTo, nodeId])
 
   const handleToggleCompare = () => {
     setCompareMode(m => !m)
@@ -255,6 +290,13 @@ export default function ConfigHistory({ nodeId }) {
                 <span className="text-subtle mx-1">→</span>
                 <span className="text-subtle">To</span>
                 <span className="text-content font-medium">{formatDate(snapTo.created_at)}</span>
+                <button
+                  onClick={() => setOpen(true)}
+                  className="ml-auto flex items-center gap-1.5 text-brand hover:text-brand-soft transition-colors font-medium"
+                >
+                  <Sparkles size={11} />
+                  Ask AI about this change
+                </button>
               </>
             ) : (
               <span className="text-subtle">
@@ -276,31 +318,6 @@ export default function ConfigHistory({ nodeId }) {
             <DiffViewer diff={diff} isLoading={diffLoading} />
           )}
         </div>
-
-        {/* AI panel — sibling to content, always rendered in compare mode */}
-        {compareMode && (
-          <AiPanel
-            starters={CONFIG_DIFF_STARTERS}
-            disabled={!diff}
-            placeholder="Or type your own question…"
-            onStarterClick={(key, streaming) => streamConfigAnalysis({
-              task: key,
-              diff: diffToText(diff?.diff),
-              snapAHash: snapFrom?.hash,
-              snapBHash: snapTo?.hash,
-              snapATimestamp: snapFrom?.created_at,
-              snapBTimestamp: snapTo?.created_at,
-              ...streaming,
-            })}
-            onSend={(text, history, streaming) => streamAsk({
-              prompt: history.length === 0
-                ? `Configuration diff context:\n${diffToText(diff?.diff)}\n\nQuestion: ${text}`
-                : text,
-              messages: history,
-              ...streaming,
-            })}
-          />
-        )}
       </div>
     </div>
   )

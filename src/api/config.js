@@ -38,7 +38,7 @@ export const fetchObservedDiff = (nodeId, idA, idB) =>
 
 export const AI_UNAVAILABLE_MESSAGE = 'AI features aren\'t enabled for this environment. Ask an administrator to turn on the AI Ops service.'
 
-async function streamAiResponse(url, body, { onToken, onUsage, onDone, signal }) {
+async function streamAiResponse(url, body, { onToken, onUsage, onNavigate, onToolCall, onPlan, onDone, signal }) {
   let res
   try {
     res = await fetch(url, {
@@ -67,6 +67,9 @@ async function streamAiResponse(url, body, { onToken, onUsage, onDone, signal })
         console.debug('[AI] usage event received:', d.usage)
         onUsage?.(d.usage)
       }
+      else if (d.navigate) onNavigate?.(d.navigate)
+      else if (d.tool_call) onToolCall?.(d.tool_call)
+      else if (d.plan) onPlan?.(d.plan)
     } catch {}
   }
 
@@ -84,7 +87,7 @@ async function streamAiResponse(url, body, { onToken, onUsage, onDone, signal })
   onDone?.()
 }
 
-export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash, snapBHash, snapATimestamp, snapBTimestamp, model, onToken, onUsage, onDone, signal }) {
+export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash, snapBHash, snapATimestamp, snapBTimestamp, model, onToken, onUsage, onToolCall, onPlan, onDone, signal }) {
   return streamAiResponse(
     `${API_URL}/api/v1/ai_ops/ai/config_analysis/`,
     {
@@ -94,15 +97,15 @@ export async function streamConfigAnalysis({ task, diff, nodeHostname, snapAHash
       snap_a_timestamp: snapATimestamp, snap_b_timestamp: snapBTimestamp,
       ...(model ? { model } : {}),
     },
-    { onToken, onUsage, onDone, signal },
+    { onToken, onUsage, onToolCall, onPlan, onDone, signal },
   )
 }
 
-export async function streamAsk({ prompt, messages, context, model, onToken, onUsage, onDone, signal }) {
+export async function streamAsk({ prompt, messages, context, model, onToken, onUsage, onNavigate, onToolCall, onPlan, onDone, signal }) {
   return streamAiResponse(
     `${API_URL}/api/v1/ai_ops/ai/ask`,
     { prompt, messages, ...(context ? { context } : {}), ...(model ? { model } : {}) },
-    { onToken, onUsage, onDone, signal },
+    { onToken, onUsage, onNavigate, onToolCall, onPlan, onDone, signal },
   )
 }
 

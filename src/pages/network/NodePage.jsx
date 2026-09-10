@@ -35,6 +35,15 @@ const NODE_CONFIG_STARTER_LABELS = [
   { key: 'explain',  label: 'Explain configuration' },
 ]
 
+// History tab, once two snapshots are diffed: these run the backend's
+// dedicated analysis endpoint/chain (see ConfigHistory's onAnalysisContext),
+// not the chat prompt.
+const NODE_HISTORY_STARTER_LABELS = [
+  { key: 'explain', label: 'Explain this change',  task: 'explain' },
+  { key: 'risk',    label: 'Assess risk',           task: 'risk_assessment' },
+  { key: 'align',   label: 'Check alignment',       task: 'alignment' },
+]
+
 function section(title, fields) {
   const rows = fields.filter(([, v]) => v != null && v !== '')
   if (!rows.length) return null
@@ -602,6 +611,7 @@ export default function NodePage() {
   const activeTab = searchParams.get('tab') ?? 'overview'
   const [showChangeAsset, setShowChangeAsset] = useState(false)
   const [tabContext, setTabContext] = useState('')
+  const [diffPayload, setDiffPayload] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -641,12 +651,23 @@ export default function NodePage() {
       : tabContext
     : ''
 
+  const starters =
+    activeTab === 'overview' ? NODE_OVERVIEW_STARTER_LABELS :
+    activeTab === 'history'  ? (diffPayload ? NODE_HISTORY_STARTER_LABELS : []) :
+    NODE_CONFIG_STARTER_LABELS
+
+  const placeholder =
+    activeTab === 'overview' ? 'Ask about this node…' :
+    activeTab === 'history'  ? 'Ask about the config history…' :
+    'Ask about the configuration…'
+
   usePageAiContext({
     pageName: `Node: ${hostname}`,
     tabName: TABS.find(t => t.key === activeTab)?.label,
     context: aiContext,
-    starters: activeTab === 'overview' ? NODE_OVERVIEW_STARTER_LABELS : NODE_CONFIG_STARTER_LABELS,
-    placeholder: activeTab === 'overview' ? 'Ask about this node…' : 'Ask about the configuration…',
+    starters,
+    placeholder,
+    taskPayload: activeTab === 'history' ? diffPayload : null,
   })
 
   return (
@@ -742,7 +763,14 @@ export default function NodePage() {
             )}
             {activeTab === 'hardware' && <HardwareTab nodeId={id} data={data} />}
             {activeTab === 'lldp'     && <LldpTab nodeId={id} hostname={data?.logical_node?.hostname} siteName={data?.logical_node?.site} />}
-            {activeTab === 'history'  && <ConfigHistory nodeId={id} />}
+            {activeTab === 'history'  && (
+              <ConfigHistory
+                nodeId={id}
+                nodeHostname={hostname}
+                onAnalysisContext={setDiffPayload}
+                onContextChange={setTabContext}
+              />
+            )}
           </>
         )}
       </div>

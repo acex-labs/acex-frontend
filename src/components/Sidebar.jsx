@@ -8,16 +8,17 @@ import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useAdmin } from '../context/AdminContext'
 import { MODULES } from '../modules'
-
-function NavItem({ to, text, icon: Icon, end, collapsed }) {
+// For the navigation items in the sidebar, ex. nodes, sites etc under network
+function NavItem({ to, text, icon: Icon, end, collapsed, textSize = '12px' }) {
   return (
     <NavLink
       to={to}
       end={end}
       title={collapsed ? text : undefined}
+      style={{ fontSize: textSize }}
       className={({ isActive }) =>
         [
-          'flex items-center gap-2 w-full py-1 text-xs rounded transition-colors duration-150',
+          'flex items-center gap-2 w-full py-1 rounded transition-colors duration-150',
           collapsed ? 'justify-center px-0' : 'pl-5 pr-2',
           isActive
             ? 'text-brand bg-brand/10'
@@ -86,7 +87,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       {isAdminMode && !collapsed && (
         <div className="mx-2 mb-1 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5">
           <ShieldAlert size={10} className="text-amber-400 shrink-0" />
-          <span className="text-[10px] text-amber-400 font-semibold">Admin mode</span>
+          <span className="text-[12px] text-amber-400 font-semibold">Admin mode</span>
         </div>
       )}
       {isAdminMode && collapsed && (
@@ -98,7 +99,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* Dashboard */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 space-y-px">
         <div className="space-y-0.5 pt-0.5 pb-1">
-          <NavItem to="/" text="Dashboard" icon={LayoutDashboard} end collapsed={collapsed} />
+          <NavItem to="/" text="Dashboard" icon={LayoutDashboard} end collapsed={collapsed} textSize="14px" />
         </div>
 
         {visibleModules.map(m => {
@@ -112,7 +113,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                   onClick={() => toggle(m.id)}
                   className={[
                     'flex items-center justify-between w-full px-2 py-1 mt-2',
-                    'text-[10px] font-semibold uppercase tracking-widest rounded transition-colors',
+                    'text-[12px] font-semibold uppercase tracking-widest rounded transition-colors',
                     m.adminOnly ? 'text-amber-500/70 hover:text-amber-400' : 'text-subtle hover:text-content',
                   ].join(' ')}
                 >
@@ -139,8 +140,8 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* User footer */}
       <div className="border-t border-edge px-2 py-2">
         <div className={['flex items-center gap-2', collapsed ? 'flex-col' : 'px-1'].join(' ')}>
-          <UserCircle size={13} className="text-subtle shrink-0" />
-          {!collapsed && <span className="text-[11px] text-subtle truncate flex-1">{username}</span>}
+          <UserCircle size={20} className="text-subtle shrink-0" />
+          {!collapsed && <span className="text-[12px] text-subtle truncate flex-1">{username}</span>}
 
           {isAdmin && (
             <button
@@ -148,15 +149,15 @@ export default function Sidebar({ collapsed, onToggle }) {
               title={isAdminMode ? 'Exit admin mode' : 'Enter admin mode'}
               className={['transition-colors p-0.5 rounded', isAdminMode ? 'text-amber-400 hover:text-amber-300' : 'text-subtle hover:text-amber-400'].join(' ')}
             >
-              <ShieldAlert size={12} />
+              <ShieldAlert size={20} />
             </button>
           )}
 
           <button onClick={cycleMode} title={`Theme: ${mode}`} className="text-subtle hover:text-brand transition-colors p-0.5 rounded">
-            {mode === 'system' ? <Monitor size={12} /> : mode === 'dark' ? <Moon size={12} /> : <Sun size={12} />}
+            {mode === 'system' ? <Monitor size={20} /> : mode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
           <button onClick={logout} title="Logout" className="text-subtle hover:text-brand transition-colors p-0.5 rounded">
-            <LogOut size={12} />
+            <LogOut size={20} />
           </button>
         </div>
       </div>

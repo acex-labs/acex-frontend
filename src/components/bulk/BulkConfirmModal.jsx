@@ -51,7 +51,18 @@ function buildActionFn({ action, value }, nodeInfoCache) {
   throw new Error(`Unknown action: ${action}`)
 }
 
-export default function BulkConfirmModal({ selectedIds, actionSpec, nodeInfoCache, onClose }) {
+export default function BulkConfirmModal({
+  selectedIds,
+  actionSpec,
+  nodeInfoCache,
+  // Callers for other entities supply their own applier and labels; nodes keep
+  // the built-in one.
+  buildAction,
+  entity = 'node',
+  entityPlural,
+  onClose,
+}) {
+  const plural = entityPlural ?? `${entity}s`
   const [phase, setPhase]       = useState('confirm') // confirm | running | done
   const [input, setInput]       = useState('')
   const [progress, setProgress] = useState(null)
@@ -63,7 +74,7 @@ export default function BulkConfirmModal({ selectedIds, actionSpec, nodeInfoCach
   const ready = input.trim() === 'apply'
   const pct   = progress ? Math.round((progress.done / progress.total) * 100) : 0
 
-  const actionLabel = {
+  const actionLabel = actionSpec.label ?? {
     ned:    `Set NED → ${actionSpec.value}`,
     status: `Set status → ${actionSpec.value}`,
   }[actionSpec.action] ?? actionSpec.action
@@ -74,7 +85,7 @@ export default function BulkConfirmModal({ selectedIds, actionSpec, nodeInfoCach
     setProgress({ done: 0, failed: 0, total: selectedIds.size })
 
     const ids = [...selectedIds]
-    const fn  = buildActionFn(actionSpec, nodeInfoCache)
+    const fn  = buildAction ? buildAction(actionSpec) : buildActionFn(actionSpec, nodeInfoCache)
 
     const res = await runWithConcurrency(ids, fn, (done, failed) =>
       setProgress({ done, failed, total: ids.length })
@@ -108,8 +119,8 @@ export default function BulkConfirmModal({ selectedIds, actionSpec, nodeInfoCach
             <span className="text-subtle">Action</span>
             <span className="text-content font-medium">{actionLabel}</span>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-subtle">Nodes</span>
+          <div className="flex justify-between text-xs capitalize">
+            <span className="text-subtle">{plural}</span>
             <span className="text-content font-medium">{selectedIds.size.toLocaleString()}</span>
           </div>
         </div>
@@ -164,7 +175,7 @@ export default function BulkConfirmModal({ selectedIds, actionSpec, nodeInfoCach
               />
             </div>
             <div className="flex justify-between text-xs text-subtle">
-              <span>{progress.done.toLocaleString()} / {progress.total.toLocaleString()} nodes</span>
+              <span>{progress.done.toLocaleString()} / {progress.total.toLocaleString()} {plural}</span>
               <span>
                 {pct}%
                 {progress.failed > 0 && <span className="text-red-400 ml-2">{progress.failed} failed</span>}

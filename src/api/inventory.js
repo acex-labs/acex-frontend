@@ -113,6 +113,9 @@ export const fetchAssets = ({ vendor, os, hardware_model, assigned, limit = 50, 
 export const fetchAsset = (id) =>
   apiFetch(`/api/v1/inventory/assets/${id}`)
 
+export const fetchPlatforms = () =>
+  apiFetch('/api/v1/platforms')
+
 export const createAsset = (data) =>
   apiFetch('/api/v1/inventory/assets', {
     method: 'POST',

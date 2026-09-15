@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Layers, Plus } from 'lucide-react'
 import { fetchAssets, fetchAssetClusters } from '../../api/inventory'
+import { apiFetch } from '../../api/client'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import { useBulkSelect } from '../../hooks/useBulkSelect'
 import PageHeader from '../../components/ui/PageHeader'
@@ -10,7 +11,8 @@ import TableToolbar from '../../components/table/TableToolbar'
 import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
-import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
+import BulkAssetActionsModal from '../../components/bulk/BulkAssetActionsModal'
+import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
 import CreateAssetModal from '../../components/assets/CreateAssetModal'
 import CreateAssetClusterModal from '../../components/assets/CreateAssetClusterModal'
 
@@ -52,8 +54,10 @@ const VIEWS = [
 
 export default function AssetsPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
   const [showActionsModal, setShowActionsModal] = useState(false)
+  const [actionSpec, setActionSpec] = useState(null)
   const [showCreateAsset, setShowCreateAsset] = useState(false)
   const [showCreateCluster, setShowCreateCluster] = useState(false)
 
@@ -87,6 +91,24 @@ export default function AssetsPage() {
     params,
     total: assetsTotal,
   })
+
+  // Every asset action is a PATCH of one field; the backend validates each one.
+  const buildAssetAction = useCallback(({ action, value }) => (assetId) =>
+    apiFetch(`/api/v1/inventory/assets/${assetId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ [action === 'ned' ? 'ned_id' : action]: value }),
+    }), [])
+
+  const handleApplyAction = (spec) => {
+    setShowActionsModal(false)
+    setActionSpec(spec)
+  }
+
+  const handleConfirmClose = () => {
+    setActionSpec(null)
+    bulk.clearSelection()
+    queryClient.invalidateQueries({ queryKey: ['assets'] })
+  }
 
   const switchView = (view) => setParams({ view, offset: 0, sort: DEFAULTS.sort, order: DEFAULTS.order })
 
@@ -194,10 +216,20 @@ export default function AssetsPage() {
       />
 
       {showActionsModal && (
-        <BulkPlaceholderModal
+        <BulkAssetActionsModal
           selectedCount={bulk.selectedIds.size}
-          entity="asset"
+          onApply={handleApplyAction}
           onClose={() => setShowActionsModal(false)}
+        />
+      )}
+
+      {actionSpec && (
+        <BulkConfirmModal
+          selectedIds={bulk.selectedIds}
+          actionSpec={actionSpec}
+          buildAction={buildAssetAction}
+          entity="asset"
+          onClose={handleConfirmClose}
         />
       )}
 

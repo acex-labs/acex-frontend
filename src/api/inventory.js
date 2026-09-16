@@ -20,12 +20,12 @@ const normalizeNode = (n) => ({
   asset_ref_type: n.asset_ref_type,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, role, id, ip, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, ip, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
@@ -293,6 +293,9 @@ export const removeNodeCredential = (nodeId, credentialId) =>
 
 export const fetchManagementConnections = (nodeId) =>
   apiFetch(`/api/v1/inventory/management_connections?${buildQs({ node_id: nodeId })}`)
+
+export const fetchAllManagementConnections = (limit = 10000) =>
+  apiFetch(`/api/v1/inventory/management_connections?${buildQs({ limit })}`)
 
 export const createManagementConnection = (data) =>
   apiFetch('/api/v1/inventory/management_connections', {

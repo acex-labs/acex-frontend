@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Layers, Plus } from 'lucide-react'
-import { fetchNodes } from '../../api/inventory'
+import { fetchNodes, fetchAllManagementConnections } from '../../api/inventory'
 import { apiFetch } from '../../api/client'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
@@ -15,12 +15,13 @@ import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
 import CreateNodeModal from '../../components/nodes/CreateNodeModal'
 
 const DEFAULTS = {
-  hostname: '', site: '', region: '', role: '', id: '',
+  hostname: '', site: '', region: '', role: '', id: '', ip: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
 const FILTERS = [
   { key: 'hostname', label: 'Hostname', width: '160px' },
+  { key: 'ip',       label: 'IP Address', width: '130px' },
   { key: 'site',     label: 'Site',     width: '120px' },
   { key: 'region',   label: 'Region',   width: '120px' },
   { key: 'role',     label: 'Role',     width: '120px' },
@@ -29,6 +30,7 @@ const FILTERS = [
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
+  { key: 'ip',       label: 'IP Address' },
   { key: 'site',     label: 'Site',     sortable: true },
   { key: 'role',     label: 'Role' },
   { key: 'status',   label: 'Status' },
@@ -64,8 +66,26 @@ export default function NodesPage() {
     placeholderData: keepPreviousData,
   })
 
-  const nodes = data?.items ?? []
+  const nodes = useMemo(() => data?.items ?? [], [data])
   const total = data?.total ?? 0
+
+  // Bulk-fetch management connections to display each node's IP (primary preferred)
+  const { data: connections } = useQuery({
+    queryKey: ['management_connections', 'all'],
+    queryFn: () => fetchAllManagementConnections(),
+  })
+
+  const ipByNodeId = useMemo(() => {
+    const map = new Map()
+    for (const c of connections ?? []) {
+      if (!c.target_ip) continue
+      const existing = map.get(c.node_id)
+      if (!existing || c.primary) map.set(c.node_id, c.target_ip)
+    }
+    return map
+  }, [connections])
+
+  const rows = useMemo(() => nodes.map(n => ({ ...n, ip: ipByNodeId.get(n.id) })), [nodes, ipByNodeId])
 
   // Cache asset info from every page we load
   nodes.forEach(n => {
@@ -199,7 +219,7 @@ export default function NodesPage() {
 
       <TableToolbar
         filters={FILTERS}
-        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id }}
+        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, ip: params.ip }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 
@@ -218,7 +238,7 @@ export default function NodesPage() {
 
       <DataTable
         columns={COLUMNS}
-        data={nodes}
+        data={rows}
         isLoading={isLoading}
         sortKey={params.sort}
         sortOrder={params.order}

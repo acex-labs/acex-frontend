@@ -30,7 +30,7 @@ const FILTERS = [
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
-  { key: 'management_connection_ip',       label: 'IP Address' },
+  { key: 'management_connections', label: 'IP Address', render: (v) => v?.[0]?.target_ip ?? '—' }
   { key: 'site',     label: 'Site',     sortable: true },
   { key: 'role',     label: 'Role' },
   { key: 'status',   label: 'Status' },

@@ -16,7 +16,7 @@ const normalizeNode = (n) => ({
   status:         n.status,
   ned_id:         n.ned_id ?? n.asset?.ned_id,
   regions:        n.regions ?? [],
-  management_connection_ip: n.management_connection_ip,
+  management_connections: n.management_connections ?? [],
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
 })

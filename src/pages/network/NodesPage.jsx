@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Layers, Plus } from 'lucide-react'
@@ -15,12 +15,13 @@ import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
 import CreateNodeModal from '../../components/nodes/CreateNodeModal'
 
 const DEFAULTS = {
-  hostname: '', site: '', region: '', role: '', id: '',
+  hostname: '', site: '', region: '', role: '', id: '', management_connection_ip: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
 const FILTERS = [
   { key: 'hostname', label: 'Hostname', width: '160px' },
+  { key: 'management_connection_ip',       label: 'IP Address', width: '130px' },
   { key: 'site',     label: 'Site',     width: '120px' },
   { key: 'region',   label: 'Region',   width: '120px' },
   { key: 'role',     label: 'Role',     width: '120px' },
@@ -29,6 +30,7 @@ const FILTERS = [
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
+  { key: 'management_connections', label: 'IP Address', render: (v) => v?.[0]?.target_ip ?? '—' }
   { key: 'site',     label: 'Site',     sortable: true },
   { key: 'role',     label: 'Role' },
   { key: 'status',   label: 'Status' },
@@ -64,7 +66,7 @@ export default function NodesPage() {
     placeholderData: keepPreviousData,
   })
 
-  const nodes = data?.items ?? []
+  const nodes = useMemo(() => data?.items ?? [], [data])
   const total = data?.total ?? 0
 
   // Cache asset info from every page we load
@@ -199,7 +201,7 @@ export default function NodesPage() {
 
       <TableToolbar
         filters={FILTERS}
-        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id }}
+        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, management_connection_ip: params.management_connection_ip }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 

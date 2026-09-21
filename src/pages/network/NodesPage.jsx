@@ -19,6 +19,19 @@ const DEFAULTS = {
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
+const PRIVATE_IP_PREFIXES = [
+  /^10(\.|$)/,                        // 10.0.0.0/8
+  /^172\.(1[6-9]|2\d|3[01])(\.|$)/,  // 172.16.0.0/12
+  /^192\.168(\.|$)/,                  // 192.168.0.0/16
+]
+
+function shouldQueryIP(ip) {
+  if (!ip) return true
+  if (PRIVATE_IP_PREFIXES.some(r => r.test(ip))) return true
+  if ((ip.match(/\./g) ?? []).length >= 3) return true  // complete IP
+  return false
+}
+
 const FILTERS = [
   { key: 'hostname', label: 'Hostname', width: '160px' },
   { key: 'management_connection_ip',       label: 'IP Address', width: '130px' },
@@ -30,7 +43,7 @@ const FILTERS = [
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
-  { key: 'management_connections', label: 'IP Address', render: (v) => v?.[0]?.target_ip ?? '—' }
+  { key: 'management_connections', label: 'IP Address', render: (v) => v?.[0]?.target_ip ?? '—' },
   { key: 'site',     label: 'Site',     sortable: true },
   { key: 'role',     label: 'Role' },
   { key: 'status',   label: 'Status' },
@@ -63,6 +76,7 @@ export default function NodesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['nodes', params],
     queryFn: () => fetchNodes(params),
+    enabled: shouldQueryIP(params.management_connection_ip),
     placeholderData: keepPreviousData,
   })
 

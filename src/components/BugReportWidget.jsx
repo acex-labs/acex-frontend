@@ -1,7 +1,19 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Bug, X } from 'lucide-react'
+import { Bug, ImagePlus, X } from 'lucide-react'
 import { submitBugReport } from '../api/bugReport'
+
+const MAX_SCREENSHOTS = 3
+const MAX_BYTES = 2 * 1024 * 1024 // 2 MB per image
+
+function readAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = e => resolve(e.target.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 const SEVERITIES = [
   { value: 'low', label: 'Low' },
@@ -41,10 +53,31 @@ function validate(form) {
 export default function BugReportWidget() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', severity: 'medium', steps: '' })
+  const [screenshots, setScreenshots] = useState([]) // [{ dataUrl, name }]
+  const [screenshotError, setScreenshotError] = useState(null)
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState(null) // null | 'loading' | 'success' | 'error'
+  const fileInputRef = useRef(null)
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }))
+
+  const handleFiles = async (files) => {
+    setScreenshotError(null)
+    const incoming = Array.from(files).filter(f => f.type.startsWith('image/'))
+    const available = MAX_SCREENSHOTS - screenshots.length
+    if (available <= 0) return
+    const toAdd = incoming.slice(0, available)
+    for (const file of toAdd) {
+      if (file.size > MAX_BYTES) {
+        setScreenshotError(`"${file.name}" exceeds 2 MB limit`)
+        return
+      }
+    }
+    const dataUrls = await Promise.all(toAdd.map(readAsDataURL))
+    setScreenshots(prev => [...prev, ...dataUrls.map((dataUrl, i) => ({ dataUrl, name: toAdd[i].name }))])
+  }
+
+  const removeScreenshot = (idx) => setScreenshots(prev => prev.filter((_, i) => i !== idx))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -60,12 +93,15 @@ export default function BugReportWidget() {
         severity: form.severity,
         steps: form.steps || undefined,
         page_url: window.location.href,
+        screenshots: screenshots.length > 0 ? screenshots.map(s => s.dataUrl) : undefined,
       })
       setStatus('success')
       setTimeout(() => {
         setOpen(false)
         setStatus(null)
         setForm({ title: '', description: '', severity: 'medium', steps: '' })
+        setScreenshots([])
+        setScreenshotError(null)
         setErrors({})
       }, 2000)
     } catch {
@@ -77,8 +113,14 @@ export default function BugReportWidget() {
     if (!next) {
       setStatus(null)
       setErrors({})
+      setScreenshotError(null)
     }
     setOpen(next)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    handleFiles(e.dataTransfer.files)
   }
 
   return (
@@ -160,6 +202,52 @@ export default function BugReportWidget() {
                   maxLength={2000}
                 />
               </Field>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-content">
+                  Screenshots <span className="text-subtle font-normal">(optional, max {MAX_SCREENSHOTS})</span>
+                </label>
+
+                {screenshots.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {screenshots.map((s, i) => (
+                      <div key={i} className="relative group w-16 h-16 rounded-md overflow-hidden border border-edge shrink-0">
+                        <img src={s.dataUrl} alt={s.name} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeScreenshot(i)}
+                          className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={14} className="text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {screenshots.length < MAX_SCREENSHOTS && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={e => e.preventDefault()}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-edge text-subtle hover:border-brand hover:text-brand cursor-pointer transition-colors text-xs"
+                  >
+                    <ImagePlus size={14} />
+                    <span>Add screenshot — drag & drop or click</span>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
+                />
+
+                {screenshotError && <p className="text-xs text-red-500">{screenshotError}</p>}
+              </div>
 
               {status === 'error' && (
                 <p className="text-xs text-red-500">Failed to submit. Please try again.</p>

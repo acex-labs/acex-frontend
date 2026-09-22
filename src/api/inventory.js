@@ -16,16 +16,17 @@ const normalizeNode = (n) => ({
   status:         n.status,
   ned_id:         n.ned_id ?? n.asset?.ned_id,
   regions:        n.regions ?? [],
+  management_connections: n.management_connections ?? [],
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, role, id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, management_connection_ip, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 

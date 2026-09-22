@@ -18,13 +18,15 @@ import CreateAssetClusterModal from '../../components/assets/CreateAssetClusterM
 
 const DEFAULTS = {
   view: 'assets',
-  vendor: '', os: '', name: '',
+  vendor: '', os: '', serial_number: '', name: '',
+  assigned: '',
   sort: 'vendor', order: 'asc', limit: 50, offset: 0,
 }
 
 const ASSET_FILTERS = [
-  { key: 'vendor', label: 'Vendor', width: '140px' },
-  { key: 'os',     label: 'OS',     width: '140px' },
+  { key: 'vendor',        label: 'Vendor', width: '140px' },
+  { key: 'os',            label: 'OS',     width: '140px' },
+  { key: 'serial_number', label: 'Serial', width: '160px' },
 ]
 
 const CLUSTER_FILTERS = [
@@ -63,9 +65,15 @@ export default function AssetsPage() {
 
   const isAssetsView = params.view !== 'clusters'
 
+  const assignedFilter = params.assigned === 'true' ? true : params.assigned === 'false' ? false : undefined
+
   const { data, isLoading } = useQuery({
     queryKey: ['assets', params],
-    queryFn: () => fetchAssets(params),
+    queryFn: () => fetchAssets({
+      ...params,
+      serial_number: params.serial_number || undefined,
+      assigned: assignedFilter,
+    }),
     placeholderData: keepPreviousData,
     enabled: isAssetsView,
   })
@@ -76,6 +84,13 @@ export default function AssetsPage() {
     placeholderData: keepPreviousData,
     enabled: !isAssetsView,
   })
+
+  const { data: unassignedData } = useQuery({
+    queryKey: ['assets', 'unassigned-count'],
+    queryFn: () => fetchAssets({ assigned: false, limit: 1 }),
+    staleTime: 30_000,
+  })
+  const unassignedCount = unassignedData?.total ?? 0
 
   const assets = data?.items ?? []
   const assetsTotal = data?.total ?? 0
@@ -118,7 +133,7 @@ export default function AssetsPage() {
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
         title="Assets"
-        description={total > 0 ? `${total} ${isAssetsView ? 'assets' : 'clusters'}` : undefined}
+        description={total > 0 ? `${total} ${isAssetsView ? (params.assigned === 'false' ? 'unassigned' : params.assigned === 'true' ? 'assigned' : 'assets') : 'clusters'}` : undefined}
         actions={
           <>
             {isAssetsView && (
@@ -163,9 +178,42 @@ export default function AssetsPage() {
         ))}
       </div>
 
+      {isAssetsView && (
+        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-edge shrink-0">
+          {[
+            { value: '',      label: 'All' },
+            { value: 'true',  label: 'Assigned' },
+            { value: 'false', label: 'Unassigned', count: unassignedCount },
+          ].map(({ value, label, count }) => (
+            <button
+              key={value}
+              onClick={() => setParams({ assigned: value, offset: 0 })}
+              className={[
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                params.assigned === value
+                  ? 'bg-brand/10 border-brand/40 text-brand'
+                  : 'border-edge text-subtle hover:text-content hover:border-edge/80',
+              ].join(' ')}
+            >
+              {label}
+              {count != null && count > 0 && (
+                <span className={[
+                  'inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] text-[10px] font-semibold',
+                  params.assigned === value
+                    ? 'bg-brand/20 text-brand'
+                    : 'bg-amber-500/15 text-amber-500',
+                ].join(' ')}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
       <TableToolbar
         filters={isAssetsView ? ASSET_FILTERS : CLUSTER_FILTERS}
-        values={isAssetsView ? { vendor: params.vendor, os: params.os } : { name: params.name }}
+        values={isAssetsView ? { vendor: params.vendor, os: params.os, serial_number: params.serial_number } : { name: params.name }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 

@@ -85,7 +85,7 @@ export default function BugReportWidget() {
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
         <button
-          className="fixed bottom-20 right-5 z-50 flex items-center justify-center rounded-full w-11 h-11 shadow-lg transition-colors bg-surface border-2 border-edge text-subtle hover:border-red-400 hover:text-red-400"
+          className="fixed bottom-[120px] right-5 z-50 flex items-center justify-center rounded-full w-11 h-11 shadow-lg transition-colors bg-surface border-2 border-edge text-subtle hover:border-red-400 hover:text-red-400"
           title="Report a bug"
         >
           <Bug size={18} />
@@ -95,8 +95,8 @@ export default function BugReportWidget() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm" style={{ zIndex: 9998 }} />
         <Dialog.Content
-          className="fixed bottom-20 right-5 w-[380px] bg-surface border border-edge rounded-xl shadow-2xl p-5 flex flex-col gap-4 focus:outline-none"
-          style={{ zIndex: 9999, maxHeight: 'calc(100vh - 7rem)', overflowY: 'auto' }}
+          className="fixed bottom-[120px] right-5 w-[380px] bg-surface border border-edge rounded-xl shadow-2xl p-5 flex flex-col gap-4 focus:outline-none"
+          style={{ zIndex: 9999, maxHeight: 'calc(100vh - 9rem)', overflowY: 'auto' }}
         >
           <div className="flex items-center justify-between">
             <Dialog.Title className="text-sm font-semibold text-content flex items-center gap-2">

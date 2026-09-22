@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Pencil, Trash2, X, Check } from 'lucide-react'
-import { fetchAsset, updateAsset, deleteAsset } from '../../api/inventory'
+import { fetchAsset, updateAsset, deleteAsset, fetchNodes } from '../../api/inventory'
 import VendorIcon from '../../components/ui/VendorIcon'
 
 const FIELDS = [
@@ -51,6 +51,13 @@ export default function AssetPage() {
     queryKey: ['asset', id],
     queryFn: () => fetchAsset(id),
   })
+
+  const { data: boundNodeData } = useQuery({
+    queryKey: ['nodes', 'by-asset', id],
+    queryFn: () => fetchNodes({ asset_ref_id: id, limit: 1 }),
+    enabled: !!id,
+  })
+  const boundNode = boundNodeData?.items?.[0] ?? null
 
   const mutation = useMutation({
     mutationFn: (data) => updateAsset(id, data),
@@ -188,6 +195,19 @@ export default function AssetPage() {
                   <dl>
                     {FIELDS.map(f => <Field key={f.key} label={f.label} value={asset[f.key]} />)}
                     <Field label="ID" value={asset.id} />
+                    {boundNode && (
+                      <div className="flex gap-4 py-2 border-b border-edge last:border-0">
+                        <dt className="w-32 shrink-0 text-[11px] text-subtle">Node</dt>
+                        <dd className="text-xs text-content">
+                          <Link
+                            to={`/network/nodes/${boundNode.id}`}
+                            className="text-brand hover:underline"
+                          >
+                            {boundNode.hostname ?? `Node ${boundNode.id}`}
+                          </Link>
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 )
               }

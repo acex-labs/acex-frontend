@@ -6,7 +6,7 @@ import { createAsset, fetchPlatforms } from '../../api/inventory'
 const INPUT_CLS = 'w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors'
 
 // The backend requires these; anything else is optional.
-const REQUIRED = ['vendor', 'os', 'hardware_model', 'serial_number']
+const REQUIRED = ['vendor', 'os', 'hardware_model', 'serial_number', 'os_version']
 
 function FormField({ label, required, hint, children }) {
   return (
@@ -146,7 +146,7 @@ export default function CreateAssetModal({ onClose, onSuccess }) {
             </select>
           </FormField>
 
-          <FormField label="OS Version" hint={versionHint}>
+          <FormField label="OS Version" required hint={versionHint}>
             <input
               type="text"
               value={values.os_version ?? ''}

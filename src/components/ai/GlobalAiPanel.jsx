@@ -84,7 +84,7 @@ export function AiToggleButton() {
     <button
       onClick={() => setOpen(o => !o)}
       className={[
-        'fixed bottom-5 right-5 z-50 flex items-center justify-center rounded-full w-11 h-11 shadow-lg transition-colors',
+        'fixed bottom-16 right-5 z-50 flex items-center justify-center rounded-full w-11 h-11 shadow-lg transition-colors',
         open
           ? 'bg-brand text-white'
           : 'bg-surface border-2 border-brand text-brand hover:bg-brand/10',

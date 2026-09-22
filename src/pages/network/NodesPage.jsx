@@ -73,7 +73,7 @@ export default function NodesPage() {
   const cancelSelectAll = useRef(false)
 
   // ── Data ──────────────────────────────────────────────────────
-  const { data, isLoading } = useQuery({
+  const { data, isFetching } = useQuery({
     queryKey: ['nodes', params],
     queryFn: () => fetchNodes(params),
     enabled: shouldQueryIP(params.management_connection_ip),
@@ -235,7 +235,7 @@ export default function NodesPage() {
       <DataTable
         columns={COLUMNS}
         data={nodes}
-        isLoading={isLoading}
+        isLoading={isFetching}
         sortKey={params.sort}
         sortOrder={params.order}
         onSort={(key, order) => setParams({ sort: key, order, offset: 0 })}

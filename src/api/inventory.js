@@ -21,12 +21,12 @@ const normalizeNode = (n) => ({
   asset_ref_type: n.asset_ref_type,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, management_connection_ip, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, management_connection_ip, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
@@ -108,8 +108,8 @@ export const updateLogicalNode = (id, patch) =>
 export const deleteLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`, { method: 'DELETE' })
 
-export const fetchAssets = ({ vendor, os, hardware_model, assigned, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, assigned, limit, offset })}`)
+export const fetchAssets = ({ vendor, os, hardware_model, serial_number, assigned, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, serial_number, assigned, limit, offset })}`)
 
 export const fetchAsset = (id) =>
   apiFetch(`/api/v1/inventory/assets/${id}`)

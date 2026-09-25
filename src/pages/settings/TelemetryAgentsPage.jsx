@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Plus, X, FileCode2 } from 'lucide-react'
+import { Plus, X, FileCode2, TriangleAlert } from 'lucide-react'
 import {
   fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent, updateTelemetryAgent,
   addAgentNode, removeAgentNode,
   addAgentRule, removeAgentRule,
   fetchObservabilityOutputs,
   fetchAgentConfig,
+  fetchTelemetryAgent,
 } from '../../api/observability'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
@@ -15,12 +16,12 @@ import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import MatchRulesPanel from '../../components/agents/MatchRulesPanel'
 import NodeAssignmentPanel from '../../components/agents/NodeAssignmentPanel'
-import ResolvedNodesModal from '../../components/agents/ResolvedNodesModal'
+import NodeCoverageModal from '../../components/agents/NodeCoverageModal'
 import DeployInstructionsPanel from '../../components/agents/DeployInstructionsPanel'
 import SnmpSyslogSettingsPanel from '../../components/agents/SnmpSyslogSettingsPanel'
 import SnmpSyslogFields from '../../components/agents/SnmpSyslogFields'
 import { SNMP_SYSLOG_DEFAULTS, snmpSyslogPayload } from '../../components/agents/agentUtils'
-import { getAgentStatus, getConfigSyncStatus, timeAgo, statusClasses } from '../../components/agents/agentUtils'
+import { getAgentStatus, getConfigSyncStatus, timeAgo, statusClasses, coverageCounts } from '../../components/agents/agentUtils'
 
 const CAPABILITIES = [
   { value: 'snmp',          label: 'SNMP'          },
@@ -31,6 +32,7 @@ const CAPABILITIES = [
 ]
 
 const ALL_CAPS = CAPABILITIES.map(c => c.value)
+const capLabel = cap => CAPABILITIES.find(c => c.value === cap)?.label ?? cap
 
 const DEFAULTS = { name: '', limit: 50, offset: 0 }
 const FILTERS  = [{ key: 'name', label: 'Name', width: '180px' }]
@@ -65,8 +67,8 @@ export default function TelemetryAgentsPage() {
   const emptyCreateForm = () => ({ name: '', description: '', capabilities: [...ALL_CAPS], ...SNMP_SYSLOG_DEFAULTS })
   const [createForm, setCreateForm] = useState(emptyCreateForm)
 
-  // Browse resolved nodes
-  const [showResolved, setShowResolved] = useState(false)
+  // Browse resolved nodes — null when closed, otherwise the tab to open on
+  const [coverageTab, setCoverageTab] = useState(null)
 
   // Delete loading
   const [deleting, setDeleting] = useState(false)
@@ -82,6 +84,17 @@ export default function TelemetryAgentsPage() {
   const agents  = data?.items ?? []
   const total   = data?.total ?? 0
   const selected = agents.find(a => a.id === selectedId) ?? null
+
+  // The listing omits `node_coverage` (costly to compute), so fetch the
+  // selected agent. Keyed on config_revision to refetch when the agent
+  // changes; the interval catches node-side fixes (e.g. an added mgmt IP).
+  const { data: detail } = useQuery({
+    queryKey: ['telemetry-agents', 'detail', selected?.id, selected?.config_revision],
+    queryFn: () => fetchTelemetryAgent(selected.id),
+    enabled: !!selected,
+    refetchInterval: 60000,
+  })
+  const coverage = detail?.id === selected?.id ? detail?.node_coverage : undefined
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['telemetry-agents'] })
 
@@ -248,7 +261,8 @@ export default function TelemetryAgentsPage() {
               onRemoveNode={handleRemoveNode}
               onAddRule={handleAddRule}
               onRemoveRule={handleRemoveRule}
-              onBrowseResolved={() => setShowResolved(true)}
+              coverage={coverage}
+              onBrowseResolved={(tab = 'all') => setCoverageTab(tab)}
               onUpdateAgent={handleUpdateAgent}
             />
           </div>
@@ -283,11 +297,13 @@ export default function TelemetryAgentsPage() {
         />
       )}
 
-      {showResolved && selected && (
-        <ResolvedNodesModal
-          resolvedNodes={selected.resolved_nodes ?? []}
-          explicitNodes={selected.nodes ?? []}
-          onClose={() => setShowResolved(false)}
+      {coverageTab && selected && (
+        <NodeCoverageModal
+          coverage={coverage}
+          capabilityLabel={capLabel}
+          capabilityOrder={ALL_CAPS}
+          initialTab={coverageTab}
+          onClose={() => setCoverageTab(null)}
         />
       )}
     </div>
@@ -296,13 +312,16 @@ export default function TelemetryAgentsPage() {
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
-function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onBrowseResolved, onUpdateAgent }) {
+function DetailPanel({ agent, coverage, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onBrowseResolved, onUpdateAgent }) {
   const status   = getAgentStatus(agent)
   const sync     = getConfigSyncStatus(agent)
   const explicit = agent.nodes ?? []
   const resolved = agent.resolved_nodes ?? []
   const rules    = agent.rules ?? []
   const [showConfig, setShowConfig] = useState(false)
+
+  const counts = coverageCounts(coverage ?? [])
+  const incomplete = counts.partial + counts.excluded
 
   return (
     <div className="border-b border-edge">
@@ -352,9 +371,12 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
           { label: 'Explicit',     value: explicit.length },
           { label: 'Resolved',     value: resolved.length },
           { label: 'Last ack',     value: timeAgo(agent.acked_at) },
+          ...(incomplete > 0
+            ? [{ label: 'Incomplete', value: incomplete, warn: true }]
+            : []),
         ].map(s => (
           <div key={s.label} className="flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-content tabular-nums">{s.value}</span>
+            <span className={`text-base font-bold tabular-nums ${s.warn ? 'text-amber-400' : 'text-content'}`}>{s.value}</span>
             <span className="text-[10px] text-subtle uppercase tracking-wide">{s.label}</span>
           </div>
         ))}
@@ -405,6 +427,22 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
 
           {/* Nodes */}
           <Section title="Nodes">
+            {incomplete > 0 && (
+              <div className="flex items-center gap-2 mb-3 px-2.5 py-2 rounded border border-amber-500/25 bg-amber-500/5 text-amber-500">
+                <TriangleAlert size={13} className="shrink-0" />
+                <span className="text-xs flex-1">
+                  {counts.excluded > 0 && `${counts.excluded} not rendered`}
+                  {counts.excluded > 0 && counts.partial > 0 && ' · '}
+                  {counts.partial > 0 && `${counts.partial} partially rendered`}
+                </span>
+                <button
+                  onClick={() => onBrowseResolved(counts.excluded > 0 ? 'excluded' : 'partial')}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline-offset-2 hover:underline"
+                >
+                  Show
+                </button>
+              </div>
+            )}
             <NodeAssignmentPanel
               nodes={explicit}
               resolvedNodes={resolved}
@@ -413,6 +451,7 @@ function DetailPanel({ agent, onClose, onDelete, deleting, onAddNodes, onRemoveN
               onBrowseResolved={onBrowseResolved}
             />
           </Section>
+
         </div>
 
         {/* Right column */}

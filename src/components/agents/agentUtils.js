@@ -80,3 +80,22 @@ export function snmpSyslogPayload(form) {
     snmpv3_credential_id: credId(form.snmpv3_credential_id),
   }
 }
+
+// ── Telemetry node coverage (GET /agents/{id} → node_coverage) ──
+// rendered = every node-scoped capability rendered; excluded = none rendered.
+export function coverageStatus(node) {
+  const caps = Object.values(node.capabilities ?? {})
+  if (caps.length === 0) return 'none'
+  const rendered = caps.filter(c => c.status === 'rendered').length
+  if (rendered === caps.length) return 'rendered'
+  return rendered === 0 ? 'excluded' : 'partial'
+}
+
+export function coverageCounts(nodes = []) {
+  const counts = { all: nodes.length, rendered: 0, partial: 0, excluded: 0 }
+  nodes.forEach(n => {
+    const s = coverageStatus(n)
+    if (s in counts) counts[s]++
+  })
+  return counts
+}

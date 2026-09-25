@@ -15,6 +15,10 @@ export const fetchTelemetryAgents = ({ name, limit = 50, offset = 0 } = {}) =>
       return { items: data.items ?? [], total: data.total ?? 0 }
     })
 
+// Single-agent read — unlike the listing, includes `unrenderable_nodes`.
+export const fetchTelemetryAgent = (id) =>
+  apiFetch(`/api/v1/observability/agents/${id}`)
+
 export const createTelemetryAgent = (payload) =>
   apiFetch('/api/v1/observability/agents', {
     method: 'POST',

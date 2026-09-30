@@ -7,7 +7,7 @@ import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { initUserManager, getUserManager } from './auth/oidc.js'
 import { installFetchInterceptor } from './auth/fetchInterceptor.js'
-import { API_URL } from './config.js'
+import { API_URL, OIDC_CLIENT_ID, OIDC_ISSUER_URL } from './config.js'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,7 +37,10 @@ async function bootstrap() {
     const config = await res.json()
 
     if (config.enabled) {
-      initUserManager({ authority: config.authority, clientId: config.client_id })
+      initUserManager({
+        authority: OIDC_ISSUER_URL || config.authority,
+        clientId: OIDC_CLIENT_ID || config.client_id,
+      })
 
       const params = new URLSearchParams(window.location.search)
       if (params.has('code') && params.has('state')) {

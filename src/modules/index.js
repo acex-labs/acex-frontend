@@ -1,4 +1,5 @@
 import { NetworkModule }    from './network'
+import { ZtpModule }        from './ztp'
 import { ConfigsModule }    from './configs'
 import { OperationsModule } from './operations'
 import { ObserveModule }    from './observe'
@@ -28,6 +29,7 @@ import { PlatformModule }   from './platform'
  */
 export const MODULES = [
   NetworkModule,
+  ZtpModule,
   ConfigsModule,
   OperationsModule,
   ObserveModule,

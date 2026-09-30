@@ -36,7 +36,8 @@ export default function ResolvedNodesModal({ resolvedNodes = [], explicitNodes =
         (node?.hostname || '').toLowerCase().includes(q) ||
         (node?.site || '').toLowerCase().includes(q) ||
         (node?.role || '').toLowerCase().includes(q) ||
-        (node?.status || '').toLowerCase().includes(q)
+        (node?.admin_status || '').toLowerCase().includes(q) ||
+        (node?.provision_status || '').toLowerCase().includes(q)
       )
     })
 
@@ -116,8 +117,10 @@ export default function ResolvedNodesModal({ resolvedNodes = [], explicitNodes =
                       <td className="px-4 py-2.5 text-xs text-content">{node?.site ?? '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-subtle">{node?.role ?? '—'}</td>
                       <td className="px-4 py-2.5 text-xs">
-                        {node?.status ? (
-                          <span className="text-subtle">{node.status}</span>
+                        {node?.admin_status ? (
+                          <span className="text-subtle">
+                            {[node.admin_status, node.provision_status].filter(Boolean).join(' · ')}
+                          </span>
                         ) : '—'}
                       </td>
                       <td className="px-4 py-2.5">

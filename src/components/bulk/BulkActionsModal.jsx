@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { apiFetch } from '../../api/client'
 import { fetchSites } from '../../api/inventory'
+import { ADMIN_STATUSES } from '../nodes/nodeStatus'
 
-const STATUS_OPTIONS = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
 
 const ACTIONS = [
   { key: 'ned',    label: 'Set NED'    },
-  { key: 'status', label: 'Set Status' },
+  { key: 'status', label: 'Set Admin Status' },
   { key: 'role',   label: 'Set Role'   },
   { key: 'site',   label: 'Set Site'   },
 ]
@@ -105,9 +105,9 @@ export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
         {/* Status picker */}
         {action === 'status' && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] text-subtle">Status</label>
+            <label className="text-[11px] text-subtle">Admin status</label>
             <div className="grid grid-cols-2 gap-2">
-              {STATUS_OPTIONS.map(s => (
+              {ADMIN_STATUSES.map(s => (
                 <button
                   key={s}
                   onClick={() => setStatus(s)}

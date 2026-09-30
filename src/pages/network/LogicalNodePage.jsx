@@ -63,7 +63,7 @@ function NodeInstancesCard({ hostname }) {
               className="px-4 py-2.5 border-b border-edge/50 last:border-0 flex items-center gap-2 cursor-pointer hover:bg-surface-hi transition-colors"
             >
               <span className="text-xs font-medium text-content">{n.hostname}</span>
-              <span className="text-[10px] text-subtle ml-auto">{n.status}</span>
+              <span className="text-[10px] text-subtle ml-auto">{[n.admin_status, n.provision_status].filter(Boolean).join(' · ')}</span>
             </div>
           ))}
         </div>

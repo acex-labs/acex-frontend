@@ -3,6 +3,7 @@ import { ConfigsModule }    from './configs'
 import { OperationsModule } from './operations'
 import { ObserveModule }    from './observe'
 import { AutopilotModule }  from './autopilot'
+import { ZtpModule }        from './ztp'
 import { SettingsModule }   from './settings'
 import { PlatformModule }   from './platform'
 
@@ -32,6 +33,7 @@ export const MODULES = [
   OperationsModule,
   ObserveModule,
   AutopilotModule,
+  ZtpModule,
   SettingsModule,
   PlatformModule,  // adminOnly — only visible when admin mode is on
 ]

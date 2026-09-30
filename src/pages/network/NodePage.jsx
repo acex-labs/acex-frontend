@@ -18,6 +18,8 @@ import {
 import { usePageAiContext } from '../../context/AiContext'
 import ChangeAssetModal from '../../components/nodes/ChangeAssetModal'
 import VendorIcon from '../../components/ui/VendorIcon'
+import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
+import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import ConfigurationTab from './ConfigurationTab'
 import ConfigHistory from '../../components/config/ConfigHistory'
 import HardwareTab from '../../components/hardware/HardwareTab'
@@ -59,7 +61,8 @@ function buildOverviewContext(data) {
 
   const parts = [
     section('Node Instance', [
-      ['Status',  data.status],
+      ['Admin status',     data.admin_status],
+      ['Provision status', data.provision_status],
       ['Regions', data.regions?.join(', ')],
       ['Created', data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null],
       ['Updated', data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null],
@@ -95,25 +98,7 @@ const TABS = [
   { key: 'history',       label: 'History' },
 ]
 
-const STATUS_STYLES = {
-  active:          'bg-green-500/10 text-green-400',
-  planned:         'bg-surface-hi text-subtle',
-  init:            'bg-brand/10 text-brand',
-  maintenance:     'bg-amber-500/10 text-amber-400',
-  decommissioned:  'bg-red-500/10 text-red-400',
-}
-
-const NODE_STATUSES = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
-
-function StatusBadge({ status }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${STATUS_STYLES[status] ?? 'bg-surface-hi text-subtle'}`}>
-      {status}
-    </span>
-  )
-}
-
-function StatusEditor({ status, onChange, pending }) {
+function AdminStatusEditor({ status, onChange, pending }) {
   const [editing, setEditing] = useState(false)
 
   if (!editing) {
@@ -121,9 +106,9 @@ function StatusEditor({ status, onChange, pending }) {
       <button
         onClick={() => setEditing(true)}
         className="flex items-center gap-1 group"
-        title="Change status"
+        title="Change admin status"
       >
-        <StatusBadge status={status} />
+        <AdminStatusBadge status={status} />
         <Pencil size={10} className="text-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
     )
@@ -138,7 +123,7 @@ function StatusEditor({ status, onChange, pending }) {
       onBlur={() => setEditing(false)}
       className="bg-surface-hi border border-edge rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-content outline-none focus:border-brand/50 transition-colors"
     >
-      {NODE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+      {ADMIN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
     </select>
   )
 }
@@ -574,7 +559,8 @@ function OverviewTab({ data, nodeId, onChangeAsset }) {
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card title="Node Instance" className="flex flex-col lg:col-span-2">
-        <Field label="Status"  value={data.status} />
+        <Field label="Admin status"     value={data.admin_status} />
+        <Field label="Provision status" value={data.provision_status} />
         <Field label="Regions" value={data.regions?.join(', ') || null} />
         <Field label="Created" value={data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
@@ -620,7 +606,7 @@ export default function NodePage() {
   })
 
   const statusMutation = useMutation({
-    mutationFn: (status) => updateNodeInstance(id, { status }),
+    mutationFn: (admin_status) => updateNodeInstance(id, { admin_status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', id] })
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
@@ -686,13 +672,14 @@ export default function NodePage() {
             <h1 className="text-sm font-semibold text-content">
               {isLoading ? '—' : hostname}
             </h1>
-            {data?.status && (
-              <StatusEditor
-                status={data.status}
+            {data?.admin_status && (
+              <AdminStatusEditor
+                status={data.admin_status}
                 pending={statusMutation.isPending}
                 onChange={(status) => statusMutation.mutate(status)}
               />
             )}
+            {data?.provision_status && <ProvisionStatusBadge status={data.provision_status} />}
           </div>
 
           {!isLoading && data && (

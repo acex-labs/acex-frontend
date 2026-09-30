@@ -7,11 +7,12 @@ const RULE_FIELDS = [
   { key: 'site',   label: 'Site'   },
   { key: 'vendor', label: 'Vendor' },
   { key: 'os',     label: 'OS'     },
-  { key: 'status', label: 'Status' },
+  { key: 'admin_status',     label: 'Admin status' },
+  { key: 'provision_status', label: 'Provision status' },
   { key: 'role',   label: 'Role'   },
 ]
 
-const EMPTY_RULE = { region: '', site: '', vendor: '', os: '', status: '', role: '' }
+const EMPTY_RULE = { region: '', site: '', vendor: '', os: '', admin_status: '', provision_status: '', role: '' }
 
 export default function MatchRulesPanel({ rules = [], onAdd, onRemove }) {
   const [showModal, setShowModal] = useState(false)

@@ -483,7 +483,7 @@ function NodesTab({ siteName }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-edge">
-            {['Hostname', 'Role', 'Status', 'Driver'].map(h => (
+            {['Hostname', 'Role', 'Admin', 'Provisioning', 'Driver'].map(h => (
               <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider text-subtle pb-2 pr-6">{h}</th>
             ))}
           </tr>
@@ -505,7 +505,8 @@ function NodesTab({ siteName }) {
                 </Link>
               </td>
               <td className="py-2 pr-6 text-subtle">{n.role || '—'}</td>
-              <td className="py-2 pr-6 text-subtle">{n.status || '—'}</td>
+              <td className="py-2 pr-6 text-subtle">{n.admin_status || '—'}</td>
+              <td className="py-2 pr-6 text-subtle">{n.provision_status || '—'}</td>
               <td className="py-2 pr-6 text-subtle">{n.ned_id || '—'}</td>
             </tr>
           ))}

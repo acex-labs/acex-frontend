@@ -26,7 +26,7 @@ function buildActionFn({ action, value }, nodeInfoCache) {
     return (nodeId) =>
       apiFetch(`/api/v1/inventory/node_instances/${nodeId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: value }),
+        body: JSON.stringify({ admin_status: value }),
       })
   }
 
@@ -97,7 +97,7 @@ export default function BulkConfirmModal({
 
   const actionLabel = actionSpec.label ?? {
     ned:    `Set NED → ${actionSpec.value}`,
-    status: `Set status → ${actionSpec.value}`,
+    status: `Set admin status → ${actionSpec.value}`,
     role:   `Set role → ${actionSpec.value}`,
     site:   `Set site → ${actionSpec.value}`,
   }[actionSpec.action] ?? actionSpec.action

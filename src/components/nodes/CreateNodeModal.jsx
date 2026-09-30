@@ -3,10 +3,15 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { X, Check } from 'lucide-react'
 import { fetchLogicalNodes, fetchAssets, fetchAssetClusters, createNodeInstance } from '../../api/inventory'
 import VendorIcon from '../ui/VendorIcon'
+import { ADMIN_STATUSES } from './nodeStatus'
 
 const INPUT_CLS = 'bg-surface-hi border border-edge rounded px-2.5 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors w-full'
 
-const NODE_STATUSES = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
+// Only the two starting points an operator picks; the rest are set by the provisioning flow.
+const PROVISION_OPTIONS = [
+  { value: 'unprovisioned', label: 'New device — provision later' },
+  { value: 'adopted',       label: 'Existing device — adopt as brownfield' },
+]
 
 function FormField({ label, required, children }) {
   return (
@@ -94,7 +99,8 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
 
   const [assetTab, setAssetTab] = useState('single')
   const [selectedAsset, setSelectedAsset] = useState(null)
-  const [status, setStatus] = useState('planned')
+  const [adminStatus, setAdminStatus] = useState('planned')
+  const [provisionStatus, setProvisionStatus] = useState('unprovisioned')
 
   useEffect(() => {
     const t = setTimeout(() => setDHostnameFilter(hostnameFilter), 300)
@@ -132,7 +138,8 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
       logical_node_id: selectedLogicalNode.id,
       asset_ref_id: selectedAsset.id,
       asset_ref_type: selectedAsset.type,
-      status,
+      admin_status: adminStatus,
+      provision_status: provisionStatus,
     })
   }
 
@@ -240,15 +247,26 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
           </div>
 
           <div className="md:col-span-2">
-            <FormField label="Status">
-              <select
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-                className={INPUT_CLS}
-              >
-                {NODE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </FormField>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+              <FormField label="Admin status">
+                <select
+                  value={adminStatus}
+                  onChange={e => setAdminStatus(e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  {ADMIN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Provisioning">
+                <select
+                  value={provisionStatus}
+                  onChange={e => setProvisionStatus(e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  {PROVISION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </FormField>
+            </div>
 
             {mutation.isError && (
               <p className="text-[11px] text-red-400">Failed to create node.</p>

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { apiFetch } from '../../api/client'
+import { nodeSetErrorMessage } from './useAgentNodeSet'
 
-export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], onAdd, onRemove, onBrowseResolved }) {
+// `onRemoveAll` is optional — the "Remove all" action only shows when it's provided.
+export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], onAdd, onRemove, onRemoveAll, onBrowseResolved }) {
   const [showModal, setShowModal] = useState(false)
   const [allNodes, setAllNodes] = useState([])
   const [nodeFilter, setNodeFilter] = useState('')
@@ -10,6 +12,9 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [explicitFilter, setExplicitFilter] = useState('')
+  const [confirmRemoveAll, setConfirmRemoveAll] = useState(false)
+  const [removingAll, setRemovingAll] = useState(false)
+  const [error, setError] = useState(null)
 
   const explicitCount = nodes.length
   const resolvedCount = resolvedNodes.length
@@ -51,12 +56,33 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
   const handleSave = async () => {
     if (selectedIds.size === 0) return
     setSaving(true)
+    setError(null)
     try {
       await onAdd([...selectedIds])
       setShowModal(false)
+    } catch (e) {
+      setError(nodeSetErrorMessage(e))
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleRemoveAll = async () => {
+    setRemovingAll(true)
+    setError(null)
+    try {
+      await onRemoveAll()
+      setConfirmRemoveAll(false)
+    } catch (e) {
+      setError(nodeSetErrorMessage(e))
+    } finally {
+      setRemovingAll(false)
+    }
+  }
+
+  const handleRemove = (id) => {
+    setError(null)
+    Promise.resolve(onRemove(id)).catch(e => setError(nodeSetErrorMessage(e)))
   }
 
   const filteredExplicit = explicitFilter.trim()
@@ -68,13 +94,50 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
       {/* Explicit nodes section */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">Explicit Nodes</span>
-        <button
-          onClick={handleOpen}
-          className="text-xs text-subtle hover:text-content transition-colors px-2 py-1 rounded hover:bg-surface-hi"
-        >
-          Add nodes
-        </button>
+        <div className="flex items-center gap-1">
+          {onRemoveAll && explicitCount > 0 && !confirmRemoveAll && (
+            <button
+              onClick={() => { setError(null); setConfirmRemoveAll(true) }}
+              className="text-xs text-red-400/70 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-red-500/5"
+            >
+              Remove all
+            </button>
+          )}
+          <button
+            onClick={handleOpen}
+            className="text-xs text-subtle hover:text-content transition-colors px-2 py-1 rounded hover:bg-surface-hi"
+          >
+            Add nodes
+          </button>
+        </div>
       </div>
+
+      {error && <p className="mb-2 text-[11px] text-red-400">{error}</p>}
+
+      {confirmRemoveAll && (
+        <div className="mb-3 px-3 py-2.5 rounded-lg border border-red-500/25 bg-red-500/5">
+          <p className="text-xs text-content">
+            Remove all {explicitCount} explicitly mapped node{explicitCount !== 1 ? 's' : ''}?
+          </p>
+          <p className="text-[11px] text-subtle mt-0.5">Nodes also matched by a rule stay covered.</p>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={handleRemoveAll}
+              disabled={removingAll}
+              className="px-3 py-1 rounded text-xs font-semibold border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+            >
+              {removingAll ? 'Removing…' : `Remove ${explicitCount}`}
+            </button>
+            <button
+              onClick={() => setConfirmRemoveAll(false)}
+              disabled={removingAll}
+              className="px-3 py-1 rounded text-xs text-subtle hover:text-content transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {explicitCount === 0 ? (
         <p className="text-xs text-subtle/50">No nodes explicitly mapped.</p>
@@ -87,7 +150,7 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
             >
               #{id}
               <button
-                onClick={() => onRemove(id)}
+                onClick={() => handleRemove(id)}
                 className="opacity-0 group-hover:opacity-100 text-red-400/60 hover:text-red-400 transition-opacity leading-none"
               >
                 <X size={9} />
@@ -116,7 +179,7 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
               >
                 <span className="text-xs font-mono text-content">#{id}</span>
                 <button
-                  onClick={() => onRemove(id)}
+                  onClick={() => handleRemove(id)}
                   className="opacity-0 group-hover:opacity-100 text-xs text-red-400/60 hover:text-red-400 transition-all"
                 >
                   Remove
@@ -229,7 +292,9 @@ export default function NodeAssignmentPanel({ nodes = [], resolvedNodes = [], on
             </div>
 
             <div className="flex items-center justify-between px-5 py-4 border-t border-edge">
-              {selectedIds.size > 0 ? (
+              {error ? (
+                <span className="text-xs text-red-400">{error}</span>
+              ) : selectedIds.size > 0 ? (
                 <span className="text-xs text-subtle">{selectedIds.size} selected</span>
               ) : (
                 <span />

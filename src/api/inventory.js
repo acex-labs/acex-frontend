@@ -19,6 +19,7 @@ const normalizeNode = (n) => ({
   management_connections: n.management_connections ?? [],
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
+  logical_node_id: n.logical_node_id,
 })
 
 export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
@@ -233,6 +234,13 @@ export const addCollectionAgentNode = (agentId, nodeId) =>
 
 export const removeCollectionAgentNode = (agentId, nodeId) =>
   apiFetch(`/api/v1/inventory/collection_agents/${agentId}/nodes/${nodeId}`, { method: 'DELETE' })
+
+// Declarative explicit membership — see setAgentNodes in observability.js.
+export const setCollectionAgentNodes = (agentId, { node_ids, expected_revision }) =>
+  apiFetch(`/api/v1/inventory/collection_agents/${agentId}/nodes`, {
+    method: 'PUT',
+    body: JSON.stringify({ node_ids, expected_revision }),
+  })
 
 export const addCollectionAgentRule = (agentId, rule) =>
   apiFetch(`/api/v1/inventory/collection_agents/${agentId}/rules`, {

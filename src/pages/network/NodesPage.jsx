@@ -64,8 +64,17 @@ export default function NodesPage() {
   const [actionSpec, setActionSpec] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
 
-  // Cache node → {asset_ref_id, asset_ref_type} so Set NED doesn't need extra fetches
+  // Cache node → {asset_ref_id, asset_ref_type, logical_node_id} so bulk
+  // actions (NED on the asset, role/site on the logical node) skip extra fetches
   const nodeInfoCache = useRef(new Map())
+  const cacheNodeInfo = useCallback((n) => {
+    if (n.asset_ref_id != null || n.logical_node_id != null)
+      nodeInfoCache.current.set(n.id, {
+        asset_ref_id: n.asset_ref_id,
+        asset_ref_type: n.asset_ref_type,
+        logical_node_id: n.logical_node_id,
+      })
+  }, [])
 
   // Select-all-matching state
   const [selectingAll, setSelectingAll]     = useState(false)
@@ -84,21 +93,17 @@ export default function NodesPage() {
   const total = data?.total ?? 0
 
   // Cache asset info from every page we load
-  nodes.forEach(n => {
-    if (n.asset_ref_id != null)
-      nodeInfoCache.current.set(n.id, { asset_ref_id: n.asset_ref_id, asset_ref_type: n.asset_ref_type })
-  })
+  nodes.forEach(cacheNodeInfo)
 
   // ── Selection helpers ─────────────────────────────────────────
   const toggleId = useCallback((row) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
       next.has(row.id) ? next.delete(row.id) : next.add(row.id)
-      if (row.asset_ref_id != null)
-        nodeInfoCache.current.set(row.id, { asset_ref_id: row.asset_ref_id, asset_ref_type: row.asset_ref_type })
+      cacheNodeInfo(row)
       return next
     })
-  }, [])
+  }, [cacheNodeInfo])
 
   const toggleAll = useCallback((rows) => {
     setSelectedIds(prev => {
@@ -106,12 +111,11 @@ export default function NodesPage() {
       const allSelected = rows.every(r => next.has(r.id))
       rows.forEach(r => {
         allSelected ? next.delete(r.id) : next.add(r.id)
-        if (r.asset_ref_id != null)
-          nodeInfoCache.current.set(r.id, { asset_ref_id: r.asset_ref_id, asset_ref_type: r.asset_ref_type })
+        cacheNodeInfo(r)
       })
       return next
     })
-  }, [])
+  }, [cacheNodeInfo])
 
   const clearSelection = () => setSelectedIds(new Set())
 
@@ -141,7 +145,7 @@ export default function NodesPage() {
         const data = await apiFetch(`/api/v1/inventory/node_instances?${qs}`)
         ;(data.items ?? []).forEach(item => {
           allIds.add(item.id)
-          nodeInfoCache.current.set(item.id, { asset_ref_id: item.asset_ref_id, asset_ref_type: item.asset_ref_type })
+          cacheNodeInfo(item)
         })
         offset += PAGE
         setSelectAllProgress({ fetched: Math.min(offset, total), total })
@@ -181,6 +185,8 @@ export default function NodesPage() {
   const handleConfirmClose = () => {
     setActionSpec(null)
     clearSelection()
+    // Role/site edits change listed columns and filter matches.
+    queryClient.invalidateQueries({ queryKey: ['nodes'] })
   }
 
   return (

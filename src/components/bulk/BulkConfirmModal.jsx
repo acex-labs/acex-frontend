@@ -30,14 +30,35 @@ function buildActionFn({ action, value }, nodeInfoCache) {
       })
   }
 
+  const getInfo = async (nodeId) => {
+    let info = nodeInfoCache.get(nodeId)
+    if (!info) {
+      const data = await apiFetch(`/api/v1/inventory/node_instances/${nodeId}`)
+      info = {
+        asset_ref_id: data.asset_ref_id,
+        asset_ref_type: data.asset_ref_type,
+        logical_node_id: data.logical_node_id,
+      }
+      nodeInfoCache.set(nodeId, info)
+    }
+    return info
+  }
+
+  // Role and site live on the node's logical node, not the node instance.
+  if (action === 'role' || action === 'site') {
+    return async (nodeId) => {
+      const { logical_node_id } = await getInfo(nodeId)
+      if (logical_node_id == null) throw new Error(`Node ${nodeId} has no logical node`)
+      return apiFetch(`/api/v1/inventory/logical_nodes/${logical_node_id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [action]: value }),
+      })
+    }
+  }
+
   if (action === 'ned') {
     return async (nodeId) => {
-      let info = nodeInfoCache.get(nodeId)
-      if (!info) {
-        const data = await apiFetch(`/api/v1/inventory/node_instances/${nodeId}`)
-        info = { asset_ref_id: data.asset_ref_id, asset_ref_type: data.asset_ref_type }
-        nodeInfoCache.set(nodeId, info)
-      }
+      const info = await getInfo(nodeId)
       const url = info.asset_ref_type === 'asset_cluster'
         ? `/api/v1/inventory/asset_clusters/${info.asset_ref_id}`
         : `/api/v1/inventory/assets/${info.asset_ref_id}`
@@ -77,6 +98,8 @@ export default function BulkConfirmModal({
   const actionLabel = actionSpec.label ?? {
     ned:    `Set NED → ${actionSpec.value}`,
     status: `Set status → ${actionSpec.value}`,
+    role:   `Set role → ${actionSpec.value}`,
+    site:   `Set site → ${actionSpec.value}`,
   }[actionSpec.action] ?? actionSpec.action
 
   const handleConfirm = async () => {

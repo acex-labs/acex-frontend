@@ -2,13 +2,25 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { apiFetch } from '../../api/client'
+import { fetchSites } from '../../api/inventory'
 
 const STATUS_OPTIONS = ['planned', 'init', 'active', 'maintenance', 'decommissioned']
+
+const ACTIONS = [
+  { key: 'ned',    label: 'Set NED'    },
+  { key: 'status', label: 'Set Status' },
+  { key: 'role',   label: 'Set Role'   },
+  { key: 'site',   label: 'Set Site'   },
+]
+
+const INPUT_CLS = 'px-3 py-2 text-xs bg-surface-hi border border-edge rounded-md text-content placeholder:text-subtle focus:outline-none focus:border-brand/50 transition-colors'
 
 export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
   const [action, setAction] = useState('ned')
   const [nedId, setNedId]   = useState('')
   const [status, setStatus] = useState('')
+  const [role, setRole]     = useState('')
+  const [site, setSite]     = useState('')
 
   const { data: neds = [] } = useQuery({
     queryKey: ['neds'],
@@ -16,12 +28,20 @@ export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
     staleTime: 300_000,
   })
 
-  const canApply = (action === 'ned' && nedId) || (action === 'status' && status)
+  // Suggestions only — site is free text on the logical node.
+  const { data: sites = [] } = useQuery({
+    queryKey: ['sites', 'bulk-suggestions'],
+    queryFn: () => fetchSites({ limit: 1000 }).then(d => d.items ?? []),
+    enabled: action === 'site',
+    staleTime: 300_000,
+  })
+
+  const values = { ned: nedId, status, role: role.trim(), site: site.trim() }
+  const canApply = !!values[action]
 
   const handleApply = () => {
     if (!canApply) return
-    if (action === 'ned')    onApply({ action: 'ned',    value: nedId })
-    if (action === 'status') onApply({ action: 'status', value: status })
+    onApply({ action, value: values[action] })
   }
 
   return (
@@ -48,16 +68,13 @@ export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
         </div>
 
         {/* Action picker */}
-        <div className="flex gap-2">
-          {[
-            { key: 'ned',    label: 'Set NED' },
-            { key: 'status', label: 'Set Status' },
-          ].map(opt => (
+        <div className="grid grid-cols-2 gap-2">
+          {ACTIONS.map(opt => (
             <button
               key={opt.key}
               onClick={() => setAction(opt.key)}
               className={[
-                'flex-1 py-1.5 text-xs font-semibold rounded border transition-colors',
+                'py-1.5 text-xs font-semibold rounded border transition-colors',
                 action === opt.key
                   ? 'bg-brand/10 border-brand/40 text-brand'
                   : 'border-edge text-subtle hover:text-content hover:border-edge/80',
@@ -105,6 +122,31 @@ export default function BulkActionsModal({ selectedCount, onApply, onClose }) {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Role / site — stored on each node's logical node */}
+        {(action === 'role' || action === 'site') && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] text-subtle">{action === 'role' ? 'Role' : 'Site'}</label>
+            <input
+              type="text"
+              autoFocus
+              list={action === 'site' ? 'bulk-site-options' : undefined}
+              value={action === 'role' ? role : site}
+              onChange={e => (action === 'role' ? setRole : setSite)(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleApply() }}
+              placeholder={action === 'role' ? 'e.g. core' : 'e.g. sto1'}
+              className={INPUT_CLS}
+            />
+            {action === 'site' && (
+              <datalist id="bulk-site-options">
+                {sites.map(s => <option key={s.id ?? s.name} value={s.name} />)}
+              </datalist>
+            )}
+            <p className="text-[10px] text-subtle/70">
+              Applied to each node's logical node — other nodes sharing it change too.
+            </p>
           </div>
         )}
 

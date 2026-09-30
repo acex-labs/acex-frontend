@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { Plus, X } from 'lucide-react'
 import {
   fetchCollectionAgents, createCollectionAgent, updateCollectionAgent, deleteCollectionAgent,
-  addCollectionAgentNode, removeCollectionAgentNode,
+  setCollectionAgentNodes,
   addCollectionAgentRule, removeCollectionAgentRule,
 } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
@@ -13,6 +13,7 @@ import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import MatchRulesPanel from '../../components/agents/MatchRulesPanel'
 import NodeAssignmentPanel from '../../components/agents/NodeAssignmentPanel'
+import { useAgentNodeSet } from '../../components/agents/useAgentNodeSet'
 import ResolvedNodesModal from '../../components/agents/ResolvedNodesModal'
 import DeployInstructionsPanel from '../../components/agents/DeployInstructionsPanel'
 import { getAgentStatus, getConfigSyncStatus, timeAgo, formatInterval, statusClasses } from '../../components/agents/agentUtils'
@@ -95,17 +96,10 @@ export default function CollectionAgentsPage() {
     setShowEdit(true)
   }
 
-  const handleAddNodes = async (nodeIds) => {
-    for (const id of nodeIds) {
-      await addCollectionAgentNode(selected.id, id).catch(() => {})
-    }
-    invalidate()
-  }
-
-  const handleRemoveNode = async (nodeId) => {
-    await removeCollectionAgentNode(selected.id, nodeId)
-    invalidate()
-  }
+  const nodeSet = useAgentNodeSet(selected, setCollectionAgentNodes, invalidate)
+  const handleAddNodes       = (nodeIds) => nodeSet.add(nodeIds)
+  const handleRemoveNode     = (nodeId)  => nodeSet.remove(nodeId)
+  const handleRemoveAllNodes = ()        => nodeSet.clear()
 
   const handleAddRule = async (payload) => {
     await addCollectionAgentRule(selected.id, payload)
@@ -211,6 +205,7 @@ export default function CollectionAgentsPage() {
               deleting={deleting}
               onAddNodes={handleAddNodes}
               onRemoveNode={handleRemoveNode}
+              onRemoveAllNodes={handleRemoveAllNodes}
               onAddRule={handleAddRule}
               onRemoveRule={handleRemoveRule}
               onBrowseResolved={() => setShowResolved(true)}
@@ -271,7 +266,7 @@ export default function CollectionAgentsPage() {
 
 // ── Detail Panel ───────────────────────────────────────────────────────────
 
-function DetailPanel({ agent, onClose, onEdit, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onBrowseResolved }) {
+function DetailPanel({ agent, onClose, onEdit, onDelete, deleting, onAddNodes, onRemoveNode, onRemoveAllNodes, onAddRule, onRemoveRule, onBrowseResolved }) {
   const status   = getAgentStatus(agent)
   const sync     = getConfigSyncStatus(agent)
   const explicit = agent.nodes ?? []
@@ -359,6 +354,7 @@ function DetailPanel({ agent, onClose, onEdit, onDelete, deleting, onAddNodes, o
               resolvedNodes={resolved}
               onAdd={onAddNodes}
               onRemove={onRemoveNode}
+              onRemoveAll={onRemoveAllNodes}
               onBrowseResolved={onBrowseResolved}
             />
           </Section>

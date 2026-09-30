@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Plus, X, FileCode2, TriangleAlert } from 'lucide-react'
+import { Plus, X, FileCode2, TriangleAlert, Pencil } from 'lucide-react'
 import {
   fetchTelemetryAgents, createTelemetryAgent, deleteTelemetryAgent, updateTelemetryAgent,
-  addAgentNode, removeAgentNode,
+  setAgentNodes,
   addAgentRule, removeAgentRule,
   fetchObservabilityOutputs,
   fetchAgentConfig,
@@ -16,11 +16,12 @@ import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
 import MatchRulesPanel from '../../components/agents/MatchRulesPanel'
 import NodeAssignmentPanel from '../../components/agents/NodeAssignmentPanel'
+import { useAgentNodeSet } from '../../components/agents/useAgentNodeSet'
 import NodeCoverageModal from '../../components/agents/NodeCoverageModal'
 import DeployInstructionsPanel from '../../components/agents/DeployInstructionsPanel'
 import SnmpSyslogSettingsPanel from '../../components/agents/SnmpSyslogSettingsPanel'
 import SnmpSyslogFields from '../../components/agents/SnmpSyslogFields'
-import { SNMP_SYSLOG_DEFAULTS, snmpSyslogPayload } from '../../components/agents/agentUtils'
+import { SNMP_SYSLOG_DEFAULTS, snmpSyslogFormFromAgent, snmpSyslogPayload } from '../../components/agents/agentUtils'
 import { getAgentStatus, getConfigSyncStatus, timeAgo, statusClasses, coverageCounts } from '../../components/agents/agentUtils'
 
 const CAPABILITIES = [
@@ -67,6 +68,9 @@ export default function TelemetryAgentsPage() {
   const emptyCreateForm = () => ({ name: '', description: '', capabilities: [...ALL_CAPS], ...SNMP_SYSLOG_DEFAULTS })
   const [createForm, setCreateForm] = useState(emptyCreateForm)
 
+  // Edit modal — name, description, capabilities (+ receiver settings)
+  const [editForm, setEditForm] = useState(null)
+
   // Browse resolved nodes — null when closed, otherwise the tab to open on
   const [coverageTab, setCoverageTab] = useState(null)
 
@@ -104,17 +108,37 @@ export default function TelemetryAgentsPage() {
     onSuccess: () => { invalidate(); setShowCreate(false); setCreateForm(emptyCreateForm()) },
   })
 
-  const handleCreate = () => {
-    const { name, description, capabilities } = createForm
-    const payload = {
-      name,
-      description: description || null,
-      capabilities,
-      ...(capabilities.includes('snmp_trap') || capabilities.includes('syslog_rfc5424')
-        ? snmpSyslogPayload(createForm)
-        : {}),
-    }
-    createMutation.mutate(payload)
+  const agentPayload = (form) => ({
+    name: form.name.trim(),
+    description: form.description || null,
+    capabilities: form.capabilities,
+    ...(form.capabilities.includes('snmp_trap') || form.capabilities.includes('syslog_rfc5424')
+      ? snmpSyslogPayload(form)
+      : {}),
+  })
+
+  const handleCreate = () => createMutation.mutate(agentPayload(createForm))
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateTelemetryAgent(id, payload),
+    onSuccess: () => { invalidate(); setEditForm(null) },
+  })
+
+  const handleOpenEdit = () => {
+    editMutation.reset()
+    setEditForm({
+      name: selected.name,
+      description: selected.description ?? '',
+      capabilities: [...(selected.capabilities ?? [])],
+      ...snmpSyslogFormFromAgent(selected),
+    })
+  }
+
+  const handleSaveEdit = () => {
+    const payload = agentPayload(editForm)
+    // PATCH ignores null description; send "" so it can be cleared.
+    if (payload.description === null) payload.description = ''
+    editMutation.mutate({ id: selected.id, payload })
   }
 
   const handleDelete = async () => {
@@ -129,17 +153,10 @@ export default function TelemetryAgentsPage() {
     }
   }
 
-  const handleAddNodes = async (nodeIds) => {
-    for (const id of nodeIds) {
-      await addAgentNode(selected.id, id).catch(() => {})
-    }
-    invalidate()
-  }
-
-  const handleRemoveNode = async (nodeId) => {
-    await removeAgentNode(selected.id, nodeId)
-    invalidate()
-  }
+  const nodeSet = useAgentNodeSet(selected, setAgentNodes, invalidate)
+  const handleAddNodes       = (nodeIds) => nodeSet.add(nodeIds)
+  const handleRemoveNode     = (nodeId)  => nodeSet.remove(nodeId)
+  const handleRemoveAllNodes = ()        => nodeSet.clear()
 
   const handleAddRule = async (payload) => {
     await addAgentRule(selected.id, payload)
@@ -156,8 +173,8 @@ export default function TelemetryAgentsPage() {
     invalidate()
   }
 
-  const toggleCap = (cap) => {
-    setCreateForm(p => ({
+  const toggleCap = (setForm) => (cap) => {
+    setForm(p => ({
       ...p,
       capabilities: p.capabilities.includes(cap)
         ? p.capabilities.filter(c => c !== cap)
@@ -255,10 +272,12 @@ export default function TelemetryAgentsPage() {
             <DetailPanel
               agent={selected}
               onClose={() => setSelectedId(null)}
+              onEdit={handleOpenEdit}
               onDelete={handleDelete}
               deleting={deleting}
               onAddNodes={handleAddNodes}
               onRemoveNode={handleRemoveNode}
+              onRemoveAllNodes={handleRemoveAllNodes}
               onAddRule={handleAddRule}
               onRemoveRule={handleRemoveRule}
               coverage={coverage}
@@ -287,13 +306,28 @@ export default function TelemetryAgentsPage() {
 
       {/* Modals */}
       {showCreate && (
-        <CreateModal
+        <AgentFormModal
+          mode="create"
           form={createForm}
           onChange={setCreateForm}
-          onToggleCap={toggleCap}
+          onToggleCap={toggleCap(setCreateForm)}
           onSave={handleCreate}
           saving={createMutation.isPending}
+          error={createMutation.error}
           onClose={() => setShowCreate(false)}
+        />
+      )}
+
+      {editForm && selected && (
+        <AgentFormModal
+          mode="edit"
+          form={editForm}
+          onChange={setEditForm}
+          onToggleCap={toggleCap(setEditForm)}
+          onSave={handleSaveEdit}
+          saving={editMutation.isPending}
+          error={editMutation.error}
+          onClose={() => setEditForm(null)}
         />
       )}
 
@@ -312,7 +346,7 @@ export default function TelemetryAgentsPage() {
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
-function DetailPanel({ agent, coverage, onClose, onDelete, deleting, onAddNodes, onRemoveNode, onAddRule, onRemoveRule, onBrowseResolved, onUpdateAgent }) {
+function DetailPanel({ agent, coverage, onClose, onEdit, onDelete, deleting, onAddNodes, onRemoveNode, onRemoveAllNodes, onAddRule, onRemoveRule, onBrowseResolved, onUpdateAgent }) {
   const status   = getAgentStatus(agent)
   const sync     = getConfigSyncStatus(agent)
   const explicit = agent.nodes ?? []
@@ -337,6 +371,13 @@ function DetailPanel({ agent, coverage, onClose, onDelete, deleting, onAddNodes,
           {agent.description && <p className="text-xs text-subtle mt-0.5">{agent.description}</p>}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
+          >
+            <Pencil size={11} />
+            Edit
+          </button>
           <button
             onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 px-3 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
@@ -448,6 +489,7 @@ function DetailPanel({ agent, coverage, onClose, onDelete, deleting, onAddNodes,
               resolvedNodes={resolved}
               onAdd={onAddNodes}
               onRemove={onRemoveNode}
+              onRemoveAll={onRemoveAllNodes}
               onBrowseResolved={onBrowseResolved}
             />
           </Section>
@@ -568,14 +610,19 @@ function AgentConfigModal({ agentId, agentName, onClose }) {
 
 // ── Create Modal ──────────────────────────────────────────────────────────────
 
-function CreateModal({ form, onChange, onToggleCap, onSave, saving, onClose }) {
+function AgentFormModal({ mode, form, onChange, onToggleCap, onSave, saving, error, onClose }) {
+  const isEdit = mode === 'edit'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-canvas border border-edge rounded-xl w-[480px] shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <div>
-            <h3 className="text-sm font-semibold text-content">New Telemetry Agent</h3>
-            <p className="text-[11px] text-subtle mt-0.5">Configure name, description and capabilities.</p>
+            <h3 className="text-sm font-semibold text-content">{isEdit ? 'Edit Telemetry Agent' : 'New Telemetry Agent'}</h3>
+            <p className="text-[11px] text-subtle mt-0.5">
+              {isEdit
+                ? 'Changes bump the config revision; the agent picks them up on its next poll.'
+                : 'Configure name, description and capabilities.'}
+            </p>
           </div>
           <button onClick={onClose} className="p-1 rounded text-subtle hover:text-content hover:bg-surface-hi transition-colors">
             <X size={14} />
@@ -643,16 +690,21 @@ function CreateModal({ form, onChange, onToggleCap, onSave, saving, onClose }) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-edge">
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-edge">
+          {error && (
+            <span className="mr-auto text-xs text-red-400">
+              {typeof error.detail === 'string' ? error.detail : error.message}
+            </span>
+          )}
           <button onClick={onClose} className="px-4 py-1.5 text-xs text-subtle hover:text-content hover:bg-surface-hi rounded transition-colors">
             Cancel
           </button>
           <button
             onClick={onSave}
-            disabled={!form.name || saving}
+            disabled={!form.name.trim() || saving}
             className="px-4 py-1.5 text-xs font-medium text-content bg-surface-hi hover:bg-edge rounded border border-edge transition-colors disabled:opacity-40"
           >
-            {saving ? 'Creating…' : 'Create'}
+            {isEdit ? (saving ? 'Saving…' : 'Save') : (saving ? 'Creating…' : 'Create')}
           </button>
         </div>
       </div>

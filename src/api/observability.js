@@ -15,9 +15,10 @@ export const fetchTelemetryAgents = ({ name, limit = 50, offset = 0 } = {}) =>
       return { items: data.items ?? [], total: data.total ?? 0 }
     })
 
-// Single-agent read — unlike the listing, includes `unrenderable_nodes`.
+// Single-agent read with per-node render coverage (`node_coverage`). Coverage
+// runs the telemetry providers server-side, so it's opt-in and only the UI asks.
 export const fetchTelemetryAgent = (id) =>
-  apiFetch(`/api/v1/observability/agents/${id}`)
+  apiFetch(`/api/v1/observability/agents/${id}?include_coverage=true`)
 
 export const createTelemetryAgent = (payload) =>
   apiFetch('/api/v1/observability/agents', {
@@ -39,6 +40,14 @@ export const addAgentNode = (agentId, nodeId) =>
 
 export const removeAgentNode = (agentId, nodeId) =>
   apiFetch(`/api/v1/observability/agents/${agentId}/nodes/${nodeId}`, { method: 'DELETE' })
+
+// Declarative explicit membership: `node_ids` replaces the set ([] removes all).
+// Rule-matched nodes stay covered. 409 if `expected_revision` is stale.
+export const setAgentNodes = (agentId, { node_ids, expected_revision }) =>
+  apiFetch(`/api/v1/observability/agents/${agentId}/nodes`, {
+    method: 'PUT',
+    body: JSON.stringify({ node_ids, expected_revision }),
+  })
 
 export const addAgentRule = (agentId, rule) =>
   apiFetch(`/api/v1/observability/agents/${agentId}/rules`, {

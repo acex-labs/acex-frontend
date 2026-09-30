@@ -5,8 +5,13 @@ import { API_URL } from '../../config'
 const TABS = ['Local', 'Docker Compose', 'Kubernetes']
 const IMAGE = 'ghcr.io/acex-labs/acex-collection-agent:latest'
 
+// Agents look themselves up by name (the *_AGENT_ID variables are deprecated).
+const SAFE = /^[A-Za-z0-9._@%+=:,/-]+$/
+const shellQuote = (v) => (SAFE.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`)
+const yamlQuote  = (v) => JSON.stringify(v) // a JSON string is a valid YAML double-quoted scalar
+
 function buildSnippets(agentType, agentId, agentName, agent) {
-  const envVar = agentType === 'telemetry' ? 'TELEMETRY_AGENT_ID' : 'COLLECTION_AGENT_ID'
+  const envVar = agentType === 'telemetry' ? 'TELEMETRY_AGENT_NAME' : 'COLLECTION_AGENT_NAME'
   const slug = agentName.toLowerCase().replace(/[^a-z0-9-]/g, '-')
   // Namespaced app label — used consistently for metadata labels, selectors
   // and the Service selector so it can't collide with other apps in the cluster.
@@ -25,7 +30,7 @@ function buildSnippets(agentType, agentId, agentName, agent) {
 
   const localCollection = `docker run -d --name ${slug} \\
   -e ACEX_API_URL=${API_URL} \\
-  -e ${envVar}=${agentId} \\
+  -e ${envVar}=${shellQuote(agentName)} \\
   --restart unless-stopped \\
   ${IMAGE}`
 
@@ -35,7 +40,7 @@ docker volume create ${slug}-config
 # Start the ACEX sidecar (writes config to the shared volume)
 docker run -d --name ${slug}-sidecar \\
   -e ACEX_API_URL=${API_URL} \\
-  -e ${envVar}=${agentId} \\
+  -e ${envVar}=${shellQuote(agentName)} \\
   -v ${slug}-config:/etc/telegraf \\
   --restart unless-stopped \\
   ${IMAGE}
@@ -95,7 +100,7 @@ ${k8sContainerPorts}          volumeMounts:
             - name: ACEX_API_URL
               value: "${API_URL}"
             - name: ${envVar}
-              value: "${agentId}"
+              value: ${yamlQuote(agentName)}
           volumeMounts:
             - name: telegraf-config
               mountPath: /etc/telegraf
@@ -126,7 +131,7 @@ spec:
             - name: ACEX_API_URL
               value: "${API_URL}"
             - name: ${envVar}
-              value: "${agentId}"`
+              value: ${yamlQuote(agentName)}`
 
   const composeTelemetry = `services:
   telegraf:
@@ -139,7 +144,7 @@ ${hasReceivers ? `    ports:\n${composePorts}\n` : ''}    volumes:
     image: ${IMAGE}
     environment:
       - ACEX_API_URL=${API_URL}
-      - ${envVar}=${agentId}
+      - ${yamlQuote(`${envVar}=${agentName}`)}
     volumes:
       - telegraf-config:/etc/telegraf
     restart: unless-stopped
@@ -152,7 +157,7 @@ volumes:
     image: ${IMAGE}
     environment:
       - ACEX_API_URL=${API_URL}
-      - ${envVar}=${agentId}
+      - ${yamlQuote(`${envVar}=${agentName}`)}
     restart: unless-stopped`
 
   return {
@@ -239,7 +244,7 @@ function DeployModal({ agentType, agentId, agentName, agent, onClose }) {
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-edge shrink-0">
           <span className="text-[11px] text-subtle font-mono">
-            Agent ID: <span className="text-content">{agentId}</span>
+            Agent: <span className="text-content">{agentName}</span> · id {agentId}
           </span>
           <button
             onClick={onClose}

@@ -407,7 +407,7 @@ function RegionsCard({ siteId, siteName }) {
   )
 }
 
-function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange }) {
+function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange, onShowNodes }) {
   const hasCoords = site.latitude != null && site.longitude != null
 
   return (
@@ -443,12 +443,15 @@ function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange })
 
         <ContactsCard siteName={site.name} />
 
-        <div className="bg-surface border border-edge rounded-md px-5 py-4">
+        <button
+          onClick={onShowNodes}
+          className="bg-surface border border-edge rounded-md px-5 py-4 text-left w-full hover:border-brand/40 transition-colors"
+        >
           <div className="text-2xl font-semibold text-content tabular-nums">
             {nodeCount ?? <span className="text-subtle animate-pulse">—</span>}
           </div>
           <div className="text-[10px] uppercase tracking-widest text-subtle mt-0.5">Node Instances</div>
-        </div>
+        </button>
       </div>
 
       {/* Right: map */}
@@ -725,6 +728,7 @@ export default function SitePage() {
                   nodeCount={nodeCount}
                   editing={editing}
                   draft={draft}
+                  onShowNodes={() => setTab('nodes')}
                   onDraftChange={setDraftField}
                 />
               </div>

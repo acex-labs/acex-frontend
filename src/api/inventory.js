@@ -23,12 +23,12 @@ const normalizeNode = (n) => ({
   logical_node_id: n.logical_node_id,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, management_connection_ip, sort, order, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, management_connection_ip, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, management_connection_ip, sort, order, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 

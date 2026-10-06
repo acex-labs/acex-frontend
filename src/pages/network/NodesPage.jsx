@@ -50,7 +50,7 @@ const COLUMNS = [
   { key: 'provision_status', label: 'Provisioning' },
   { key: 'ned_id',   label: 'Driver' },
   { key: 'regions',  label: 'Regions', render: (v) => v?.join(', ') || '—' },
-  { key: 'id',       label: 'ID' },
+  { key: 'id',       label: 'ID', sortable: true },
 ]
 
 export default function NodesPage() {

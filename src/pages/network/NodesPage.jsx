@@ -43,14 +43,14 @@ const FILTERS = [
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
-  { key: 'management_connections', label: 'IP Address', render: (v) => v?.[0]?.target_ip ?? '—' },
+  { key: 'ip', label: 'IP Address', sortable: true, render: (_, row) => row.management_connections?.[0]?.target_ip ?? '—' },
   { key: 'site',     label: 'Site',     sortable: true },
-  { key: 'role',     label: 'Role' },
-  { key: 'admin_status',     label: 'Admin' },
-  { key: 'provision_status', label: 'Provisioning' },
+  { key: 'role',     label: 'Role',     sortable: true },
+  { key: 'admin_status',     label: 'Admin',        sortable: true },
+  { key: 'provision_status', label: 'Provisioning', sortable: true },
   { key: 'ned_id',   label: 'Driver' },
   { key: 'regions',  label: 'Regions', render: (v) => v?.join(', ') || '—' },
-  { key: 'id',       label: 'ID' },
+  { key: 'id',       label: 'ID', sortable: true },
 ]
 
 export default function NodesPage() {

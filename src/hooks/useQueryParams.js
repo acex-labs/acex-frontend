@@ -20,7 +20,7 @@ export function useQueryParams(defaults) {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
       for (const [k, v] of Object.entries(updates)) {
-        if (v === undefined || v === null || v === '' || v === defaultsRef.current[k]) {
+        if (v === undefined || v === null || v === '') {
           next.delete(k)
         } else {
           next.set(k, String(v))

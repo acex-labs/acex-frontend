@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import DataTable from '../table/DataTable'
 import JobStateBadge from './JobStateBadge'
+import JobActions from './JobActions'
 import { childSummary, formatTime } from './jobs'
 
 const COLUMNS = [
@@ -17,6 +18,7 @@ const COLUMNS = [
   { key: 'claimed_by', label: 'Worker', render: v => v ?? '—' },
   { key: 'created_at', label: 'Created', render: formatTime },
   { key: 'finished_at', label: 'Finished', render: formatTime },
+  { key: 'actions',    label: '', render: (_, row) => <JobActions job={row} /> },
 ]
 
 // Shared by the job list and a batch's page, which lists the batch's jobs.

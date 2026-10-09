@@ -5,10 +5,9 @@ const ADMIN_STYLES = {
 }
 
 const PROVISION_STYLES = {
-  unprovisioned: 'bg-surface-hi text-subtle',
-  adopted:       'bg-surface-hi text-content',
+  unprovisioned:     'bg-surface-hi text-subtle',
+  adopted:           'bg-surface-hi text-content',
   awaiting_device:   'bg-brand/10 text-brand',
-  bootstrapping:     'bg-brand/10 text-brand',
   awaiting_approval: 'bg-amber-500/10 text-amber-400',
   provisioning:      'bg-brand/10 text-brand',
   provisioned:       'bg-green-500/10 text-green-400',

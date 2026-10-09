@@ -1,9 +1,10 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft } from 'lucide-react'
 import { fetchJob, fetchJobs } from '../../api/workers'
 import JobStateBadge from '../../components/jobs/JobStateBadge'
 import JobsTable from '../../components/jobs/JobsTable'
+import JobActions from '../../components/jobs/JobActions'
 import { childSummary, formatTime } from '../../components/jobs/jobs'
 import { REFRESH_MS } from './JobsPage'
 
@@ -35,6 +36,7 @@ function Json({ title, value, tone = 'text-content' }) {
 
 export default function JobPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
@@ -66,6 +68,14 @@ export default function JobPage() {
             {isLoading ? '—' : job ? `Job ${job.id} · ${job.type}` : `Job ${id}`}
           </h1>
           {job && <JobStateBadge state={job.state} />}
+          {job && (
+            <span className="ml-auto">
+              <JobActions
+                job={job}
+                onDeleted={() => navigate(job.parent_id ? `/activity/jobs/${job.parent_id}` : '/activity/jobs')}
+              />
+            </span>
+          )}
         </div>
       </div>
 
@@ -93,6 +103,7 @@ export default function JobPage() {
                 <Field label="Attempts" value={String(job.attempts)} />
                 <Field label="Created by" value={job.created_by} />
                 <Field label="Worker" value={job.claimed_by} />
+                <Field label="Cancelled by" value={job.cancelled_by} />
                 <Field label="Created" value={formatTime(job.created_at)} />
                 {job.started_at && <Field label="Started" value={formatTime(job.started_at)} />}
                 {job.finished_at && <Field label="Finished" value={formatTime(job.finished_at)} />}

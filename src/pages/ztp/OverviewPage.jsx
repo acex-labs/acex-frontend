@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Zap, ChevronRight, Undo2 } from 'lucide-react'
-import { fetchProvisionCounts, fetchPipelineNodes, NOT_STARTED_FILTER, canUnclaim, unclaimNode } from '../../api/ztp'
+import {
+  fetchProvisionCounts, fetchPipelineNodes, fetchDiscoveringCount, NOT_STARTED_FILTER, canUnclaim, unclaimNode,
+} from '../../api/ztp'
 import { IN_FLIGHT_STATUSES } from '../../components/nodes/nodeStatus'
 import { ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import DataTable from '../../components/table/DataTable'
@@ -12,14 +14,15 @@ const REFRESH_MS = 15_000
 
 const PIPELINE = [
   { key: 'awaiting_device',   label: 'Awaiting device',   dot: 'bg-brand' },
-  { key: 'bootstrapping',     label: 'Bootstrapping',     dot: 'bg-brand' },
-  { key: 'awaiting_approval', label: 'Awaiting approval', dot: 'bg-amber-400', attention: 'border-amber-500/40' },
+  // Not a provision_status: devices that called in and are being discovered, before they match a node.
+  { key: 'discovering',       label: 'Discovering',       dot: 'bg-brand', to: '/ztp/discovery' },
+  { key: 'awaiting_approval', label: 'Awaiting approval', dot: 'bg-amber-400', attention: 'border-amber-500/40', to: '/ztp/approvals' },
   { key: 'provisioning',      label: 'Provisioning',      dot: 'bg-brand' },
   { key: 'provisioned',       label: 'Provisioned',       dot: 'bg-green-400' },
 ]
 
 // What needs a human first (failed, awaiting approval), then furthest along the pipeline.
-const ROW_ORDER = ['failed', 'awaiting_approval', 'provisioning', 'bootstrapping', 'awaiting_device', 'not_started']
+const ROW_ORDER = ['failed', 'awaiting_approval', 'provisioning', 'awaiting_device', 'not_started']
 
 const COVERAGE = [
   { label: 'Provisioned',   keys: ['provisioned'],      bar: 'bg-green-500' },
@@ -84,7 +87,7 @@ function StageCard({ label, value, dot, onClick, className = '' }) {
         {value ?? <span className="animate-pulse text-subtle">—</span>}
       </div>
       <div className="flex items-center gap-1.5 mt-0.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
         <span className="text-[10px] uppercase tracking-widest text-subtle">{label}</span>
       </div>
     </button>
@@ -168,6 +171,13 @@ export default function OverviewPage() {
     refetchInterval: REFRESH_MS,
   })
 
+  const { data: discovering } = useQuery({
+    queryKey: ['ztp', 'discovering-count'],
+    queryFn: fetchDiscoveringCount,
+    refetchInterval: REFRESH_MS,
+  })
+  const stageCounts = counts && { ...counts, discovering }
+
   const { data: active = [], isLoading } = useQuery({
     queryKey: ['ztp', 'pipeline'],
     queryFn: fetchPipelineNodes,
@@ -196,10 +206,10 @@ export default function OverviewPage() {
               <ChevronRight size={14} className="text-subtle shrink-0 hidden sm:block" />
               <StageCard
                 label={stage.label}
-                value={counts?.[stage.key]}
+                value={stageCounts?.[stage.key]}
                 dot={stage.dot}
-                onClick={() => toNodes({ provision_status: stage.key })}
-                className={stage.attention && counts?.[stage.key] ? stage.attention : ''}
+                onClick={() => (stage.to ? navigate(stage.to) : toNodes({ provision_status: stage.key }))}
+                className={stage.attention && stageCounts?.[stage.key] ? stage.attention : ''}
               />
             </div>
           ))}

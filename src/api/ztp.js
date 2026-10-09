@@ -50,7 +50,28 @@ export const claimAsset = async ({ asset, logicalNode }) => {
 
 // A claim can be undone as long as the node has never been in service and full
 // config hasn't gone out: the asset returns to Unclaimed, the logical node to planned.
-const UNCLAIMABLE_STAGES = ['not_started', 'awaiting_device', 'bootstrapping', 'awaiting_approval', 'failed']
+const UNCLAIMABLE_STAGES = ['not_started', 'awaiting_device', 'awaiting_approval', 'failed']
 export const canUnclaim = node => node.admin_status === 'planned' && UNCLAIMABLE_STAGES.includes(node.stage)
 
 export const unclaimNode = node => deleteNodeInstance(node.id)
+
+// Discoveries: what a device says it is, held until an administrator approves it.
+const query = params =>
+  new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null))
+
+export const fetchDiscoveries = (params = {}) => apiFetch(`/api/v1/ztp_discoveries?${query(params)}`)
+
+export const fetchDiscovery = id => apiFetch(`/api/v1/ztp_discoveries/${id}`)
+
+// action: 'approve' or 'reject'
+export const reviewDiscovery = (id, action) => apiFetch(`/api/v1/ztp_discoveries/${id}/${action}`, { method: 'POST' })
+
+// Call-ins: devices that fetched a bootstrap, one per IP, and how far discovery got.
+export const fetchCalls = (params = {}) => apiFetch(`/api/v1/ztp_calls?${query(params)}`)
+
+export const retryDiscovery = ip => apiFetch(`/api/v1/ztp_calls/${encodeURIComponent(ip)}/retry`, { method: 'POST' })
+
+// Devices still being discovered: called in, not yet reported.
+export const fetchDiscoveringCount = () =>
+  Promise.all(['waiting', 'discovering'].map(stage => fetchCalls({ stage, limit: 1 }).then(d => d.total)))
+    .then(([waiting, discovering]) => waiting + discovering)

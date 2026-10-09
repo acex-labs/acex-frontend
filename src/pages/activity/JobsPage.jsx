@@ -5,6 +5,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import Pagination from '../../components/table/Pagination'
 import JobsTable from '../../components/jobs/JobsTable'
+import PurgeJobsButton from '../../components/jobs/PurgeJobsButton'
 import { JOB_STATES } from '../../components/jobs/jobs'
 
 // Jobs move on their own, so the list follows them without a reload.
@@ -29,7 +30,11 @@ export default function JobsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <PageHeader title="Jobs" description="Work the backend has handed to workers, newest first" />
+      <PageHeader
+        title="Jobs"
+        description="Work the backend has handed to workers, newest first"
+        actions={<PurgeJobsButton />}
+      />
       <TableToolbar
         filters={FILTERS}
         values={{ state: params.state, type: params.type }}

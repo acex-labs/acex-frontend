@@ -12,5 +12,6 @@ export async function apiFetch(path, options = {}) {
     err.detail = await res.json().then(b => b?.detail).catch(() => undefined)
     throw err
   }
+  if (res.status === 204) return null
   return res.json()
 }

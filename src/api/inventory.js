@@ -23,12 +23,12 @@ const normalizeNode = (n) => ({
   logical_node_id: n.logical_node_id,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, management_connection_ip, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, management_connection_ip, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
@@ -89,8 +89,8 @@ export const createRegionAssignment = ({ region_name, site_name }) =>
 export const deleteRegionAssignment = (id) =>
   apiFetch(`/api/v1/inventory/region_assignments/${id}`, { method: 'DELETE' })
 
-export const fetchLogicalNodes = ({ hostname, site, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, limit, offset })}`)
+export const fetchLogicalNodes = ({ hostname, site, role, assigned, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, role, assigned, limit, offset })}`)
 
 export const fetchLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`)

@@ -6,6 +6,7 @@ import { AutopilotModule }  from './autopilot'
 import { ZtpModule }        from './ztp'
 import { SettingsModule }   from './settings'
 import { PlatformModule }   from './platform'
+import { AboutModule }      from './about'
 
 /**
  * All registered modules in display order.
@@ -35,5 +36,6 @@ export const MODULES = [
   AutopilotModule,
   ZtpModule,
   SettingsModule,
+  AboutModule,
   PlatformModule,  // adminOnly — only visible when admin mode is on
 ]

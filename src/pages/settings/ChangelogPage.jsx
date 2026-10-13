@@ -132,8 +132,17 @@ function Coming({ items }) {
   )
 }
 
+const releaseKey = release => release.version ?? 'unreleased'
+
+const releaseLabel = release =>
+  `${release.version ?? 'Not released yet'}${release.date ? ` · ${formatDate(release.date)}` : ''}`
+
+const SELECT_CLASS =
+  'h-7 px-2 text-xs rounded border border-edge bg-surface-hi text-content focus:outline-none focus:border-brand/50'
+
 export default function ChangelogPage() {
-  const [component, setComponent] = useState('all')
+  const [componentId, setComponentId] = useState(null)
+  const [version, setVersion] = useState('latest')
   const { data, isLoading, error } = useQuery({
     queryKey: ['changelog'],
     queryFn: fetchChangelog,
@@ -141,56 +150,76 @@ export default function ChangelogPage() {
   })
 
   const sections = data?.sections ?? []
-  const components = sections.flatMap(s => s.components)
-  const names = Object.fromEntries(components.map(c => [c.id, c.name]))
-  const shown = sections
-    .map(section => ({
-      ...section,
-      releases: section.releases.filter(r => (component === 'all' || r.component === component) && r.entries.length > 0),
-      coming: component === 'all' ? section.coming : [],
-    }))
-    .filter(section => section.releases.length > 0 || section.coming.length > 0)
+  const options = sections.flatMap(section => section.components.map(c => ({ ...c, section })))
+  const current = options.find(o => o.id === componentId) ?? options[0]
+
+  const releases = current
+    ? current.section.releases.filter(r => r.component === current.id && r.entries.length > 0)
+    : []
+  const latest = releases[0]
+  const release = version === 'latest' ? latest : releases.find(r => releaseKey(r) === version) ?? latest
+  const showPlanned = version === 'latest' && current && current.section.coming.length > 0
+
+  const chooseComponent = id => {
+    setComponentId(id)
+    setVersion('latest')
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
         title="What's new"
         description="What changed in each release, and what is planned"
-        actions={components.length > 1 && (
-          <select
-            value={component}
-            onChange={e => setComponent(e.target.value)}
-            className="h-7 px-2 text-xs rounded border border-edge bg-surface-hi text-content focus:outline-none focus:border-brand/50"
-          >
-            <option value="all">All components</option>
-            {components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+        actions={current && (
+          <div className="flex items-center gap-2">
+            {options.length > 1 && (
+              <select
+                aria-label="Component"
+                value={current.id}
+                onChange={e => chooseComponent(e.target.value)}
+                className={SELECT_CLASS}
+              >
+                {sections.map(section => (
+                  <optgroup key={section.id} label={section.name}>
+                    {section.components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            )}
+            {releases.length > 0 && (
+              <select
+                aria-label="Version"
+                value={version}
+                onChange={e => setVersion(e.target.value)}
+                className={SELECT_CLASS}
+              >
+                <option value="latest">Latest ({releaseLabel(latest)})</option>
+                {releases.slice(1).map(r => <option key={releaseKey(r)} value={releaseKey(r)}>{releaseLabel(r)}</option>)}
+              </select>
+            )}
+          </div>
         )}
       />
       <div className="flex-1 overflow-auto px-6 py-4 max-w-3xl">
         {isLoading && <p className="text-xs text-subtle">Loading…</p>}
         {error && <p className="text-xs text-red-400">Could not load release notes: {error.message}</p>}
-        {data && shown.length === 0 && (
+        {data && !current && (
           <p className="text-xs text-subtle">No release notes yet. They appear here from the next release.</p>
         )}
-        {shown.map(section => (
-          <div key={section.id} className="mb-10">
-            {sections.length > 1 && (
+        {current && (
+          <>
+            {current.section.id !== 'product' && (
               <h2 className="text-xs font-semibold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
-                {section.name}
-                {section.id !== 'product' && <Badge>Added by your organisation</Badge>}
+                {current.section.name}
+                <Badge>Added by your organisation</Badge>
               </h2>
             )}
-            {section.coming.length > 0 && <Coming items={section.coming} />}
-            {section.releases.map(release => (
-              <Release
-                key={`${release.component}:${release.version ?? 'unreleased'}`}
-                release={release}
-                componentName={names[release.component] ?? release.component}
-              />
-            ))}
-          </div>
-        ))}
+            {showPlanned && <Coming items={current.section.coming} />}
+            {release
+              ? <Release release={release} componentName={current.name} />
+              : <p className="text-xs text-subtle">No release notes yet for {current.name}.</p>}
+          </>
+        )}
       </div>
     </div>
   )

@@ -3,7 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ARG BUILD_ID=""
+ENV VITE_BUILD_ID=$BUILD_ID
 RUN npm run build
+
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html

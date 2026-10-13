@@ -7,13 +7,14 @@ const ADMIN_STYLES = {
 const PROVISION_STYLES = {
   unprovisioned:     'bg-surface-hi text-subtle',
   adopted:           'bg-surface-hi text-content',
+  enrolled:          'bg-brand/10 text-brand',
+  // awaiting_device, awaiting_approval and ready are ZTP stages of an enrolled node.
   awaiting_device:   'bg-brand/10 text-brand',
   awaiting_approval: 'bg-amber-500/10 text-amber-400',
   provisioning:      'bg-brand/10 text-brand',
   provisioned:       'bg-green-500/10 text-green-400',
   failed:            'bg-red-500/10 text-red-400',
-  // Not a provision_status: the ZTP overview's name for bound nodes nobody has started.
-  not_started:       'bg-surface-hi text-content',
+  ready:             'bg-sky-500/10 text-sky-400',
 }
 
 const BADGE_CLS = 'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider'

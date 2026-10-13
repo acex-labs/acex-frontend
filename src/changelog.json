@@ -1,0 +1,1254 @@
+{
+  "schema_version": 1,
+  "component": "acex-frontend",
+  "name": "ACEX web interface",
+  "releases": [
+    {
+      "version": "0.0.35",
+      "date": "2026-10-01",
+      "entries": [
+        {
+          "id": "01-the-node-instances-card-on-a-site-opens-",
+          "kind": "changed",
+          "title": "The Node Instances card on a site opens the site's nodes tab",
+          "description": "On a site's Overview tab, clicking the Node Instances count now switches to the Nodes tab of that site.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#11",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.34",
+      "date": "2026-09-30",
+      "entries": [
+        {
+          "id": "04-a-ztp-section-with-an-overview-page-appe",
+          "kind": "added",
+          "title": "A ZTP section with an Overview page appears in the navigation",
+          "description": "The new ZTP > Overview page is a placeholder: it says that no provisioning activity is shown yet and that devices onboarded via Zero Touch Provisioning will appear there later.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#10",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-choose-new-or-existing-device-when-creat",
+          "kind": "added",
+          "title": "Choose new or existing device when creating a node",
+          "description": "The create-node dialog has a new Provisioning choice: \"New device — provision later\" or \"Existing device — adopt as brownfield\", next to the Admin status.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#10",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-bulk-action-set-admin-status-and-agent-m",
+          "kind": "changed",
+          "title": "Bulk action \"Set Admin Status\" and agent match rules use the new statuses",
+          "description": "The bulk action formerly called \"Set Status\" is now \"Set Admin Status\" and offers planned, active and decommissioned. Agent match rules can match on Admin status and Provision status instead of Status.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#10",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-nodes-show-an-admin-status-and-a-provisi",
+          "kind": "changed",
+          "title": "Nodes show an admin status and a provisioning status instead of one status",
+          "description": "Node tables, the site's Nodes tab and the node page now have an Admin column (planned, active, decommissioned) and a Provisioning column. On a node's page you can edit the admin status; the provisioning status is read-only. The statuses \"init\" and \"maintenance\" no longer exist.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#10",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.33",
+      "date": "2026-09-30",
+      "entries": [
+        {
+          "id": "03-bulk-actions-on-the-nodes-page-can-set-r",
+          "kind": "added",
+          "title": "Bulk actions on the Nodes page can set Role and Site",
+          "description": "Besides Set NED and Set Status, the bulk actions dialog now offers Set Role and Set Site (with site suggestions). The change is applied to each node's logical node, so other nodes sharing it change too.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "0952dde",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-remove-all-explicit-nodes-from-a-telemet",
+          "kind": "added",
+          "title": "Remove all explicit nodes from a telemetry or collection agent at once",
+          "description": "The Explicit Nodes section of an agent has a Remove all button with a confirmation step; nodes that are also matched by a rule stay covered. If someone else changed the agent in the meantime, a message asks you to try again instead of overwriting their change.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "0952dde",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-telemetry-agents-can-be-edited",
+          "kind": "added",
+          "title": "Telemetry agents can be edited",
+          "description": "The telemetry agent detail panel has a new Edit button. It opens a dialog to change the name, description, capabilities and SNMP trap / syslog receiver settings. The agent picks up the change on its next poll.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "0952dde",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-agent-deployment-snippets-identify-the-a",
+          "kind": "changed",
+          "title": "Agent deployment snippets identify the agent by name",
+          "description": "The Local, Docker Compose and Kubernetes snippets now set the agent's name (TELEMETRY_AGENT_NAME or COLLECTION_AGENT_NAME) instead of its ID. Existing deployments that use the ID variables are not changed by this release.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "0952dde",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.32",
+      "date": "2026-09-25",
+      "entries": [
+        {
+          "id": "01-telemetry-agents-show-which-nodes-could-",
+          "kind": "changed",
+          "title": "Telemetry agents show which nodes could not be fully rendered",
+          "description": "A telemetry agent's detail panel shows an Incomplete count and a warning in the Nodes section when some nodes are not rendered or only partly rendered. Its Show button opens the Resolved Nodes dialog on the matching tab.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "7d6e08a",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-the-resolved-nodes-dialog-of-telemetry-a",
+          "kind": "changed",
+          "title": "The Resolved Nodes dialog of telemetry agents shows per-capability results",
+          "description": "The dialog has the tabs All, Rendered, Partial and Not rendered, a filter by hostname or ID, and one column per capability with a mark for rendered or skipped. A Reason column explains skips, for example a missing management IP or logical node.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "7d6e08a",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.31",
+      "date": "2026-09-22",
+      "entries": [
+        {
+          "id": "01-attach-screenshots-to-a-bug-report",
+          "kind": "added",
+          "title": "Attach screenshots to a bug report",
+          "description": "The \"Report a bug\" dialog has a new optional Screenshots field. Drag in or click to add up to 3 images of at most 2 MB each, with thumbnails you can remove again.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#8",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-os-version-is-required-when-creating-an-",
+          "kind": "fixed",
+          "title": "OS version is required when creating an asset",
+          "description": "The OS Version field in the create-asset dialog is now marked required and must be filled in before the asset can be created.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#6",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.30",
+      "date": "2026-09-22",
+      "entries": [
+        {
+          "id": "03-an-asset-s-page-shows-the-node-it-is-bou",
+          "kind": "added",
+          "title": "An asset's page shows the node it is bound to",
+          "description": "The asset detail page has a Node row with a link to the node the asset is bound to. The row is not shown for unassigned assets.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#7",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-filter-assets-by-all-assigned-or-unassig",
+          "kind": "added",
+          "title": "Filter assets by All, Assigned or Unassigned",
+          "description": "The Assets page has All / Assigned / Unassigned buttons above the filters. The Unassigned button shows how many assets are not bound to a node, and the page keeps the choice in the address.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#7",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-search-assets-by-serial-number",
+          "kind": "added",
+          "title": "Search assets by serial number",
+          "description": "The Assets page has a new Serial filter next to Vendor and OS.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#7",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-the-ai-and-bug-report-buttons-no-longer-",
+          "kind": "fixed",
+          "title": "The AI and bug report buttons no longer cover the table pagination",
+          "description": "The two round buttons in the bottom-right corner sit higher, so they no longer overlap the previous/next buttons below tables.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#7",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.29",
+      "date": "2026-09-22",
+      "entries": [
+        {
+          "id": "01-find-nodes-by-ip-address-on-the-nodes-pa",
+          "kind": "added",
+          "title": "Find nodes by IP address on the Nodes page",
+          "description": "The Nodes page has a new IP Address filter and an IP Address column showing each node's management IP. The list only updates once the text starts with a private range (10., 172.16–31., 192.168.) or is a complete address.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#5",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-the-nodes-table-shows-its-loading-state-",
+          "kind": "changed",
+          "title": "The Nodes table shows its loading state on every reload",
+          "description": "The table now shows the loading indicator whenever the list is fetched again after a filter, sort or page change, not only on the first load.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "08dd463",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.28",
+      "date": "2026-09-15",
+      "entries": [
+        {
+          "id": "02-bulk-actions-on-assets-set-driver-os-or-",
+          "kind": "added",
+          "title": "Bulk actions on assets: set driver, OS or OS version",
+          "description": "Selecting assets on the Assets page and opening bulk actions now offers Set Driver, Set OS and Set Version instead of a placeholder. Assets whose version does not fit the new OS fail and keep their values; the confirmation step reports how many failed.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "71a61d2",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-creating-an-asset-guides-you-through-ven",
+          "kind": "changed",
+          "title": "Creating an asset guides you through vendor, model and OS",
+          "description": "In the create-asset dialog, Vendor is a list, Model suggests known models for that vendor (you can still type your own), and OS offers only matching systems. Vendor, Model, OS and Serial Number are now required, and the reason is shown if the backend rejects the asset.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "71a61d2",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.27",
+      "date": "2026-09-15",
+      "entries": [
+        {
+          "id": "01-the-navigation-sidebar-uses-larger-text-",
+          "kind": "changed",
+          "title": "The navigation sidebar uses larger text and icons",
+          "description": "Menu section headers, the Admin mode label and the user name are larger, Dashboard is larger still, and the user, admin mode, theme and logout icons at the bottom of the sidebar are bigger.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#4",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.26",
+      "date": "2026-09-10",
+      "entries": [
+        {
+          "id": "03-the-ai-model-can-no-longer-be-chosen-in-",
+          "kind": "removed",
+          "title": "The AI model can no longer be chosen in the chat",
+          "description": "The model drop-down in the AI assistant is replaced by a read-only indicator of the model in use, with a warning if a provider is unreachable. The backend now decides which model answers.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "dc97b2c",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-the-ai-assistant-shows-its-steps-and-can",
+          "kind": "added",
+          "title": "The AI assistant shows its steps and can offer a button to open a page",
+          "description": "While answering, the assistant lists the steps it plans and ticks them off, marking errors and skipped steps. It can also add a button that opens the node, site, node list, site list or dashboard it is talking about.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "dc97b2c",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-analysing-a-configuration-change-now-use",
+          "kind": "changed",
+          "title": "Analysing a configuration change now uses the global AI assistant",
+          "description": "On a node's History tab, the AI side panel is gone. After comparing two snapshots, \"Ask AI about this change\" opens the assistant with the starters Explain this change, Assess risk and Check alignment, and free-form questions know which snapshots are compared.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "dc97b2c",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-scrollbars-follow-the-theme",
+          "kind": "changed",
+          "title": "Scrollbars follow the theme",
+          "description": "Scrollbars are thin and use the interface colours instead of the browser default, and the dark theme asks the browser for dark form controls.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "dc97b2c",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.25",
+      "date": "2026-09-10",
+      "entries": [
+        {
+          "id": "02-every-second-table-row-is-shaded",
+          "kind": "changed",
+          "title": "Every second table row is shaded",
+          "description": "Rows in tables alternate in shade so that long lists are easier to follow across columns.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4aed725",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-the-dark-theme-is-lighter-with-clearer-l",
+          "kind": "changed",
+          "title": "The dark theme is lighter, with clearer layers and more readable text",
+          "description": "Background, panels and cards in dark mode are now distinct shades of dark grey instead of near-black, and secondary text and borders are easier to read. Page titles are brighter. The topology graphs (node neighbours and site topology) use the same colours.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4aed725",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.24",
+      "date": "2026-09-09",
+      "entries": [
+        {
+          "id": "02-a-site-can-be-renamed-when-editing-it",
+          "kind": "added",
+          "title": "A site can be renamed when editing it",
+          "description": "The Name field in a site's edit mode is now editable; saving with an empty name is not possible.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4a6cdaa",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-nodes-can-be-given-the-status-maintenanc",
+          "kind": "added",
+          "title": "Nodes can be given the status \"maintenance\"",
+          "description": "The node status choices on the node page, in the create-node dialog and in the bulk Set Status action now include maintenance, shown in amber.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4a6cdaa",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-sites-can-be-deleted-from-the-site-page",
+          "kind": "added",
+          "title": "Sites can be deleted from the site page",
+          "description": "The site page has a Delete button next to Edit, with a Confirm / Cancel step. It is disabled while node instances still use the site.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4a6cdaa",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-the-region-dialog-can-delete-a-region-an",
+          "kind": "changed",
+          "title": "The region dialog can delete a region and clear its fields",
+          "description": "Editing a region now offers Delete (with confirmation), disabled while sites are assigned to the region. Clearing Display Name or Description now actually removes them, Description is a multi-line field, and Enter saves and Esc closes the dialog.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "4a6cdaa",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.23",
+      "date": "2026-09-08",
+      "entries": [
+        {
+          "id": "02-a-node-s-status-can-be-changed-from-the-",
+          "kind": "added",
+          "title": "A node's status can be changed from the node page",
+          "description": "Clicking the status badge next to the hostname on a node page lets you pick another status from a list.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "9ce0722",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-edit-links-from-a-node-to-its-asset-and-",
+          "kind": "added",
+          "title": "Edit links from a node to its asset and logical node",
+          "description": "On a node's Overview tab, the Asset card and the Logical Node card each have an Edit link that opens that asset (or cluster) or logical node.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "9ce0722",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-nodes-can-be-created-from-the-nodes-page",
+          "kind": "added",
+          "title": "Nodes can be created from the Nodes page",
+          "description": "The Nodes page has a new Add Node button. The New Node dialog lets you pick a logical node, a single unassigned asset or an asset cluster, and a status; the new node opens when it is created.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "9ce0722",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-nodes-can-be-deleted-from-the-node-page",
+          "kind": "added",
+          "title": "Nodes can be deleted from the node page",
+          "description": "The node page has a Delete button with a Confirm / Cancel step; a message is shown if the delete fails.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "9ce0722",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "05-deployments-without-a-configured-login-p",
+          "kind": "fixed",
+          "title": "Deployments without a configured login provider no longer stop at sign-in",
+          "description": "When the backend reports that no login provider is set up, as on local or development deployments, the interface now opens directly instead of waiting for a sign-in that cannot succeed.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "9ce0722",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.22",
+      "date": "2026-09-08",
+      "entries": [
+        {
+          "id": "10-administrators-can-switch-on-admin-mode-",
+          "kind": "added",
+          "title": "Administrators can switch on admin mode and reach a Platform > Admin page",
+          "description": "Users with the admin role get a shield button in the sidebar footer. Admin mode adds an amber banner and a Platform section whose Admin page embeds the separate admin console, with an \"Open in new tab\" link. The choice is remembered in the browser.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "d6293b9",
+              "url": null
+            },
+            {
+              "label": "4a99f08",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "08-asset-and-asset-cluster-pages-for-viewin",
+          "kind": "added",
+          "title": "Asset and asset cluster pages for viewing, editing and deleting",
+          "description": "Clicking a row on the Assets page opens the asset; a new Clusters view on the same page lists asset clusters. A cluster page shows its member assets, which you can add or remove, and both pages can be deleted.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "3abb021",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "05-create-sites-regions-contacts-logical-no",
+          "kind": "added",
+          "title": "Create sites, regions, contacts, logical nodes, assets and clusters",
+          "description": "The Sites, Regions, Contacts, Logical Nodes and Assets pages each have an Add button (Add Site, Add Region, Add Contact, Add Logical Node, Add Asset or Add Cluster) that opens a creation dialog.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "3abb021",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-observe-config-history-page-for-browsing",
+          "kind": "added",
+          "title": "Observe > Config History page for browsing any node's history",
+          "description": "The Config History page has a filterable node list on the left. Selecting a node shows its configuration history and comparisons on the right.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#2",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-observe-dashboards-lists-and-shows-grafa",
+          "kind": "added",
+          "title": "Observe > Dashboards lists and shows Grafana dashboards",
+          "description": "The Dashboards page, previously a placeholder, shows the available dashboards as cards. Clicking one embeds it on the page, and \"Open in Grafana\" opens it in a new tab.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#2",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "07-regions-can-be-edited-from-the-regions-p",
+          "kind": "added",
+          "title": "Regions can be edited from the Regions page",
+          "description": "Each row in the Regions table has an Edit button that opens the region's name, display name and description.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "3abb021",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-report-a-bug-from-any-page",
+          "kind": "added",
+          "title": "Report a bug from any page",
+          "description": "A round bug button above the AI button opens a \"Report a bug\" dialog with title, severity, description and optional steps. The address of the current page is attached automatically, and the dialog closes after a successful submit.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#1",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "11-set-the-grafana-and-admin-console-addres",
+          "kind": "added",
+          "title": "Set the Grafana and admin console addresses when the container starts",
+          "description": "The container now reads GRAFANA_URL (used by the Dashboards page) and NAAS_ADMIN_URL (used by the Platform > Admin page) at start, so no rebuild is needed. Without NAAS_ADMIN_URL the Admin page says it is not configured.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "#3",
+              "url": null
+            },
+            {
+              "label": "a65117b",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "06-sites-can-be-edited-and-assigned-to-regi",
+          "kind": "added",
+          "title": "Sites can be edited and assigned to regions on the site page",
+          "description": "The site page has an Edit button for display name, address, city, country and coordinates. A new Regions card on the Overview tab lets you add and remove the site's regions.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "3abb021",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "09-logical-node-rows-open-a-logical-node-pa",
+          "kind": "changed",
+          "title": "Logical node rows open a logical node page you can edit",
+          "description": "Clicking a row on the Logical Nodes page now opens the logical node, where hostname, role, site and sequence can be edited and node instances are listed. Before, it opened the Nodes list filtered by hostname. Delete is disabled while a node instance uses it.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "3abb021",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "04-view-config-on-a-telemetry-agent-opens-i",
+          "kind": "fixed",
+          "title": "\"View config\" on a telemetry agent opens in a dialog and works",
+          "description": "The link opened the configuration in a new tab, where the request was rejected. It now opens the agent's telegraf configuration in a dialog.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#2",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "12-signing-out-now-ends-the-session-and-a-f",
+          "kind": "fixed",
+          "title": "Signing out now ends the session, and a failed sign-in setup shows a message",
+          "description": "After logging out you are returned to the sign-in step instead of staying signed in. If the sign-in configuration cannot be loaded, the page shows \"Failed to load — please refresh or contact support.\"",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "6f58e6d",
+              "url": null
+            },
+            {
+              "label": "4d46442",
+              "url": null
+            },
+            {
+              "label": "e2aef72",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.19",
+      "date": "2026-09-03",
+      "entries": [
+        {
+          "id": "01-manage-a-node-s-management-connections-o",
+          "kind": "added",
+          "title": "Manage a node's management connections on its Overview tab",
+          "description": "A new Management Connections card lists each connection's type (ssh or telnet) and address. You can add a connection, mark one as primary and remove one with a confirmation step.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "95d4425",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-map-credentials-to-a-node-from-its-overv",
+          "kind": "added",
+          "title": "Map credentials to a node from its Overview tab",
+          "description": "A new Credentials card lists the credentials mapped to the node. You can add one from the existing credentials or remove one with a confirmation step.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "95d4425",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-the-node-s-asset-card-shows-an-active-ma",
+          "kind": "changed",
+          "title": "The node's Asset card shows an Active marker and a Change icon",
+          "description": "When an asset is attached, the Asset card header shows a green Active marker, and the Change button has an arrow icon.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "95d4425",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.18",
+      "date": "2026-09-03",
+      "entries": [
+        {
+          "id": "02-the-browser-tab-shows-the-acex-icon",
+          "kind": "changed",
+          "title": "The browser tab shows the ACEX icon",
+          "description": "The browser tab icon is now an ACEX logo instead of the default build-tool icon.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "ee09f9c",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-clicking-a-site-on-the-dashboard-map-ope",
+          "kind": "fixed",
+          "title": "Clicking a site on the dashboard map opens that site",
+          "description": "The site markers on the dashboard map used to open the sites list. They now open the page of the site you clicked.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "ee09f9c",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.15",
+      "date": "2026-08-28",
+      "entries": [
+        {
+          "id": "01-maps-use-a-new-map-source-with-place-nam",
+          "kind": "changed",
+          "title": "Maps use a new map source with place names and visible attribution",
+          "description": "The site maps now load their tiles from Esri instead of Carto, in a light or dark style matching the theme, with a place-name layer on top and a map attribution shown in the corner.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "040f3c9",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.14",
+      "date": "2026-08-27",
+      "entries": [
+        {
+          "id": "01-output-destinations-can-no-longer-be-add",
+          "kind": "removed",
+          "title": "Output destinations can no longer be added to a telemetry agent",
+          "description": "The Output Destinations section on a telemetry agent, with its Add output dialog for InfluxDB versions 1 to 3 and the Remove button, is gone. Outputs are now a backend-wide setting.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "88a476f",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-telemetry-agents-show-the-backend-s-infl",
+          "kind": "added",
+          "title": "Telemetry agents show the backend's InfluxDB output, read-only",
+          "description": "A new Backend InfluxDB Output section lists the URL and version of the output(s) the backend applies to every agent's generated configuration. It says when none is configured.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "88a476f",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.13",
+      "date": "2026-08-26",
+      "entries": [
+        {
+          "id": "01-site-topology-calls-nodes-outside-the-si",
+          "kind": "changed",
+          "title": "Site topology calls nodes outside the site \"Off-site\" instead of \"External\"",
+          "description": "On a site's topology tab, the node label, the legend entry and the toggle button now read Off-site (managed), Show off-site and Hide off-site.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "39c7566",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.12",
+      "date": "2026-08-26",
+      "entries": [
+        {
+          "id": "02-a-new-deployment-is-picked-up-without-cl",
+          "kind": "changed",
+          "title": "A new deployment is picked up without clearing the browser cache",
+          "description": "The web server now tells browsers not to cache the runtime settings file or the main page, so changed settings and new versions take effect on the next page load.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "b892afd",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-site-topology-nodes-are-readable-in-ligh",
+          "kind": "fixed",
+          "title": "Site topology nodes are readable in light mode",
+          "description": "The site and neighbour boxes in the topology tab used fixed dark colours. They now follow the theme, so they look right in light mode.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "49ffaa6",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.11",
+      "date": "2026-08-25",
+      "entries": [
+        {
+          "id": "01-a-custom-accent-colour-brand-primary-app",
+          "kind": "fixed",
+          "title": "A custom accent colour (BRAND_PRIMARY) applies in light and dark mode",
+          "description": "The accent colour set with BRAND_PRIMARY and BRAND_PRIMARY_SOFT at container start now overrides the colours of both themes. The topology mini-map also reads the accent colour correctly.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "ace8f94",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.10",
+      "date": "2026-08-25",
+      "entries": [
+        {
+          "id": "02-only-the-accent-colour-can-be-customised",
+          "kind": "removed",
+          "title": "Only the accent colour can be customised at container start",
+          "description": "BRAND_PRIMARY and BRAND_PRIMARY_SOFT still set the accent colours. The BRAND_CANVAS, BRAND_SURFACE, BRAND_SURFACE_HI, BRAND_EDGE, BRAND_CONTENT and BRAND_SUBTLE settings are no longer applied, because background and text colours follow the light or dark theme.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "02015f3",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-switching-between-light-and-dark-mode-wo",
+          "kind": "fixed",
+          "title": "Switching between light and dark mode works in deployed builds",
+          "description": "The theme colours are now defined so that the light/dark switch reaches every part of the page in production builds.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "02015f3",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.8",
+      "date": "2026-08-25",
+      "entries": [
+        {
+          "id": "01-light-mode-with-a-theme-button-in-the-si",
+          "kind": "added",
+          "title": "Light mode, with a theme button in the sidebar",
+          "description": "A button in the sidebar footer cycles through system, light and dark. The choice is remembered in the browser, \"system\" follows the operating system, and the page loads in the chosen theme without a flash.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "0ce647c",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-node-rows-on-a-site-s-nodes-tab-open-the",
+          "kind": "added",
+          "title": "Node rows on a site's Nodes tab open the node",
+          "description": "On the Nodes tab of a site, clicking a row or its hostname now opens that node's page.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "0ce647c",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.7",
+      "date": "2026-08-19",
+      "entries": [
+        {
+          "id": "01-choose-the-ai-provider-and-model-in-the-",
+          "kind": "added",
+          "title": "Choose the AI provider and model in the AI assistant",
+          "description": "The AI assistant header has a model picker grouped by provider, with tool and vision markers, prices, context size and a warning for unreachable providers. Until you pick a model the backend's default and failover chain is used.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "c4a96bb",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-the-ai-assistant-shows-token-cost-and-co",
+          "kind": "added",
+          "title": "The AI assistant shows token, cost and CO2 usage for the session",
+          "description": "A usage line at the bottom of the AI panel adds up tokens, cost and CO2 for the answers in the session. It counts up while an answer streams, and Clear resets it.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "c4a96bb",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.6",
+      "date": "2026-08-14",
+      "entries": [
+        {
+          "id": "01-telemetry-agents-can-receive-snmp-traps-",
+          "kind": "added",
+          "title": "Telemetry agents can receive SNMP traps and syslog",
+          "description": "Creating a telemetry agent with the SNMP trap or syslog capability shows receiver settings: SNMP version (v2c, v3 or both), trap and syslog ports, and the credential to use. The same settings appear in an SNMP / Syslog section of the agent, with Edit and Save.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "968d534",
+              "url": null
+            },
+            {
+              "label": "4bf93e0",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-agent-deploy-instructions-publish-the-re",
+          "kind": "changed",
+          "title": "Agent deploy instructions publish the receiver ports",
+          "description": "For agents that receive traps or syslog, the Docker and Docker Compose snippets map the UDP ports and the Kubernetes snippet adds a load-balanced Service. Kubernetes labels are now unique per agent.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "968d534",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-snmpv3-credentials-use-drop-downs-for-au",
+          "kind": "changed",
+          "title": "SNMPv3 credentials use drop-downs for authentication and privacy protocols",
+          "description": "On the Credentials page the SNMPv3 auth and privacy protocol fields are now lists of the supported values (for example SHA256 or AES) instead of free text.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "968d534",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.5",
+      "date": "2026-08-13",
+      "entries": [
+        {
+          "id": "04-a-site-page-opens-at-once-when-you-come-",
+          "kind": "changed",
+          "title": "A site page opens at once when you come from the sites list",
+          "description": "The site page reuses the data already loaded for the list, so its details show immediately and are refreshed in the background.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "ac67217",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "05-copy-buttons-on-a-credential-are-labelle",
+          "kind": "changed",
+          "title": "Copy buttons on a credential are labelled \"Copy to clipboard\"",
+          "description": "The copy buttons in a credential's detail panel were labelled with the field name. They now say \"Copy to clipboard\" and change to \"Copied!\" after use.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "ac67217",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "03-site-markers-on-maps-are-steady-and-use-",
+          "kind": "changed",
+          "title": "Site markers on maps are steady and use the accent colour",
+          "description": "The markers for sites on the maps no longer pulse with a ring, and they take the configured accent colour.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "a35d28a",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "02-the-ai-assistant-explains-clearly-when-a",
+          "kind": "changed",
+          "title": "The AI assistant explains clearly when AI is not available",
+          "description": "When the AI service cannot be reached, the assistant shows an amber message telling you to ask an administrator to turn on the AI Ops service, instead of an error line inside the answer. Animated dots show while it waits for the first words.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "ac67217",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "01-reloading-a-page-or-opening-a-direct-lin",
+          "kind": "fixed",
+          "title": "Reloading a page or opening a direct link no longer gives a \"not found\"",
+          "description": "The web server in the container now sends every address to the interface, so refreshing the browser on a page such as a node or a site, or opening a bookmarked link, works.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "50cbc02",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "0.0.0",
+      "date": "2026-07-14",
+      "entries": [
+        {
+          "id": "01-a-new-web-interface",
+          "kind": "added",
+          "title": "A new web interface",
+          "description": "A sidebar leads to the Dashboard, Network (Nodes, Sites, Regions, Logical Nodes, Assets, Contacts), Configs (Config Maps, Translator, NEDs) and Settings (Credentials, Telemetry Agents, Collection Agents), with an AI assistant. Import, Operations, Observe, Autopilot and About are listed but only show \"Coming soon\".",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "048d13a",
+              "url": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "coming": []
+}

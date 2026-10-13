@@ -203,6 +203,12 @@ export default function ChangelogPage() {
       <div className="flex-1 overflow-auto px-6 py-4 max-w-3xl">
         {isLoading && <p className="text-xs text-subtle">Loading…</p>}
         {error && <p className="text-xs text-red-400">Could not load release notes: {error.message}</p>}
+        {data?.backendError && (
+          <p className="text-xs text-subtle mb-4">
+            The release notes of the backend could not be loaded ({data.backendError}). Only the web
+            interface's own notes are shown.
+          </p>
+        )}
         {data && !current && (
           <p className="text-xs text-subtle">No release notes yet. They appear here from the next release.</p>
         )}

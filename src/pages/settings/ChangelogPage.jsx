@@ -18,7 +18,14 @@ const KINDS = [
 ]
 
 const AUDIENCE = { admin: 'For administrators', developer: 'For developers' }
-const STATUS = { planned: 'Planned', in_progress: 'In progress', preview: 'Preview' }
+const STATUS = { considering: 'Considering', planned: 'Planned', in_progress: 'In progress', preview: 'Preview' }
+// The roadmap lists what is further along first.
+const ROADMAP_GROUPS = [
+  ['in_progress', 'Under way'],
+  ['preview', 'In preview'],
+  ['planned', 'Planned'],
+  ['considering', 'Being considered'],
+]
 
 // Each choice is a point of view. An administrator is also a user, so that view includes what users see.
 const AUDIENCE_FILTERS = [
@@ -225,6 +232,57 @@ function Highlights({ highlights, componentName, onOpen }) {
   )
 }
 
+// What is coming, for the whole product: each item says what it is, how far along it is and where it lands.
+function Roadmap({ items, componentName, onOpen }) {
+  const groups = ROADMAP_GROUPS
+    .map(([status, label]) => [label, items.filter(item => (item.status ?? 'planned') === status)])
+    .filter(([, group]) => group.length > 0)
+  if (groups.length === 0) return <p className="text-xs text-subtle">Nothing is planned yet.</p>
+  return (
+    <div>
+      {groups.map(([label, group]) => (
+        <section key={label} className="mb-8">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-subtle mb-3">{label}</h2>
+          <ul className="space-y-5">
+            {group.map(item => {
+              const target = [item.planned_version && `version ${item.planned_version}`, item.planned_date]
+                .filter(Boolean)
+                .join(' · ')
+              return (
+                <li key={item.id}>
+                  <div className="flex items-baseline gap-3">
+                    <h3 className="text-sm font-semibold text-heading">{item.title}</h3>
+                    {target && <span className="text-[11px] text-subtle whitespace-nowrap">{target}</span>}
+                  </div>
+                  {item.description && <div className="mt-1"><Markdown>{item.description}</Markdown></div>}
+                  {item.components?.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {item.components.map(id => componentName(id) ? (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-label={`Open the notes of ${componentName(id)}`}
+                          onClick={() => onOpen(id, null)}
+                          className="text-[10px] px-2 py-0.5 rounded-full border border-edge text-brand hover:bg-brand/10"
+                        >
+                          {componentName(id)}
+                        </button>
+                      ) : (
+                        <span key={id} className="text-[10px] px-2 py-0.5 text-subtle">{id}</span>
+                      ))}
+                    </div>
+                  )}
+                  <Refs refs={item.refs} />
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function Coming({ items }) {
   return (
     <section className="mb-8 rounded border border-edge bg-surface/50 px-4 py-3">
@@ -281,9 +339,11 @@ export default function ChangelogPage() {
   const filterOf = id => AUDIENCE_FILTERS.find(f => f.id === id) ?? AUDIENCE_FILTERS[0]
   const filter = filterOf(override ?? ownId)
   const highlights = data?.highlights ?? []
+  const sections = data?.sections ?? []
+  // The product's planned work, gathered from all its components; a deployment's has its own place.
+  const roadmap = sections.find(section => section.id === 'product')?.coming ?? []
   // Highlights are what a visitor sees first; without any, the details are all there is.
   const view = viewChoice ?? (highlights.length > 0 ? 'highlights' : 'details')
-  const sections = data?.sections ?? []
   const options = sections.flatMap(section => section.components.map(c => ({ ...c, section })))
   const current = options.find(o => o.id === componentId) ?? options[0]
 
@@ -308,7 +368,15 @@ export default function ChangelogPage() {
   const latest = releases[0]
   const overview = version === 'overview'
   const release = version === 'latest' || overview ? latest : releases.find(r => releaseKey(r) === version) ?? latest
-  const showPlanned = version === 'latest' && current && current.section.coming.length > 0
+  // The product's planned work is under Roadmap; a deployment's own is shown with its notes.
+  const showPlanned =
+    version === 'latest' && current && current.section.id !== 'product' && current.section.coming.length > 0
+
+  const views = [
+    highlights.length > 0 && ['highlights', 'Highlights'],
+    roadmap.length > 0 && ['roadmap', 'Roadmap'],
+    ['details', 'Details'],
+  ].filter(Boolean)
 
   const showView = id => {
     setViewChoice(id)
@@ -365,9 +433,9 @@ export default function ChangelogPage() {
         description="What the product can do, and what changed in each release"
         actions={current && (
           <div className="flex items-center gap-2">
-            {highlights.length > 0 && (
+            {views.length > 1 && (
               <div className="flex rounded border border-edge overflow-hidden" role="group" aria-label="View">
-                {[['highlights', 'Highlights'], ['details', 'Details']].map(([id, label]) => (
+                {views.map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
@@ -448,6 +516,9 @@ export default function ChangelogPage() {
               </button>.
             </p>
           </>
+        )}
+        {current && view === 'roadmap' && (
+          <Roadmap items={roadmap} componentName={componentName} onOpen={openDetails} />
         )}
         {current && view === 'details' && (
           <>

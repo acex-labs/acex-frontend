@@ -13,9 +13,11 @@ import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkActionsModal from '../../components/bulk/BulkActionsModal'
 import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
 import CreateNodeModal from '../../components/nodes/CreateNodeModal'
+import { ADMIN_STATUSES, PROVISION_STATUSES } from '../../components/nodes/nodeStatus'
 
 const DEFAULTS = {
   hostname: '', site: '', region: '', role: '', id: '', management_connection_ip: '',
+  admin_status: '', provision_status: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
@@ -38,6 +40,8 @@ const FILTERS = [
   { key: 'site',     label: 'Site',     width: '120px' },
   { key: 'region',   label: 'Region',   width: '120px' },
   { key: 'role',     label: 'Role',     width: '120px' },
+  { key: 'admin_status',     label: 'Admin',        width: '120px', options: ADMIN_STATUSES },
+  { key: 'provision_status', label: 'Provisioning', width: '130px', options: PROVISION_STATUSES },
   { key: 'id',       label: 'ID',       width: '90px'  },
 ]
 
@@ -222,7 +226,7 @@ export default function NodesPage() {
 
       <TableToolbar
         filters={FILTERS}
-        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, management_connection_ip: params.management_connection_ip }}
+        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, management_connection_ip: params.management_connection_ip, admin_status: params.admin_status, provision_status: params.provision_status }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 

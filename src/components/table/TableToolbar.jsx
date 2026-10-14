@@ -17,6 +17,14 @@ export default function TableToolbar({ filters = [], values = {}, onChange, acti
     timerRef.current = setTimeout(() => onChange(next), 400)
   }
 
+  // Selects apply immediately — there is nothing to debounce.
+  const handleSelect = (key, val) => {
+    const next = { ...local, [key]: val }
+    setLocal(next)
+    clearTimeout(timerRef.current)
+    onChange(next)
+  }
+
   const handleClear = (key) => {
     const next = { ...local, [key]: '' }
     setLocal(next)
@@ -28,7 +36,21 @@ export default function TableToolbar({ filters = [], values = {}, onChange, acti
 
   return (
     <div className="flex items-center gap-2 px-6 py-2 border-b border-edge shrink-0 flex-wrap">
-      {filters.map(f => (
+      {filters.map(f => f.options ? (
+        <select
+          key={f.key}
+          value={local[f.key] ?? ''}
+          onChange={e => handleSelect(f.key, e.target.value)}
+          className={[
+            'h-7 px-2 text-xs rounded border transition-colors bg-surface-hi focus:outline-none',
+            local[f.key] ? 'border-brand/50 text-content' : 'border-edge text-subtle focus:border-brand',
+          ].join(' ')}
+          style={{ width: f.width ?? '140px' }}
+        >
+          <option value="">{f.label}</option>
+          {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
         <div key={f.key} className="relative">
           <input
             type="text"

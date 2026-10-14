@@ -14,6 +14,6 @@ export const SettingsModule = {
     { path: '/settings/credentials',       load: () => import('../../pages/settings/CredentialsPage') },
     { path: '/settings/telemetry-agents',  load: () => import('../../pages/settings/TelemetryAgentsPage') },
     { path: '/settings/collection-agents', load: () => import('../../pages/settings/CollectionAgentsPage') },
-    { path: '/settings/about',             placeholder: 'About' },
+    { path: '/settings/about',             load: () => import('../../pages/settings/AboutPage') },
   ],
 }

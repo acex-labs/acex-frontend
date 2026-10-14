@@ -19,6 +19,33 @@ const KINDS = [
 const AUDIENCE = { admin: 'For administrators', developer: 'For developers' }
 const STATUS = { planned: 'Planned', in_progress: 'In progress', preview: 'Preview' }
 
+// Most entries are for the people who use ACEX. Developer entries (models, client methods) are for integrators,
+// so they are left out unless asked for.
+const AUDIENCE_FILTERS = [
+  { id: 'standard', label: 'Users and administrators', audiences: ['user', 'admin'] },
+  { id: 'developers', label: 'Developers', audiences: ['developer'] },
+  { id: 'all', label: 'Everyone', audiences: ['user', 'admin', 'developer'] },
+]
+const AUDIENCE_NAME = { user: 'users', admin: 'administrators', developer: 'developers' }
+const STORAGE_KEY = 'acex.whatsnew.audience'
+
+const readStoredAudience = () => {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    return AUDIENCE_FILTERS.some(f => f.id === stored) ? stored : 'standard'
+  } catch {
+    return 'standard'
+  }
+}
+
+const storeAudience = id => {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, id)
+  } catch {
+    // Private browsing or blocked storage: the choice just is not remembered.
+  }
+}
+
 const formatDate = iso =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 
@@ -83,6 +110,21 @@ function Entry({ entry }) {
   )
 }
 
+function Entries({ entries }) {
+  return KINDS.map(([kind, label]) => {
+    const items = entries.filter(e => e.kind === kind)
+    if (items.length === 0) return null
+    return (
+      <div key={kind} className="mb-4">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-subtle mb-1.5">{label}</h3>
+        <ul className="pl-5 list-disc space-y-2">
+          {items.map(entry => <Entry key={entry.id} entry={entry} />)}
+        </ul>
+      </div>
+    )
+  })
+}
+
 function Release({ release, componentName }) {
   return (
     <section className="mb-8">
@@ -91,19 +133,34 @@ function Release({ release, componentName }) {
         {release.date && <span className="font-normal text-subtle">· {formatDate(release.date)}</span>}
         {!release.version && <Badge tone="brand">Not released yet · development build</Badge>}
       </h2>
-      {KINDS.map(([kind, label]) => {
-        const items = release.entries.filter(e => e.kind === kind)
-        if (items.length === 0) return null
-        return (
-          <div key={kind} className="mb-4">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-subtle mb-1.5">{label}</h3>
-            <ul className="pl-5 list-disc space-y-2">
-              {items.map(entry => <Entry key={entry.id} entry={entry} />)}
-            </ul>
-          </div>
-        )
-      })}
+      {release.summary && <p className="text-[13px] text-content mb-4">{release.summary}</p>}
+      <Entries entries={release.entries} />
     </section>
+  )
+}
+
+// What the release is about when it has no summary of its own: its first entry.
+const gist = release =>
+  release.entries.length > 1
+    ? `${release.entries[0].title} and ${release.entries.length - 1} more`
+    : release.entries[0].title
+
+// One line per release, the details a click away: for the reader who wants to see what came when.
+function Overview({ releases }) {
+  return (
+    <div className="mb-8 divide-y divide-edge border-y border-edge">
+      {releases.map(release => (
+        <details key={release.version ?? 'unreleased'} className="group py-2">
+          <summary className="cursor-pointer list-none flex items-baseline gap-3 text-[13px]">
+            <span className="text-subtle transition-transform group-open:rotate-90">›</span>
+            <span className="w-24 shrink-0 font-semibold text-heading">{release.version ?? 'Not released'}</span>
+            <span className="w-24 shrink-0 text-[11px] text-subtle">{release.date ? formatDate(release.date) : ''}</span>
+            <span className="text-content">{release.summary ?? gist(release)}</span>
+          </summary>
+          <div className="pt-3 pl-5"><Entries entries={release.entries} /></div>
+        </details>
+      ))}
+    </div>
   )
 }
 
@@ -143,26 +200,48 @@ const SELECT_CLASS =
 export default function ChangelogPage() {
   const [componentId, setComponentId] = useState(null)
   const [version, setVersion] = useState('latest')
+  const [audienceId, setAudienceId] = useState(readStoredAudience)
   const { data, isLoading, error } = useQuery({
     queryKey: ['changelog'],
     queryFn: fetchChangelog,
     staleTime: 300_000,
   })
 
+  const filter = AUDIENCE_FILTERS.find(f => f.id === audienceId) ?? AUDIENCE_FILTERS[0]
   const sections = data?.sections ?? []
   const options = sections.flatMap(section => section.components.map(c => ({ ...c, section })))
   const current = options.find(o => o.id === componentId) ?? options[0]
 
-  const releases = current
-    ? current.section.releases.filter(r => r.component === current.id && r.entries.length > 0)
-    : []
+  // What a component has published, and what is left of it for the chosen audience.
+  const releasesOf = option => option.section.releases.filter(r => r.component === option.id && r.entries.length > 0)
+  const shownReleasesOf = option =>
+    releasesOf(option)
+      .map(r => ({ ...r, entries: r.entries.filter(e => filter.audiences.includes(e.audience ?? 'user')) }))
+      .filter(r => r.entries.length > 0)
+  const audiencesOf = option =>
+    [...new Set(releasesOf(option).flatMap(r => r.entries.map(e => e.audience ?? 'user')))]
+      .map(a => AUDIENCE_NAME[a] ?? a)
+      .join(', ')
+  // A component with notes only for another audience says so, instead of looking empty.
+  const optionLabel = option =>
+    releasesOf(option).length > 0 && shownReleasesOf(option).length === 0
+      ? `${option.name} (${audiencesOf(option)})`
+      : option.name
+
+  const releases = current ? shownReleasesOf(current) : []
+  const hasNotes = current ? releasesOf(current).length > 0 : false
   const latest = releases[0]
-  const release = version === 'latest' ? latest : releases.find(r => releaseKey(r) === version) ?? latest
+  const overview = version === 'overview'
+  const release = version === 'latest' || overview ? latest : releases.find(r => releaseKey(r) === version) ?? latest
   const showPlanned = version === 'latest' && current && current.section.coming.length > 0
 
   const chooseComponent = id => {
     setComponentId(id)
     setVersion('latest')
+  }
+  const chooseAudience = id => {
+    setAudienceId(id)
+    storeAudience(id)
   }
 
   return (
@@ -172,6 +251,15 @@ export default function ChangelogPage() {
         description="What changed in each release, and what is planned"
         actions={current && (
           <div className="flex items-center gap-2">
+            <span className="text-[11px] text-subtle">Show</span>
+            <select
+              aria-label="Audience"
+              value={filter.id}
+              onChange={e => chooseAudience(e.target.value)}
+              className={SELECT_CLASS}
+            >
+              {AUDIENCE_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+            </select>
             {options.length > 1 && (
               <select
                 aria-label="Component"
@@ -181,7 +269,9 @@ export default function ChangelogPage() {
               >
                 {sections.map(section => (
                   <optgroup key={section.id} label={section.name}>
-                    {section.components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {section.components
+                      .map(c => ({ ...c, section }))
+                      .map(c => <option key={c.id} value={c.id}>{optionLabel(c)}</option>)}
                   </optgroup>
                 ))}
               </select>
@@ -194,6 +284,7 @@ export default function ChangelogPage() {
                 className={SELECT_CLASS}
               >
                 <option value="latest">Latest ({releaseLabel(latest)})</option>
+                {releases.length > 1 && <option value="overview">All releases (overview)</option>}
                 {releases.slice(1).map(r => <option key={releaseKey(r)} value={releaseKey(r)}>{releaseLabel(r)}</option>)}
               </select>
             )}
@@ -221,9 +312,19 @@ export default function ChangelogPage() {
               </h2>
             )}
             {showPlanned && <Coming items={current.section.coming} />}
-            {release
-              ? <Release release={release} componentName={current.name} />
-              : <p className="text-xs text-subtle">No release notes yet for {current.name}.</p>}
+            {overview && <Overview releases={releases} />}
+            {!overview && release && <Release release={release} componentName={current.name} />}
+            {!release && hasNotes && (
+              <p className="text-xs text-subtle">
+                The notes for {current.name} are written for {audiencesOf(current)}.{' '}
+                <button type="button" className="text-brand hover:underline" onClick={() => chooseAudience('all')}>
+                  Show the notes for {audiencesOf(current)}
+                </button>
+              </p>
+            )}
+            {!release && !hasNotes && (
+              <p className="text-xs text-subtle">No release notes yet for {current.name}.</p>
+            )}
           </>
         )}
       </div>

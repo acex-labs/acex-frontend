@@ -26,6 +26,7 @@
     {
       "version": "0.0.34",
       "date": "2026-09-30",
+      "summary": "Nodes show an admin status and a provisioning status, and a ZTP section appears in the navigation.",
       "entries": [
         {
           "id": "04-a-ztp-section-with-an-overview-page-appe",
@@ -88,6 +89,7 @@
     {
       "version": "0.0.33",
       "date": "2026-09-30",
+      "summary": "Telemetry agents can be edited and emptied of explicit nodes, and bulk actions can set role and site.",
       "entries": [
         {
           "id": "03-bulk-actions-on-the-nodes-page-can-set-r",
@@ -218,6 +220,7 @@
     {
       "version": "0.0.30",
       "date": "2026-09-22",
+      "summary": "Assets can be searched by serial number and filtered by assigned or unassigned, and an asset shows its node.",
       "entries": [
         {
           "id": "03-an-asset-s-page-shows-the-node-it-is-bou",
@@ -368,6 +371,7 @@
     {
       "version": "0.0.26",
       "date": "2026-09-10",
+      "summary": "The AI assistant shows its steps and can open pages for you; choosing a model in the chat is gone.",
       "entries": [
         {
           "id": "03-the-ai-model-can-no-longer-be-chosen-in-",
@@ -464,6 +468,7 @@
     {
       "version": "0.0.24",
       "date": "2026-09-09",
+      "summary": "Sites can be renamed and deleted, regions can be deleted, and nodes can be put in maintenance.",
       "entries": [
         {
           "id": "02-a-site-can-be-renamed-when-editing-it",
@@ -526,6 +531,7 @@
     {
       "version": "0.0.23",
       "date": "2026-09-08",
+      "summary": "Nodes can be created, edited and deleted from the interface, and deployments without a login provider open directly.",
       "entries": [
         {
           "id": "02-a-node-s-status-can-be-changed-from-the-",
@@ -602,6 +608,7 @@
     {
       "version": "0.0.22",
       "date": "2026-09-08",
+      "summary": "Create and edit sites, regions, logical nodes and assets, browse config history and Grafana dashboards, and report a bug from any page.",
       "entries": [
         {
           "id": "10-administrators-can-switch-on-admin-mode-",
@@ -792,6 +799,7 @@
     {
       "version": "0.0.19",
       "date": "2026-09-03",
+      "summary": "A node's management connections and credentials can be managed from its Overview tab.",
       "entries": [
         {
           "id": "01-manage-a-node-s-management-connections-o",

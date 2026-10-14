@@ -28,7 +28,12 @@ export function withInterfaceNotes(response) {
     ...interfaceNotes.releases.map(release => ({ ...release, component: INTERFACE_COMPONENT.id })),
   ].sort(byNewest)
   product.coming = [...product.coming, ...(interfaceNotes.coming ?? [])]
-  return { ...response, sections }
+  // Highlights are the product's, whichever component keeps them; the interface may keep its own.
+  const own = (interfaceNotes.highlights ?? []).map(h => ({ ...h, id: `${interfaceNotes.component}/${h.id}` }))
+  const highlights = [...(response?.highlights ?? []), ...own].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.title.localeCompare(a.title),
+  )
+  return { ...response, highlights, sections }
 }
 
 // Release notes of the backend and of every installed component that publishes

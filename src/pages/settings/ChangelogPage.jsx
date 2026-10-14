@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { fetchChangelog } from '../../api/changelog'
 import PageHeader from '../../components/ui/PageHeader'
+import { useAdmin } from '../../context/AdminContext'
 
 // In the order they are shown within a release.
 const KINDS = [
@@ -19,22 +20,23 @@ const KINDS = [
 const AUDIENCE = { admin: 'For administrators', developer: 'For developers' }
 const STATUS = { planned: 'Planned', in_progress: 'In progress', preview: 'Preview' }
 
-// Most entries are for the people who use ACEX. Developer entries (models, client methods) are for integrators,
-// so they are left out unless asked for.
+// Each choice is a point of view. An administrator is also a user, so that view includes what users see.
 const AUDIENCE_FILTERS = [
-  { id: 'standard', label: 'Users and administrators', audiences: ['user', 'admin'] },
-  { id: 'developers', label: 'Developers', audiences: ['developer'] },
+  { id: 'user', label: 'Users', audiences: ['user'] },
+  { id: 'admin', label: 'Administrators (includes users)', audiences: ['user', 'admin'] },
+  { id: 'developer', label: 'Developers', audiences: ['developer'] },
   { id: 'all', label: 'Everyone', audiences: ['user', 'admin', 'developer'] },
 ]
 const AUDIENCE_NAME = { user: 'users', admin: 'administrators', developer: 'developers' }
 const STORAGE_KEY = 'acex.whatsnew.audience'
 
-const readStoredAudience = () => {
+// The choice a person made before, if any; otherwise the view that fits their role.
+const readStoredAudience = fallback => {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return AUDIENCE_FILTERS.some(f => f.id === stored) ? stored : 'standard'
+    return AUDIENCE_FILTERS.some(f => f.id === stored) ? stored : fallback
   } catch {
-    return 'standard'
+    return fallback
   }
 }
 
@@ -164,6 +166,65 @@ function Overview({ releases }) {
   )
 }
 
+const monthOf = iso =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
+
+// The product's features, newest first, in the words of the people who use it. Each says where it shipped.
+function Highlights({ highlights, componentName, onOpen }) {
+  const months = []
+  for (const h of highlights) {
+    const month = monthOf(h.date)
+    if (months.at(-1)?.month !== month) months.push({ month, items: [] })
+    months.at(-1).items.push(h)
+  }
+  return (
+    <div>
+      {months.map(({ month, items }) => (
+        <section key={month} className="mb-8">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-subtle mb-3">{month}</h2>
+          <ul className="space-y-5">
+            {items.map(h => (
+              <li key={h.id}>
+                <div className="flex items-baseline gap-3">
+                  <span className="w-24 shrink-0 text-[11px] text-subtle">{formatDate(h.date)}</span>
+                  <h3 className="text-sm font-semibold text-heading">{h.title}</h3>
+                </div>
+                <div className="pl-[calc(6rem+0.75rem)]">
+                  {h.description && <div className="mt-1"><Markdown>{h.description}</Markdown></div>}
+                  {h.components?.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {h.components.map((c, index) => {
+                        const name = componentName(c.component)
+                        const label = [name ?? c.component, c.version].filter(Boolean).join(' ')
+                        const key = `${c.component}-${c.version ?? 'any'}-${index}`
+                        return name ? (
+                          <button
+                            key={key}
+                            type="button"
+                            aria-label={`Open the notes of ${label}`}
+                            onClick={() => onOpen(c.component, c.version)}
+                            className="text-[10px] px-2 py-0.5 rounded-full border border-edge text-brand hover:bg-brand/10"
+                          >
+                            {label}
+                          </button>
+                        ) : (
+                          <span key={key} className="text-[10px] px-2 py-0.5 text-subtle">
+                            {label}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function Coming({ items }) {
   return (
     <section className="mb-8 rounded border border-edge bg-surface/50 px-4 py-3">
@@ -200,23 +261,37 @@ const SELECT_CLASS =
 export default function ChangelogPage() {
   const [componentId, setComponentId] = useState(null)
   const [version, setVersion] = useState('latest')
-  const [audienceId, setAudienceId] = useState(readStoredAudience)
+  const { isAdmin } = useAdmin() ?? {}
+  // What the person chose before, if anything. Without a choice the view follows their role, also when the
+  // role is only known a moment after the page opened.
+  const [chosen, setChosen] = useState(() => readStoredAudience(null))
+  // Set when a highlight leads to notes the chosen point of view would hide. It is not the person's choice:
+  // it is dropped at the next navigation, and the notice says why the list changed.
+  const [override, setOverride] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [viewChoice, setViewChoice] = useState(null)
+  const bodyRef = useRef(null)
   const { data, isLoading, error } = useQuery({
     queryKey: ['changelog'],
     queryFn: fetchChangelog,
     staleTime: 300_000,
   })
 
-  const filter = AUDIENCE_FILTERS.find(f => f.id === audienceId) ?? AUDIENCE_FILTERS[0]
+  const ownId = chosen ?? (isAdmin ? 'admin' : 'user')
+  const filterOf = id => AUDIENCE_FILTERS.find(f => f.id === id) ?? AUDIENCE_FILTERS[0]
+  const filter = filterOf(override ?? ownId)
+  const highlights = data?.highlights ?? []
+  // Highlights are what a visitor sees first; without any, the details are all there is.
+  const view = viewChoice ?? (highlights.length > 0 ? 'highlights' : 'details')
   const sections = data?.sections ?? []
   const options = sections.flatMap(section => section.components.map(c => ({ ...c, section })))
   const current = options.find(o => o.id === componentId) ?? options[0]
 
-  // What a component has published, and what is left of it for the chosen audience.
+  // What a component has published, and what is left of it for a point of view.
   const releasesOf = option => option.section.releases.filter(r => r.component === option.id && r.entries.length > 0)
-  const shownReleasesOf = option =>
+  const shownReleasesOf = (option, audiences = filter.audiences) =>
     releasesOf(option)
-      .map(r => ({ ...r, entries: r.entries.filter(e => filter.audiences.includes(e.audience ?? 'user')) }))
+      .map(r => ({ ...r, entries: r.entries.filter(e => audiences.includes(e.audience ?? 'user')) }))
       .filter(r => r.entries.length > 0)
   const audiencesOf = option =>
     [...new Set(releasesOf(option).flatMap(r => r.entries.map(e => e.audience ?? 'user')))]
@@ -235,63 +310,123 @@ export default function ChangelogPage() {
   const release = version === 'latest' || overview ? latest : releases.find(r => releaseKey(r) === version) ?? latest
   const showPlanned = version === 'latest' && current && current.section.coming.length > 0
 
+  const showView = id => {
+    setViewChoice(id)
+    if (id === 'highlights') {
+      setOverride(null)
+      setNotice(null)
+    }
+  }
   const chooseComponent = id => {
     setComponentId(id)
     setVersion('latest')
+    setOverride(null)
+    setNotice(null)
+  }
+  const chooseVersion = value => {
+    setVersion(value)
+    setNotice(null)
   }
   const chooseAudience = id => {
-    setAudienceId(id)
+    setChosen(id)
     storeAudience(id)
+    setOverride(null)
+    setNotice(null)
+  }
+  const componentName = id => options.find(o => o.id === id)?.name
+
+  // From a highlight to the release it shipped in. If the person's point of view would hide that release,
+  // everyone's notes are shown for now, and the page says so. A release that is not there falls back to the latest.
+  const openDetails = (id, releaseVersion) => {
+    const option = options.find(o => o.id === id)
+    if (!option) return
+    const target = releaseVersion ? releasesOf(option).find(r => r.version === releaseVersion) : undefined
+    const own = filterOf(ownId)
+    const visible = target?.entries.some(e => own.audiences.includes(e.audience ?? 'user'))
+    const widen = Boolean(target) && !visible
+    const audiences = filterOf(widen ? 'all' : ownId).audiences
+    const newest = shownReleasesOf(option, audiences)[0]
+
+    setOverride(widen ? 'all' : null)
+    if (widen) setNotice(`${option.name} ${releaseVersion} has no notes for ${own.label}, so everyone's are shown.`)
+    else if (releaseVersion && !target) setNotice(`${option.name} ${releaseVersion} has no notes of its own; the latest are shown.`)
+    else setNotice(null)
+    setViewChoice('details')
+    setComponentId(id)
+    setVersion(target && newest?.version !== releaseVersion ? releaseVersion : 'latest')
+    // The list the person clicked in is gone: put the keyboard at the top of what replaced it.
+    requestAnimationFrame(() => bodyRef.current?.focus())
   }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
         title="What's new"
-        description="What changed in each release, and what is planned"
+        description="What the product can do, and what changed in each release"
         actions={current && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-subtle">Show</span>
-            <select
-              aria-label="Audience"
-              value={filter.id}
-              onChange={e => chooseAudience(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              {AUDIENCE_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-            </select>
-            {options.length > 1 && (
-              <select
-                aria-label="Component"
-                value={current.id}
-                onChange={e => chooseComponent(e.target.value)}
-                className={SELECT_CLASS}
-              >
-                {sections.map(section => (
-                  <optgroup key={section.id} label={section.name}>
-                    {section.components
-                      .map(c => ({ ...c, section }))
-                      .map(c => <option key={c.id} value={c.id}>{optionLabel(c)}</option>)}
-                  </optgroup>
+            {highlights.length > 0 && (
+              <div className="flex rounded border border-edge overflow-hidden" role="group" aria-label="View">
+                {[['highlights', 'Highlights'], ['details', 'Details']].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={view === id}
+                    onClick={() => showView(id)}
+                    className={`h-7 px-3 text-xs ${view === id ? 'bg-brand/10 text-brand' : 'text-subtle hover:text-content'}`}
+                  >
+                    {label}
+                  </button>
                 ))}
-              </select>
+              </div>
             )}
-            {releases.length > 0 && (
-              <select
-                aria-label="Version"
-                value={version}
-                onChange={e => setVersion(e.target.value)}
-                className={SELECT_CLASS}
-              >
-                <option value="latest">Latest ({releaseLabel(latest)})</option>
-                {releases.length > 1 && <option value="overview">All releases (overview)</option>}
-                {releases.slice(1).map(r => <option key={releaseKey(r)} value={releaseKey(r)}>{releaseLabel(r)}</option>)}
-              </select>
+            {view === 'details' && (
+              <>
+                <span className="text-[11px] text-subtle">Show</span>
+                <select
+                  aria-label="Audience"
+                  value={filter.id}
+                  onChange={e => chooseAudience(e.target.value)}
+                  className={SELECT_CLASS}
+                >
+                  {AUDIENCE_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+                {options.length > 1 && (
+                  <select
+                    aria-label="Component"
+                    value={current.id}
+                    onChange={e => chooseComponent(e.target.value)}
+                    className={SELECT_CLASS}
+                  >
+                    {sections.map(section => (
+                      <optgroup key={section.id} label={section.name}>
+                        {section.components
+                          .map(c => ({ ...c, section }))
+                          .map(c => <option key={c.id} value={c.id}>{optionLabel(c)}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
+                {releases.length > 0 && (
+                  <select
+                    aria-label="Version"
+                    value={version}
+                    onChange={e => chooseVersion(e.target.value)}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="latest">Latest ({releaseLabel(latest)})</option>
+                    {releases.length > 1 && <option value="overview">All releases (overview)</option>}
+                    {releases.slice(1).map(r => (
+                      <option key={releaseKey(r)} value={releaseKey(r)}>{releaseLabel(r)}</option>
+                    ))}
+                  </select>
+                )}
+              </>
             )}
           </div>
         )}
       />
-      <div className="flex-1 overflow-auto px-6 py-4 max-w-3xl">
+      <div ref={bodyRef} tabIndex={-1} className="flex-1 overflow-auto px-6 py-4 max-w-3xl outline-none">
         {isLoading && <p className="text-xs text-subtle">Loading…</p>}
         {error && <p className="text-xs text-red-400">Could not load release notes: {error.message}</p>}
         {data?.backendError && (
@@ -303,7 +438,18 @@ export default function ChangelogPage() {
         {data && !current && (
           <p className="text-xs text-subtle">No release notes yet. They appear here from the next release.</p>
         )}
-        {current && (
+        {current && view === 'highlights' && (
+          <>
+            <Highlights highlights={highlights} componentName={componentName} onOpen={openDetails} />
+            <p className="text-xs text-subtle">
+              Every change, by component, is under{' '}
+              <button type="button" className="text-brand hover:underline" onClick={() => showView('details')}>
+                Details
+              </button>.
+            </p>
+          </>
+        )}
+        {current && view === 'details' && (
           <>
             {current.section.id !== 'product' && (
               <h2 className="text-xs font-semibold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
@@ -311,6 +457,7 @@ export default function ChangelogPage() {
                 <Badge>Added by your organisation</Badge>
               </h2>
             )}
+            {notice && <p className="text-xs text-subtle mb-4">{notice}</p>}
             {showPlanned && <Coming items={current.section.coming} />}
             {overview && <Overview releases={releases} />}
             {!overview && release && <Release release={release} componentName={current.name} />}

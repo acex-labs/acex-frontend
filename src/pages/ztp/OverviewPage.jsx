@@ -2,7 +2,10 @@ import { useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Zap, ChevronRight, X, AlertTriangle } from 'lucide-react'
-import { fetchProvisionCounts, fetchZtpNodes, fetchDiscoveringCount, fetchDiscoveringCalls } from '../../api/ztp'
+import {
+  fetchProvisionCounts, fetchZtpNodes, fetchDiscoveringCount, fetchDiscoveringCalls, fetchAwaitingReview, fetchAwaitingClaim,
+  reviewOf,
+} from '../../api/ztp'
 import { ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import { formatTime } from '../../components/jobs/jobs'
 import { useQueryParams } from '../../hooks/useQueryParams'
@@ -10,7 +13,7 @@ import DataTable from '../../components/table/DataTable'
 import ZtpNodePanel from '../../components/ztp/ZtpNodePanel'
 
 // Provisioning moves fast compared to the rest of the inventory.
-const REFRESH_MS = 15_000
+const REFRESH_MS = 3_000
 
 // stage: a ZTP stage, or 'stalled'. node: the node shown in the drawer.
 const DEFAULTS = { stage: '', node: '' }
@@ -21,7 +24,11 @@ const PIPELINE = [
   // Not a node stage: devices that called in and are being discovered, before anyone knows which node they
   // are. Its table lists those call-ins instead of nodes.
   { key: 'discovering',       label: 'Discovering',       dot: 'bg-brand' },
+  // Not a node stage either: devices with a report waiting for review, claimed or not. Its table lists their
+  // call-ins, as Discovery's To review tab does.
   { key: 'awaiting_approval', label: 'Awaiting approval', dot: 'bg-amber-400', attention: 'text-amber-400' },
+  // Not a node stage: approved assets no node has claimed yet. Its table lists them.
+  { key: 'awaiting_claim',    label: 'Awaiting claim',    dot: 'bg-sky-400', attention: 'text-sky-400' },
   { key: 'ready',             label: 'Ready',             dot: 'bg-sky-400', attention: 'text-sky-400' },
   { key: 'provisioning',      label: 'Provisioning',      dot: 'bg-brand' },
   { key: 'provisioned',       label: 'Provisioned',       dot: 'bg-green-400' },
@@ -75,6 +82,45 @@ const CALL_COLUMNS = [
   { key: 'last_seen', label: 'Last seen', render: v => muted(formatTime(v)) },
 ]
 
+const REVIEW_COLUMNS = [
+  { key: 'source_ip', label: 'Source IP', render: v => <span className="font-mono whitespace-nowrap">{v}</span> },
+  { key: 'serial',    label: 'Serial',    render: (_, row) => <span className="font-mono whitespace-nowrap">{reviewOf(row).target.serial_number}</span> },
+  { key: 'attempts',  label: 'Calls',     render: v => <span className="tabular-nums">{v.length}</span> },
+  { key: 'last_seen', label: 'Last seen', render: v => muted(formatTime(v)) },
+]
+
+const CLAIM_COLUMNS = [
+  { key: 'serial_number', label: 'Serial',    render: v => <span className="font-mono whitespace-nowrap">{v}</span> },
+  { key: 'hardware',      label: 'Hardware',  render: (_, row) => muted([row.vendor, row.hardware_model].filter(Boolean).join(' ')) },
+  { key: 'source_ip',     label: 'Source IP', render: v => <span className="font-mono whitespace-nowrap">{v}</span> },
+  { key: 'reviewed_at',   label: 'Approved',  render: v => muted(formatTime(v)) },
+]
+
+// Pipeline segments whose table lists devices rather than nodes.
+const DEVICE_LISTS = {
+  discovering: {
+    columns: CALL_COLUMNS,
+    rowKey: 'source_ip',
+    empty: 'No device is being discovered right now.',
+    link: { to: '/ztp/discovery', label: 'Open Discovery →' },
+    href: row => `/ztp/discovery?stage=${row.stage}`,
+  },
+  awaiting_approval: {
+    columns: REVIEW_COLUMNS,
+    rowKey: 'source_ip',
+    empty: 'No device is awaiting approval.',
+    link: { to: '/ztp/discovery?stage=to_review', label: 'Open Discovery →' },
+    href: row => `/ztp/discovery?stage=to_review&id=${reviewOf(row).target.discovery_id}`,
+  },
+  awaiting_claim: {
+    columns: CLAIM_COLUMNS,
+    rowKey: 'asset_id',
+    empty: 'No approved asset is waiting for a node.',
+    link: { to: '/ztp/unclaimed', label: 'Claim →' },
+    href: () => '/ztp/unclaimed',
+  },
+}
+
 function Card({ title, className = '', aside, children }) {
   return (
     <section className={`bg-surface border border-edge rounded-md overflow-hidden ${className}`}>
@@ -95,7 +141,7 @@ const Count = ({ value, className = 'text-content' }) => (
 function PipelineStrip({ counts, active, onSelect }) {
   return (
     <section className="bg-surface border border-edge rounded-md overflow-x-auto">
-      <div className="flex min-w-[720px]">
+      <div className="flex min-w-[840px]">
         {PIPELINE.map((stage, i) => {
           const value = counts?.[stage.key]
           const selected = active === stage.key
@@ -165,7 +211,6 @@ function AttentionCard({ counts, active, onSelect }) {
 function BacklogCard({ counts }) {
   const rows = [
     { label: 'Unclaimed assets',      value: counts?.unclaimedAssets },
-    { label: 'of which approved',     value: counts?.pool, hint: 'Discovered and approved, waiting for a node', indent: true },
     { label: 'Unbound logical nodes', value: counts?.unboundLogicalNodes },
   ]
   return (
@@ -176,7 +221,7 @@ function BacklogCard({ counts }) {
       <dl className="px-4 py-3 space-y-1.5">
         {rows.map(r => (
           <div key={r.label} className="flex items-baseline gap-2 text-xs" title={r.hint}>
-            <dt className={`flex-1 text-subtle ${r.indent ? 'pl-3' : ''}`}>{r.label}</dt>
+            <dt className="flex-1 text-subtle">{r.label}</dt>
             <dd className="text-sm"><Count value={r.value} /></dd>
           </div>
         ))}
@@ -262,9 +307,15 @@ export default function OverviewPage() {
     queryFn: fetchDiscoveringCount,
     refetchInterval: REFRESH_MS,
   })
-  const stageCounts = counts && { ...counts, discovering }
+  // Counted and listed from one query: whether a device waits for review shows only in its call-ins.
+  const { data: approvals, isLoading: approvalsLoading } = useQuery({
+    queryKey: ['ztp', 'calls', 'awaiting-review'],
+    queryFn: fetchAwaitingReview,
+    refetchInterval: REFRESH_MS,
+  })
+  const stageCounts = counts && { ...counts, discovering, awaiting_approval: approvals?.length, awaiting_claim: counts.pool }
 
-  const showingCalls = params.stage === 'discovering'
+  const deviceList = DEVICE_LISTS[params.stage]
 
   const { data, isLoading: nodesLoading } = useQuery({
     queryKey: ['ztp', 'pipeline', params.stage],
@@ -273,19 +324,30 @@ export default function OverviewPage() {
     ),
     placeholderData: keepPreviousData,
     refetchInterval: REFRESH_MS,
-    enabled: !showingCalls,
+    enabled: !deviceList,
   })
 
   const { data: calls = [], isLoading: callsLoading } = useQuery({
     queryKey: ['ztp', 'calls', 'discovering'],
     queryFn: fetchDiscoveringCalls,
     refetchInterval: REFRESH_MS,
-    enabled: showingCalls,
+    enabled: params.stage === 'discovering',
   })
 
-  const rows = showingCalls ? calls : data?.items ?? []
-  const isLoading = showingCalls ? callsLoading : nodesLoading
-  const total = showingCalls ? calls.length : data?.total ?? 0
+  const { data: claimable = [], isLoading: claimableLoading } = useQuery({
+    queryKey: ['ztp', 'discoveries', 'awaiting-claim'],
+    queryFn: fetchAwaitingClaim,
+    refetchInterval: REFRESH_MS,
+    enabled: params.stage === 'awaiting_claim',
+  })
+
+  const devices = {
+    discovering: [calls, callsLoading],
+    awaiting_approval: [approvals ?? [], approvalsLoading],
+    awaiting_claim: [claimable, claimableLoading],
+  }
+  const [rows, isLoading] = devices[params.stage] ?? [data?.items ?? [], nodesLoading]
+  const total = deviceList ? rows.length : data?.total ?? 0
 
   const filterStage = key => setParams({ stage: params.stage === key ? '' : key })
   const closeDrawer = () => setParams({ node: '' })
@@ -319,25 +381,25 @@ export default function OverviewPage() {
                   </button>
                 )}
                 <span className="ml-auto text-[11px] text-subtle">
-                  {isLoading ? '' : `${total} ${showingCalls ? 'devices' : 'nodes'}`}
+                  {isLoading ? '' : `${total} ${deviceList ? 'devices' : 'nodes'}`}
                 </span>
-                {showingCalls && (
-                  <Link to="/ztp/discovery" className="text-[11px] text-brand hover:underline">Open Discovery →</Link>
+                {deviceList && (
+                  <Link to={deviceList.link.to} className="text-[11px] text-brand hover:underline">{deviceList.link.label}</Link>
                 )}
               </>
             }
           >
             {!isLoading && rows.length === 0 ? (
-              showingCalls
-                ? <p className="py-12 text-center text-xs text-subtle">No device is being discovered right now.</p>
+              deviceList
+                ? <p className="py-12 text-center text-xs text-subtle">{deviceList.empty}</p>
                 : <EmptyActive stage={params.stage} />
-            ) : showingCalls ? (
+            ) : deviceList ? (
               <DataTable
-                columns={CALL_COLUMNS}
+                columns={deviceList.columns}
                 data={rows}
                 isLoading={isLoading}
-                rowKey="source_ip"
-                onRowClick={row => navigate(`/ztp/discovery?stage=${row.stage}`)}
+                rowKey={deviceList.rowKey}
+                onRowClick={row => navigate(deviceList.href(row))}
               />
             ) : (
               <DataTable

@@ -2,28 +2,34 @@ import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Radar, ChevronRight, ChevronDown, RotateCw, AlertTriangle, Network } from 'lucide-react'
-import { fetchCalls, retryDiscovery } from '../../api/ztp'
+import { fetchCalls, fetchDiscoveries, retryDiscovery, reviewOf, IDENTITY_CONFLICTS } from '../../api/ztp'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import { formatTime } from '../../components/jobs/jobs'
 import JobStateBadge from '../../components/jobs/JobStateBadge'
 import PageHeader from '../../components/ui/PageHeader'
+import { DiscoveryReview, BulkReview } from '../../components/ztp/DiscoveryReview'
 
 // Devices come and go quickly while they boot.
 const REFRESH_MS = 5000
 // A call-in nobody has picked up for this long probably has no worker to go to.
 const STALE_MS = 5 * 60_000
 
-// prefix: IPv4 prefix length to group call-ins by, or 'none' for a flat list.
-const DEFAULTS = { stage: '', prefix: '24' }
+// stage: a tab below. prefix: IPv4 prefix length to group call-ins by, or 'none' for a flat list.
+// id: the discovery shown in the review panel.
+const DEFAULTS = { stage: '', prefix: '24', id: '' }
 
 const PREFIXES = ['none', '16', '20', '22', '24', '26', '28']
 
+// The first tabs follow discovery, the rest review. A device whose latest attempt failed can still have an
+// earlier report waiting, so it shows under both Failed and To review.
 const STAGES = [
-  { value: '',            label: 'All' },
-  { value: 'waiting',     label: 'Waiting for worker' },
-  { value: 'discovering', label: 'Discovering' },
-  { value: 'failed',      label: 'Failed' },
-  { value: 'reported',    label: 'Reported' },
+  { value: '',            label: 'All',                match: () => true },
+  { value: 'waiting',     label: 'Waiting for worker', match: call => call.stage === 'waiting' },
+  { value: 'discovering', label: 'Discovering',        match: call => call.stage === 'discovering' },
+  { value: 'failed',      label: 'Failed',             match: call => call.stage === 'failed' },
+  { value: 'to_review',   label: 'To review',          match: (_, review) => review.status === 'unreviewed' },
+  { value: 'approved',    label: 'Approved',           match: (_, review) => review.status === 'approved' },
+  { value: 'rejected',    label: 'Rejected',           match: (_, review) => review.status === 'rejected' },
 ]
 
 const STAGE_STYLES = {
@@ -31,6 +37,9 @@ const STAGE_STYLES = {
   discovering: 'bg-brand/10 text-brand',
   failed:      'bg-red-500/10 text-red-400',
   reported:    'bg-green-500/10 text-green-400',
+  unreviewed:  'bg-amber-500/10 text-amber-400',
+  approved:    'bg-green-500/10 text-green-400',
+  rejected:    'bg-red-500/10 text-red-400',
 }
 
 // Grouping is only a way to see devices that called in from the same network
@@ -64,12 +73,14 @@ function ago(value) {
   return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`
 }
 
-function StageBadge({ call }) {
+// A report waiting for review is what needs doing, so it shows over how the latest attempt went.
+function StageBadge({ call, review }) {
   const stale = call.stage === 'waiting' && Date.now() - toDate(call.last_seen) > STALE_MS
+  const shown = review.status === 'unreviewed' || call.stage === 'reported' ? review.status ?? call.stage : call.stage
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${STAGE_STYLES[call.stage]}`}>
-        {call.stage}
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap ${STAGE_STYLES[shown]}`}>
+        {shown === 'unreviewed' ? 'to review' : shown}
       </span>
       {stale && (
         <span className="inline-flex items-center gap-1 text-[11px] text-amber-400 whitespace-nowrap" title="Is a worker running for acex.ztp?">
@@ -80,25 +91,12 @@ function StageBadge({ call }) {
   )
 }
 
-function Outcome({ call }) {
+function Outcome({ call, review }) {
   const latest = call.attempts[0]
-  if (call.stage === 'reported') {
-    return (
-      <span className="inline-flex items-center gap-2">
-        <span className="font-mono text-content">{latest.serial_number}</span>
-        <Link
-          to={`/ztp/approvals?id=${latest.discovery_id}&review_status=${latest.review_status}`}
-          onClick={e => e.stopPropagation()}
-          className="text-[11px] text-brand hover:underline"
-        >
-          {latest.review_status === 'unreviewed' ? 'Review' : latest.review_status}
-        </Link>
-      </span>
-    )
-  }
   if (call.stage === 'failed') {
     return <span className="text-red-400 line-clamp-1" title={latest.error ?? ''}>{latest.error ?? 'Failed'}</span>
   }
+  if (review.target) return <span className="font-mono text-content">{review.target.serial_number}</span>
   return <span className="text-subtle">—</span>
 }
 
@@ -129,12 +127,12 @@ function RetryButton({ call }) {
   )
 }
 
-function Attempts({ call }) {
+function Attempts({ call, onSelect }) {
   return (
     <table className="w-full text-xs">
       <thead>
         <tr className="text-[10px] uppercase tracking-wider text-subtle">
-          {['Job', 'State', 'Called in', 'Finished', 'Result'].map(h => (
+          {['Job', 'State', 'Called in', 'Finished', 'Result', 'Review'].map(h => (
             <th key={h} className="pb-1 pr-4 text-left font-medium">{h}</th>
           ))}
         </tr>
@@ -153,6 +151,13 @@ function Attempts({ call }) {
                 ? <span className="font-mono text-content">{a.serial_number}</span>
                 : a.error ? <span className="text-red-400">{a.error}</span> : <span className="text-subtle">—</span>}
             </td>
+            <td className="py-0.5 pr-4">
+              {a.discovery_id != null
+                ? <button onClick={() => onSelect(a.discovery_id)} className="text-brand hover:underline">
+                    {a.review_status === 'unreviewed' ? 'Review' : a.review_status}
+                  </button>
+                : <span className="text-subtle">—</span>}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -160,13 +165,13 @@ function Attempts({ call }) {
   )
 }
 
-// label is the subnet, or null for an ungrouped list.
-function Group({ label, calls, expanded, onToggle }) {
+// label is the subnet, or null for an ungrouped list. selection: the checkboxes, only while reviewing.
+function Group({ label, calls, columns, expanded, onToggle, selectedId, onSelect, selection }) {
   return (
     <>
       {label && (
         <tr className="bg-canvas">
-          <td colSpan={7} className="px-4 pt-4 pb-1.5">
+          <td colSpan={columns} className="px-4 pt-4 pb-1.5">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-subtle">
               <Network size={11} />
               <span className="font-mono">{label}</span>
@@ -175,32 +180,45 @@ function Group({ label, calls, expanded, onToggle }) {
           </td>
         </tr>
       )}
-      {calls.map(call => {
+      {calls.map(({ call, review }) => {
         const open = expanded.has(call.source_ip)
+        const target = review.target?.discovery_id
+        const active = target != null && target === selectedId
         return (
           <Fragment key={call.source_ip}>
             <tr
-              onClick={() => onToggle(call.source_ip)}
-              className="border-b border-edge hover:bg-surface-hi cursor-pointer transition-colors"
+              onClick={() => (target != null ? onSelect(target) : onToggle(call.source_ip))}
+              className={`border-b border-edge cursor-pointer transition-colors ${active ? 'bg-brand/10' : 'hover:bg-surface-hi'}`}
             >
-              <td className="pl-4 py-2.5 w-6 text-subtle">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</td>
+              {selection && (
+                <td className="pl-4 py-2.5 w-6" onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={selection.ids.has(target)} onChange={() => selection.onToggle(target)} />
+                </td>
+              )}
+              <td
+                className="pl-4 py-2.5 w-6 text-subtle hover:text-content"
+                onClick={e => { e.stopPropagation(); onToggle(call.source_ip) }}
+                title="Show every call-in"
+              >
+                {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </td>
               <td className="pr-4 py-2.5 text-xs font-mono text-content whitespace-nowrap">{call.source_ip}</td>
-              <td className="px-4 py-2.5 text-xs"><StageBadge call={call} /></td>
+              <td className="px-4 py-2.5 text-xs"><StageBadge call={call} review={review} /></td>
               <td className="px-4 py-2.5 text-xs text-subtle whitespace-nowrap" title={formatTime(call.last_seen)}>{ago(call.last_seen)}</td>
               <td className="px-4 py-2.5 text-xs text-subtle whitespace-nowrap">
                 {call.attempts.length} call{call.attempts.length === 1 ? '' : 's'}
               </td>
-              <td className="px-4 py-2.5 text-xs max-w-xs"><Outcome call={call} /></td>
+              <td className="px-4 py-2.5 text-xs max-w-xs"><Outcome call={call} review={review} /></td>
               <td className="px-4 py-2.5 text-right"><RetryButton call={call} /></td>
             </tr>
             {open && (
               <tr className="border-b border-edge bg-surface/50">
-                <td />
+                <td colSpan={selection ? 2 : 1} />
                 <td colSpan={6} className="pr-4 py-3">
                   <div className="mb-2 text-[11px] text-subtle">
                     Method <span className="text-content">{call.method}</span>
                   </div>
-                  <Attempts call={call} />
+                  <Attempts call={call} onSelect={onSelect} />
                 </td>
               </tr>
             )}
@@ -211,14 +229,18 @@ function Group({ label, calls, expanded, onToggle }) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ stage }) {
+  if (stage) {
+    const label = STAGES.find(s => s.value === stage)?.label.toLowerCase() ?? stage
+    return <p className="py-24 text-center text-xs text-subtle">No devices in {label}.</p>
+  }
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <Radar size={28} className="text-subtle mb-3" />
       <h2 className="text-sm font-medium text-content">No devices have called in</h2>
       <p className="mt-1 text-xs text-subtle max-w-sm">
         A factory-default device that gets ACE-X as its boot server over DHCP fetches its bootstrap and shows up
-        here. A worker then logs in to find out what it is.
+        here. A worker then logs in to find out what it is, and an administrator approves what it says it is.
       </p>
     </div>
   )
@@ -226,27 +248,51 @@ function EmptyState() {
 
 export default function DiscoveryPage() {
   const [params, setParams] = useQueryParams(DEFAULTS)
+  const selectedId = params.id ? Number(params.id) : null
   const [expanded, setExpanded] = useState(new Set())
+  const [selected, setSelected] = useState(() => new Set())
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const reviewing = params.stage === 'to_review'
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ztp', 'calls', params.stage],
-    queryFn: () => fetchCalls({ stage: params.stage, limit: 1000 }),
-    refetchInterval: REFRESH_MS,
+    queryKey: ['ztp', 'calls', 'all'],
+    queryFn: () => fetchCalls({ limit: 1000 }),
+    // Not while a bulk preview is open: the selection was built from these rows.
+    refetchInterval: bulkOpen ? false : REFRESH_MS,
   })
+
+  // The proposals and conflicts of reports waiting for review, for selecting what can be approved in bulk.
+  const { data: waiting } = useQuery({
+    queryKey: ['ztp', 'discoveries', 'unreviewed'],
+    queryFn: () => fetchDiscoveries({ review_status: 'unreviewed', limit: 1000 }),
+    refetchInterval: bulkOpen ? false : REFRESH_MS,
+    enabled: reviewing,
+  })
+  const discoveries = useMemo(() => Object.fromEntries((waiting?.items ?? []).map(d => [d.id, d])), [waiting])
+
+  const all = useMemo(() => (data?.items ?? []).map(call => ({ call, review: reviewOf(call) })), [data])
+  const rows = useMemo(() => {
+    const match = STAGES.find(s => s.value === params.stage)?.match ?? (() => true)
+    return all.filter(r => match(r.call, r.review))
+  }, [all, params.stage])
 
   // Subnets in address order, each keeping the most recently seen device first.
   const groups = useMemo(() => {
-    const calls = data?.items ?? []
-    if (params.prefix === 'none') return calls.length ? [{ label: null, calls }] : []
+    if (params.prefix === 'none') return rows.length ? [{ label: null, calls: rows }] : []
     const bySubnet = new Map()
-    for (const call of calls) {
-      const { key, label } = subnetOf(call.source_ip, Number(params.prefix))
+    for (const row of rows) {
+      const { key, label } = subnetOf(row.call.source_ip, Number(params.prefix))
       const group = bySubnet.get(label) ?? { key, label, calls: [] }
-      group.calls.push(call)
+      group.calls.push(row)
       bySubnet.set(label, group)
     }
     return [...bySubnet.values()].sort((a, b) => a.key - b.key)
-  }, [data, params.prefix])
+  }, [rows, params.prefix])
+
+  // Each discovery under review, with the older reports from its device that go with it on reject.
+  const reviewed = useMemo(() => Object.fromEntries(all
+    .filter(r => r.review.target)
+    .map(r => [r.review.target.discovery_id, { call: r.call, olderIds: r.review.olderIds }])), [all])
 
   const toggle = ip => setExpanded(prev => {
     const next = new Set(prev)
@@ -254,18 +300,46 @@ export default function DiscoveryPage() {
     return next
   })
 
+  const clearSelection = () => { setSelected(new Set()); setBulkOpen(false) }
+  const toggleSelected = id => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+  const reviewIds = rows.filter(r => r.review.target).map(r => r.review.target.discovery_id)
+  const allSelected = reviewIds.length > 0 && reviewIds.every(id => selected.has(id))
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(reviewIds))
+
+  // Approvable at a glance: no blocked proposal, no identity conflict.
+  const selectClean = () => setSelected(new Set(reviewIds.filter(id => {
+    const d = discoveries[id]
+    return d?.proposal && d.proposal.action !== 'blocked' && !d.conflicts.some(c => IDENTITY_CONFLICTS.includes(c.kind))
+  })))
+
+  const bulkRows = [...selected].filter(id => reviewed[id]).map(id => ({
+    id,
+    serial_number: discoveries[id]?.serial_number,
+    source_ip: reviewed[id].call.source_ip,
+    proposal: discoveries[id]?.proposal,
+    olderIds: reviewed[id].olderIds,
+  }))
+
+  const selection = reviewing ? { ids: selected, onToggle: toggleSelected } : null
+  const headers = ['Source IP', 'Stage', 'Last seen', 'Calls', 'Result', '']
+  const columns = headers.length + (selection ? 2 : 1)
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
         title="Discovery"
-        description="Devices that fetched a bootstrap, by IP. A worker logs in to each to find out what it is."
+        description="Devices that fetched a bootstrap, by IP. A worker logs in to each to find out what it is; approving what it says trusts that identity and records the asset."
       />
 
       <div className="flex items-center gap-1 px-6 py-2 border-b border-edge shrink-0">
         {STAGES.map(s => (
           <button
             key={s.value}
-            onClick={() => setParams({ stage: s.value })}
+            onClick={() => { clearSelection(); setParams({ stage: s.value }) }}
             className={[
               'px-2.5 py-1 text-xs rounded transition-colors',
               params.stage === s.value ? 'bg-surface-hi text-content font-medium' : 'text-subtle hover:text-content',
@@ -274,6 +348,21 @@ export default function DiscoveryPage() {
             {s.label}
           </button>
         ))}
+        {reviewing && rows.length > 0 && (
+          <div className="ml-4 flex items-center gap-2">
+            <button onClick={selectClean} className="px-2.5 py-1 text-xs rounded text-subtle hover:text-content">
+              Select approvable
+            </button>
+            {bulkRows.length > 0 && (
+              <button
+                onClick={() => { setBulkOpen(true); setParams({ id: '' }) }}
+                className="px-2.5 py-1 text-xs font-medium rounded text-white bg-brand hover:bg-brand/90"
+              >
+                Review {bulkRows.length} selected
+              </button>
+            )}
+          </div>
+        )}
         <label className="ml-auto flex items-center gap-1.5 text-[11px] text-subtle">
           Group by subnet
           <select
@@ -284,35 +373,72 @@ export default function DiscoveryPage() {
             {PREFIXES.map(p => <option key={p} value={p}>{p === 'none' ? 'None' : `/${p}`}</option>)}
           </select>
         </label>
-        <span className="ml-3 text-[11px] text-subtle">{isLoading ? '—' : `${data?.total ?? 0} devices`}</span>
+        <span className="ml-3 text-[11px] text-subtle">{isLoading ? '—' : `${rows.length} devices`}</span>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {isLoading ? (
-          <p className="px-6 py-4 text-xs text-subtle animate-pulse">Loading…</p>
-        ) : groups.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="sticky top-0 bg-canvas border-b border-edge z-10">
-                <th className="w-6" />
-                {['Source IP', 'Stage', 'Last seen', 'Calls', 'Result', ''].map((h, i) => (
-                  <th
-                    key={i}
-                    className={`${i === 0 ? 'pr-4' : 'px-4'} py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-subtle`}
-                  >
-                    {h}
-                  </th>
+      <div className="flex flex-1 min-h-0">
+        <div className="flex-1 overflow-auto min-w-0">
+          {isLoading ? (
+            <p className="px-6 py-4 text-xs text-subtle animate-pulse">Loading…</p>
+          ) : groups.length === 0 ? (
+            <EmptyState stage={params.stage} />
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="sticky top-0 bg-canvas border-b border-edge z-10">
+                  {selection && (
+                    <th className="pl-4 w-6 text-left">
+                      <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                    </th>
+                  )}
+                  <th className="w-6" />
+                  {headers.map((h, i) => (
+                    <th
+                      key={i}
+                      className={`${i === 0 ? 'pr-4' : 'px-4'} py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-subtle`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map(group => (
+                  <Group
+                    key={group.label ?? 'all'}
+                    label={group.label}
+                    calls={group.calls}
+                    columns={columns}
+                    expanded={expanded}
+                    onToggle={toggle}
+                    selectedId={selectedId}
+                    onSelect={id => { setBulkOpen(false); setParams({ id }) }}
+                    selection={selection}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map(group => (
-                <Group key={group.label ?? 'all'} label={group.label} calls={group.calls} expanded={expanded} onToggle={toggle} />
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {bulkOpen && bulkRows.length > 0 ? (
+          <div className="w-[28rem] shrink-0 border-l border-edge bg-surface overflow-auto">
+            <BulkReview
+              key={bulkRows.map(r => r.id).join(',')}
+              rows={bulkRows}
+              onDone={clearSelection}
+              onClose={() => setBulkOpen(false)}
+            />
+          </div>
+        ) : selectedId != null && (
+          <div className="w-96 shrink-0 border-l border-edge bg-surface overflow-auto">
+            <DiscoveryReview
+              key={selectedId}
+              id={selectedId}
+              olderIds={reviewed[selectedId]?.olderIds ?? []}
+              onSelect={id => setParams({ id })}
+            />
+          </div>
         )}
       </div>
     </div>

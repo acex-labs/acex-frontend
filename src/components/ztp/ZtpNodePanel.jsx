@@ -18,7 +18,7 @@ const REVIEW_STYLES = {
 // How far along each stage is: steps before it are done, it is the current one.
 const STAGE_STEP = { awaiting_device: 1, awaiting_approval: 2, ready: 3, provisioning: 3, failed: 3, provisioned: 5, adopted: 5 }
 
-const approvalLink = id => `/ztp/approvals?review_status=all&id=${id}`
+const approvalLink = id => `/ztp/discovery?id=${id}`
 
 function Section({ title, children, aside }) {
   return (

@@ -1,26 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { ShieldCheck, AlertTriangle, Check, X, Plus, ArrowRight, Ban } from 'lucide-react'
-import {
-  fetchDiscoveries, fetchDiscovery, approveDiscovery, rejectDiscovery, approveDiscoveries, rejectDiscoveries,
-} from '../../api/ztp'
-import { useQueryParams } from '../../hooks/useQueryParams'
-import { formatTime } from '../../components/jobs/jobs'
-import PageHeader from '../../components/ui/PageHeader'
-import DataTable from '../../components/table/DataTable'
-import Pagination from '../../components/table/Pagination'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Check, X, Plus, ArrowRight, Ban } from 'lucide-react'
+import { fetchDiscovery, approveDiscovery, approveDiscoveries, rejectDiscoveries } from '../../api/ztp'
+import { formatTime } from '../jobs/jobs'
 
-const REFRESH_MS = 15_000
-
-const DEFAULTS = { review_status: 'unreviewed', id: '', limit: 50, offset: 0 }
-
-const TABS = [
-  { value: 'unreviewed', label: 'To review' },
-  { value: 'approved',   label: 'Approved' },
-  { value: 'rejected',   label: 'Rejected' },
-  { value: 'all',        label: 'All' },
-]
+const REFRESH_MS = 5000
 
 const REVIEW_STYLES = {
   unreviewed: 'bg-amber-500/10 text-amber-400',
@@ -35,9 +20,6 @@ const ACTIONS = {
   unchanged: { label: 'Asset matches', cls: 'bg-surface-hi text-subtle' },
   blocked:   { label: 'Blocked',      cls: 'bg-red-500/10 text-red-400' },
 }
-
-// Conflicts a bulk approval skips; such a discovery is approved on its own.
-const IDENTITY_CONFLICTS = ['serial_on_other_ip', 'ip_with_other_serial']
 
 const ASSET_FIELDS = [
   { key: 'serial_number',  label: 'Serial' },
@@ -61,23 +43,6 @@ function Badge({ cls, children }) {
 const ReviewBadge = ({ status }) => <Badge cls={REVIEW_STYLES[status] ?? 'bg-surface-hi text-subtle'}>{status}</Badge>
 
 const ActionBadge = ({ action }) => <Badge cls={ACTIONS[action]?.cls}>{ACTIONS[action]?.label ?? action}</Badge>
-
-const nowrap = (content, cls = '') => <span className={`whitespace-nowrap ${cls}`}>{content}</span>
-
-const COLUMNS = [
-  { key: 'serial_number',  label: 'Serial',    render: v => nowrap(v, 'font-mono') },
-  { key: 'source_ip',      label: 'Source IP', render: v => nowrap(v, 'font-mono') },
-  { key: 'hardware_model', label: 'Hardware',  render: (v, row) => nowrap([row.vendor, v].filter(Boolean).join(' ') || '—') },
-  { key: 'proposal',       label: 'Asset',     render: (v, row) => v
-    ? <ActionBadge action={v.action} />
-    : row.asset_id != null ? nowrap(`#${row.asset_id}`, 'font-mono') : <span className="text-subtle">—</span> },
-  { key: 'node_hostname',  label: 'Node',      render: v => (v ? nowrap(v) : <span className="text-subtle">—</span>) },
-  { key: 'conflicts',      label: 'Conflicts', render: v => v.length
-    ? <span className="inline-flex items-center gap-1 text-amber-400"><AlertTriangle size={11} />{v.length}</span>
-    : <span className="text-subtle">—</span> },
-  { key: 'review_status',  label: 'Review',    render: v => <ReviewBadge status={v} /> },
-  { key: 'created_at',     label: 'Reported',  render: v => nowrap(formatTime(v)) },
-]
 
 function Section({ title, children }) {
   return (
@@ -159,13 +124,18 @@ function invalidate(queryClient) {
   ['ztp', 'assets', 'inventory'].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }))
 }
 
-function Actions({ discovery }) {
+// Rejecting a report also rejects the older ones still waiting from the same device (olderIds), so they don't
+// come back for review. Approving needs no such help: the backend rejects the serial's other reports itself.
+function Actions({ discovery, olderIds }) {
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
   const mutation = useMutation({
-    mutationFn: action => action === 'approve'
-      ? approveDiscovery(discovery.id, discovery.proposal?.hash)
-      : rejectDiscovery(discovery.id),
+    mutationFn: async action => {
+      if (action === 'approve') return approveDiscovery(discovery.id, discovery.proposal?.hash)
+      const { results } = await rejectDiscoveries([discovery.id, ...olderIds])
+      const own = results.find(r => r.discovery_id === discovery.id)
+      if (own?.outcome === 'skipped') throw new Error(own.reason)
+    },
     onSuccess: () => invalidate(queryClient),
     onError: () => invalidate(queryClient),
     onSettled: () => setConfirming(false),
@@ -192,6 +162,11 @@ function Actions({ discovery }) {
         there said it is <span className="font-mono text-content">{discovery.serial_number}</span>. Approving trusts
         that identity. No configuration is pushed: provisioning is a step of its own.
       </p>
+      {olderIds.length > 0 && (
+        <p className="text-[11px] text-subtle">
+          {olderIds.length} older report{olderIds.length === 1 ? '' : 's'} from this device {olderIds.length === 1 ? 'is' : 'are'} rejected along with this one.
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <button
           onClick={approve}
@@ -218,7 +193,8 @@ function Actions({ discovery }) {
   )
 }
 
-function Detail({ id, onSelect }) {
+// One discovery: what approving it would do, its conflicts, and the approve and reject buttons.
+export function DiscoveryReview({ id, olderIds = [], onSelect }) {
   const { data: discovery, isLoading, isError } = useQuery({
     queryKey: ['ztp', 'discovery', id],
     queryFn: () => fetchDiscovery(id),
@@ -295,7 +271,7 @@ function Detail({ id, onSelect }) {
       </Section>
 
       <div className="px-4 py-3">
-        <Actions key={discovery.id} discovery={discovery} />
+        <Actions key={discovery.id} discovery={discovery} olderIds={olderIds} />
       </div>
     </div>
   )
@@ -315,12 +291,26 @@ function Summary({ summary }) {
   )
 }
 
-// Selected discoveries: a dry run shows what approving them all would do, and
-// only that is approved — each item carries the hash of the proposal shown.
-function BulkPanel({ selected, rows, onDone, onClose }) {
+function SkippedList({ results, byId }) {
+  const skipped = results.filter(r => r.outcome === 'skipped')
+  if (!skipped.length) return null
+  return (
+    <ul className="mt-2 space-y-1">
+      {skipped.map(r => (
+        <li key={r.discovery_id} className="text-[11px] text-red-400">
+          <span className="font-mono">{byId[r.discovery_id]?.serial_number ?? `#${r.discovery_id}`}</span>: {r.reason}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Selected discoveries: a dry run shows what approving them all would do, and only that is approved — each item
+// carries the hash of the proposal shown. rows: the selected discoveries, each with olderIds to reject with it.
+export function BulkReview({ rows, onDone, onClose }) {
   const queryClient = useQueryClient()
   const byId = Object.fromEntries(rows.map(r => [r.id, r]))
-  const items = [...selected].map(id => ({ discovery_id: id, proposal_hash: byId[id]?.proposal?.hash ?? null }))
+  const items = rows.map(r => ({ discovery_id: r.id, proposal_hash: r.proposal?.hash ?? null }))
 
   const preview = useQuery({
     queryKey: ['ztp-bulk-preview', items],
@@ -335,7 +325,7 @@ function BulkPanel({ selected, rows, onDone, onClose }) {
     onSettled: () => invalidate(queryClient),
   })
   const reject = useMutation({
-    mutationFn: () => rejectDiscoveries([...selected]),
+    mutationFn: () => rejectDiscoveries(rows.flatMap(r => [r.id, ...r.olderIds])),
     onSettled: () => invalidate(queryClient),
   })
 
@@ -346,7 +336,7 @@ function BulkPanel({ selected, rows, onDone, onClose }) {
   return (
     <div className="flex flex-col">
       <div className="px-4 py-3 border-b border-edge flex items-center gap-2">
-        <span className="text-sm font-semibold text-heading">{selected.size} selected</span>
+        <span className="text-sm font-semibold text-heading">{rows.length} selected</span>
         <button onClick={onClose} className="ml-auto text-subtle hover:text-content" title="Close"><X size={13} /></button>
       </div>
 
@@ -408,7 +398,7 @@ function BulkPanel({ selected, rows, onDone, onClose }) {
                 disabled={busy}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
               >
-                <X size={12} />Reject {selected.size}
+                <X size={12} />Reject {rows.length}
               </button>
             </div>
             {(approve.isError || reject.isError) && (
@@ -417,146 +407,6 @@ function BulkPanel({ selected, rows, onDone, onClose }) {
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-function SkippedList({ results, byId }) {
-  const skipped = results.filter(r => r.outcome === 'skipped')
-  if (!skipped.length) return null
-  return (
-    <ul className="mt-2 space-y-1">
-      {skipped.map(r => (
-        <li key={r.discovery_id} className="text-[11px] text-red-400">
-          <span className="font-mono">{byId[r.discovery_id]?.serial_number ?? `#${r.discovery_id}`}</span>: {r.reason}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function EmptyState({ status }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <ShieldCheck size={28} className="text-subtle mb-3" />
-      <h2 className="text-sm font-medium text-content">{status === 'unreviewed' ? 'Nothing to review' : 'No discoveries'}</h2>
-      <p className="mt-1 text-xs text-subtle max-w-sm">
-        When a device fetches its bootstrap, a worker logs in and reports what it is. Approving a report trusts that
-        identity and records the device as an asset, ready to be provisioned.
-      </p>
-    </div>
-  )
-}
-
-export default function ReviewPage() {
-  const [params, setParams] = useQueryParams(DEFAULTS)
-  const selectedId = params.id ? Number(params.id) : null
-  const [selected, setSelected] = useState(() => new Set())
-  const [bulkOpen, setBulkOpen] = useState(false)
-  const reviewing = params.review_status === 'unreviewed'
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['ztp', 'discoveries', params.review_status, params.limit, params.offset],
-    queryFn: () => fetchDiscoveries({
-      review_status: params.review_status === 'all' ? undefined : params.review_status,
-      limit: params.limit,
-      offset: params.offset,
-    }),
-    placeholderData: keepPreviousData,
-    // Not while a bulk preview is open: the rows carry the proposals it was built from.
-    refetchInterval: bulkOpen ? false : REFRESH_MS,
-  })
-  const rows = data?.items ?? []
-
-  const clearSelection = () => { setSelected(new Set()); setBulkOpen(false) }
-  const toggle = row => setSelected(prev => {
-    const next = new Set(prev)
-    next.has(row.id) ? next.delete(row.id) : next.add(row.id)
-    return next
-  })
-  const allSelected = rows.length > 0 && rows.every(r => selected.has(r.id))
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map(r => r.id)))
-
-  // Approvable at a glance: no blocked proposal, no identity conflict.
-  const selectClean = () => setSelected(new Set(rows
-    .filter(r => r.proposal && r.proposal.action !== 'blocked' && !r.conflicts.some(c => IDENTITY_CONFLICTS.includes(c.kind)))
-    .map(r => r.id)))
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <PageHeader
-        title="Approvals"
-        description="What discovered devices say they are. Approving trusts the identity and records the asset; provisioning is a separate step."
-      />
-
-      <div className="flex items-center gap-1 px-6 py-2 border-b border-edge shrink-0">
-        {TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { clearSelection(); setParams({ review_status: tab.value, offset: 0, id: '' }) }}
-            className={[
-              'px-2.5 py-1 text-xs rounded transition-colors',
-              params.review_status === tab.value ? 'bg-surface-hi text-content font-medium' : 'text-subtle hover:text-content',
-            ].join(' ')}
-          >
-            {tab.label}
-          </button>
-        ))}
-        {reviewing && rows.length > 0 && (
-          <div className="ml-4 flex items-center gap-2">
-            <button onClick={selectClean} className="px-2.5 py-1 text-xs rounded text-subtle hover:text-content">
-              Select approvable
-            </button>
-            {selected.size > 0 && (
-              <button
-                onClick={() => { setBulkOpen(true); setParams({ id: '' }) }}
-                className="px-2.5 py-1 text-xs font-medium rounded text-white bg-brand hover:bg-brand/90"
-              >
-                Review {selected.size} selected
-              </button>
-            )}
-          </div>
-        )}
-        <span className="ml-auto text-[11px] text-subtle">{isLoading ? '—' : `${data?.total ?? 0} discoveries`}</span>
-      </div>
-
-      <div className="flex flex-1 min-h-0">
-        <div className="flex-1 flex flex-col min-w-0">
-          {!isLoading && rows.length === 0 ? (
-            <EmptyState status={params.review_status} />
-          ) : (
-            <DataTable
-              columns={COLUMNS}
-              data={rows}
-              isLoading={isLoading}
-              onRowClick={row => { setBulkOpen(false); setParams({ id: row.id }) }}
-              selection={reviewing ? { ids: selected, onToggle: toggle, onToggleAll: toggleAll, allSelected } : undefined}
-            />
-          )}
-          <Pagination
-            offset={params.offset}
-            limit={params.limit}
-            total={data?.total ?? 0}
-            onChange={offset => { clearSelection(); setParams({ offset }) }}
-          />
-        </div>
-
-        {bulkOpen && selected.size > 0 ? (
-          <div className="w-[28rem] shrink-0 border-l border-edge bg-surface overflow-auto">
-            <BulkPanel
-              key={[...selected].join(',')}
-              selected={selected}
-              rows={rows}
-              onDone={clearSelection}
-              onClose={() => setBulkOpen(false)}
-            />
-          </div>
-        ) : selectedId != null && (
-          <div className="w-96 shrink-0 border-l border-edge bg-surface overflow-auto">
-            <Detail key={selectedId} id={selectedId} onSelect={id => setParams({ id })} />
-          </div>
-        )}
-      </div>
     </div>
   )
 }

@@ -6,6 +6,9 @@ import { claimAsset } from '../../api/ztp'
 import { useDebounce } from '../../hooks/useDebounce'
 import PageHeader from '../../components/ui/PageHeader'
 import VendorIcon from '../../components/ui/VendorIcon'
+import Pagination from '../../components/table/Pagination'
+
+const PAGE_SIZE = 50
 
 const INPUT_CLS = 'h-7 px-2.5 text-xs rounded border border-edge bg-surface-hi text-content placeholder:text-subtle focus:outline-none focus:border-brand/50 transition-colors'
 
@@ -111,12 +114,24 @@ export default function UnclaimedAssetsPage() {
   const [errors, setErrors] = useState(new Map())       // asset id → message from the last apply
   const [applying, setApplying] = useState(false)
   const [confirmReplace, setConfirmReplace] = useState(false)
+  const [pageOffset, setPageOffset] = useState(0)
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets', 'unassigned'],
-    queryFn: () => fetchAssets({ assigned: false, limit: 500 }).then(d => d.items),
+    queryFn: async () => {
+      const limit = 500
+      const items = []
+      for (let offset = 0; ; offset += limit) {
+        const page = await fetchAssets({ assigned: false, limit, offset })
+        items.push(...page.items)
+        if (page.items.length < limit || items.length >= page.total) return items
+      }
+    },
   })
 
+  // The list shrinks after a claim, so the page can't stay past the end.
+  const offset = Math.min(pageOffset, Math.max(0, Math.ceil(assets.length / PAGE_SIZE) - 1) * PAGE_SIZE)
+  const pageAssets = assets.slice(offset, offset + PAGE_SIZE)
   const selected = assets.find(a => a.id === selectedId)
   const takenIds = useMemo(() => new Set([...mappings.values()].map(ln => ln.id)), [mappings])
   const replaceCount = [...mappings.values()].filter(ln => ln.assigned).length
@@ -128,6 +143,7 @@ export default function UnclaimedAssetsPage() {
     const idx = assets.findIndex(a => a.id === selectedId)
     const next = [...assets.slice(idx + 1), ...assets.slice(0, idx)].find(a => !mappings.has(a.id) && a.id !== selectedId)
     setSelectedId(next?.id ?? null)
+    if (next) setPageOffset(Math.floor(assets.indexOf(next) / PAGE_SIZE) * PAGE_SIZE)
   }
 
   const unmap = (assetId) => {
@@ -183,6 +199,7 @@ export default function UnclaimedAssetsPage() {
 
       <div className="flex flex-1 min-h-0">
         {/* Assets */}
+        <div className="flex-1 flex flex-col min-w-0">
         <div className="flex-1 overflow-auto">
           {!isLoading && assets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -200,7 +217,7 @@ export default function UnclaimedAssetsPage() {
                 </tr>
               </thead>
               <tbody>
-                {assets.map(asset => {
+                {pageAssets.map(asset => {
                   const ln = mappings.get(asset.id)
                   const err = errors.get(asset.id)
                   return (
@@ -248,6 +265,10 @@ export default function UnclaimedAssetsPage() {
               </tbody>
             </table>
           )}
+        </div>
+        {assets.length > PAGE_SIZE && (
+          <Pagination offset={offset} limit={PAGE_SIZE} total={assets.length} onChange={setPageOffset} />
+        )}
         </div>
 
         {/* Logical node picker */}

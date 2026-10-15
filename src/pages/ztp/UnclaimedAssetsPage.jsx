@@ -1,148 +1,77 @@
 import { useMemo, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Inbox, X, ArrowRight, Search, AlertTriangle } from 'lucide-react'
-import { fetchAssets, fetchLogicalNodes } from '../../api/inventory'
-import { claimAsset } from '../../api/ztp'
+import { fetchAssets } from '../../api/inventory'
+import { claimAsset, fetchAwaitingClaim } from '../../api/ztp'
 import { useDebounce } from '../../hooks/useDebounce'
 import PageHeader from '../../components/ui/PageHeader'
 import VendorIcon from '../../components/ui/VendorIcon'
 import Pagination from '../../components/table/Pagination'
+import LogicalNodePicker from '../../components/ztp/LogicalNodePicker'
 
 const PAGE_SIZE = 50
-
 const INPUT_CLS = 'h-7 px-2.5 text-xs rounded border border-edge bg-surface-hi text-content placeholder:text-subtle focus:outline-none focus:border-brand/50 transition-colors'
-
-const byPlan = (a, b) =>
-  (a.site ?? '').localeCompare(b.site ?? '') ||
-  (a.sequence ?? 0) - (b.sequence ?? 0) ||
-  a.hostname.localeCompare(b.hostname)
-
-function LogicalNodeOption({ ln, taken, onPick }) {
-  return (
-    <button
-      onClick={() => onPick(ln)}
-      disabled={taken}
-      className="w-full text-left px-4 py-2 border-b border-edge/50 hover:bg-surface-hi disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-content truncate">{ln.hostname}</span>
-        {taken && <span className="ml-auto text-[10px] text-subtle">already mapped</span>}
-      </div>
-      <div className="text-[11px] text-subtle truncate">{[ln.site, ln.role].filter(Boolean).join(' · ') || '—'}</div>
-    </button>
-  )
-}
-
-function Picker({ asset, site, takenIds, onPick }) {
-  const [search, setSearch] = useState('')
-  const q = useDebounce(search.trim(), 250)
-
-  // Planned = logical nodes without a node instance. Loaded up front — these are the likely targets.
-  const { data: planned = [], isLoading } = useQuery({
-    queryKey: ['logical-nodes', 'unassigned', site],
-    queryFn: () => fetchLogicalNodes({ assigned: false, site: site || undefined, limit: 1000 }).then(d => d.items),
-  })
-
-  // In service = already instantiated. Only fetched on search: picking one means replacing a device.
-  const { data: inService = [] } = useQuery({
-    queryKey: ['logical-nodes', 'assigned', q],
-    queryFn: () => fetchLogicalNodes({ assigned: true, hostname: q, limit: 20 }).then(d => d.items),
-    enabled: q.length > 0,
-  })
-
-  const plannedMatches = useMemo(
-    () => planned.filter(ln => !q || ln.hostname.toLowerCase().includes(q.toLowerCase())).sort(byPlan),
-    [planned, q],
-  )
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-edge space-y-2">
-        <div className="text-[11px] text-subtle">
-          Map <span className="text-content font-medium">{asset.serial_number}</span>
-          {' '}({[asset.vendor, asset.hardware_model].filter(Boolean).join(' ')}) to
-        </div>
-        <div className="relative">
-          <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-subtle" />
-          <input
-            autoFocus
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search hostname…"
-            className={`${INPUT_CLS} w-full pl-6`}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto">
-        <div className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-subtle">
-          Planned {!isLoading && <span className="font-normal">({plannedMatches.length})</span>}
-        </div>
-        {isLoading ? (
-          <p className="px-4 py-2 text-xs text-subtle animate-pulse">Loading…</p>
-        ) : plannedMatches.length === 0 ? (
-          <p className="px-4 py-2 text-xs text-subtle">No planned logical nodes{q ? ' match' : site ? ' at this site' : ''}.</p>
-        ) : (
-          plannedMatches.map(ln => (
-            <LogicalNodeOption key={ln.id} ln={{ ...ln, assigned: false }} taken={takenIds.has(ln.id)} onPick={onPick} />
-          ))
-        )}
-
-        <div className="px-4 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-subtle">
-          In service <span className="font-normal normal-case tracking-normal">— replaces the current device</span>
-        </div>
-        {!q ? (
-          <p className="px-4 py-2 text-xs text-subtle">Search to find a node whose device is being replaced.</p>
-        ) : inService.length === 0 ? (
-          <p className="px-4 py-2 text-xs text-subtle">No match.</p>
-        ) : (
-          inService.map(ln => (
-            <LogicalNodeOption key={ln.id} ln={{ ...ln, assigned: true }} taken={takenIds.has(ln.id)} onPick={onPick} />
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
 
 export default function UnclaimedAssetsPage() {
   const queryClient = useQueryClient()
-  const [site, setSite] = useState('')
-  const dSite = useDebounce(site.trim(), 300)
-  const [selectedId, setSelectedId] = useState(null)
-  const [mappings, setMappings] = useState(new Map())   // asset id → logical node
+  const [serial, setSerial] = useState('')
+  const dSerial = useDebounce(serial.trim(), 250)
+  const [discoveredOnly, setDiscoveredOnly] = useState(false)
+  const [site, setSite] = useState('')   // kept here so it survives jumping to the next asset
+  const [selected, setSelected] = useState(null)
+  const [mappings, setMappings] = useState(new Map())   // asset id → { asset, logicalNode }, kept while a search hides the asset
   const [errors, setErrors] = useState(new Map())       // asset id → message from the last apply
   const [applying, setApplying] = useState(false)
   const [confirmReplace, setConfirmReplace] = useState(false)
   const [pageOffset, setPageOffset] = useState(0)
 
-  const { data: assets = [], isLoading } = useQuery({
-    queryKey: ['assets', 'unassigned'],
+  const { data: assetList = [], isLoading: assetsLoading } = useQuery({
+    queryKey: ['assets', 'unassigned', dSerial],
     queryFn: async () => {
       const limit = 500
       const items = []
       for (let offset = 0; ; offset += limit) {
-        const page = await fetchAssets({ assigned: false, limit, offset })
+        const page = await fetchAssets({ assigned: false, serial_number: dSerial || undefined, limit, offset })
         items.push(...page.items)
         if (page.items.length < limit || items.length >= page.total) return items
       }
     },
+    placeholderData: keepPreviousData,
+    enabled: !discoveredOnly,
   })
+
+  // Discovered: approved discoveries whose asset no node has claimed yet. Few enough to search here.
+  const { data: discoveries = [], isLoading: discoveriesLoading } = useQuery({
+    queryKey: ['ztp', 'discoveries', 'awaiting-claim'],
+    queryFn: fetchAwaitingClaim,
+    enabled: discoveredOnly,
+  })
+  const discovered = useMemo(
+    () => discoveries
+      .filter(d => d.serial_number.toLowerCase().includes(dSerial.toLowerCase()))
+      .map(d => ({
+        id: d.asset_id, serial_number: d.serial_number, vendor: d.vendor, hardware_model: d.hardware_model,
+        os: d.os, os_version: d.os_version, source_ip: d.source_ip,
+      })),
+    [discoveries, dSerial],
+  )
+
+  const assets = discoveredOnly ? discovered : assetList
+  const isLoading = discoveredOnly ? discoveriesLoading : assetsLoading
 
   // The list shrinks after a claim, so the page can't stay past the end.
   const offset = Math.min(pageOffset, Math.max(0, Math.ceil(assets.length / PAGE_SIZE) - 1) * PAGE_SIZE)
   const pageAssets = assets.slice(offset, offset + PAGE_SIZE)
-  const selected = assets.find(a => a.id === selectedId)
-  const takenIds = useMemo(() => new Set([...mappings.values()].map(ln => ln.id)), [mappings])
-  const replaceCount = [...mappings.values()].filter(ln => ln.assigned).length
+  const takenIds = useMemo(() => new Set([...mappings.values()].map(m => m.logicalNode.id)), [mappings])
+  const replaceCount = [...mappings.values()].filter(m => m.logicalNode.assigned).length
 
   const pick = (ln) => {
-    setMappings(prev => new Map(prev).set(selectedId, ln))
+    setMappings(prev => new Map(prev).set(selected.id, { asset: selected, logicalNode: ln }))
     setConfirmReplace(false)
     // Jump to the next unmapped asset so a batch can be mapped click-by-click.
-    const idx = assets.findIndex(a => a.id === selectedId)
-    const next = [...assets.slice(idx + 1), ...assets.slice(0, idx)].find(a => !mappings.has(a.id) && a.id !== selectedId)
-    setSelectedId(next?.id ?? null)
+    const idx = assets.findIndex(a => a.id === selected.id)
+    const next = [...assets.slice(idx + 1), ...assets.slice(0, idx)].find(a => !mappings.has(a.id) && a.id !== selected.id)
+    setSelected(next ?? null)
     if (next) setPageOffset(Math.floor(assets.indexOf(next) / PAGE_SIZE) * PAGE_SIZE)
   }
 
@@ -155,9 +84,7 @@ export default function UnclaimedAssetsPage() {
     if (replaceCount > 0 && !confirmReplace) { setConfirmReplace(true); return }
     setApplying(true)
     const entries = [...mappings.entries()]
-    const results = await Promise.allSettled(
-      entries.map(([assetId, logicalNode]) => claimAsset({ asset: assets.find(a => a.id === assetId), logicalNode })),
-    )
+    const results = await Promise.allSettled(entries.map(([, mapping]) => claimAsset(mapping)))
     // Keep failed mappings so they can be fixed and retried; drop the ones that went through.
     const failed = new Map()
     const remaining = new Map()
@@ -171,7 +98,7 @@ export default function UnclaimedAssetsPage() {
     setMappings(remaining)
     setConfirmReplace(false)
     setApplying(false)
-    setSelectedId(null)
+    setSelected(null)
     queryClient.invalidateQueries({ queryKey: ['assets'] })
     queryClient.invalidateQueries({ queryKey: ['logical-nodes'] })
     queryClient.invalidateQueries({ queryKey: ['nodes'] })
@@ -186,14 +113,25 @@ export default function UnclaimedAssetsPage() {
       />
 
       <div className="flex items-center gap-2 px-6 py-2 border-b border-edge shrink-0">
-        <input
-          value={site}
-          onChange={e => setSite(e.target.value)}
-          placeholder="Suggest logical nodes at site…"
-          className={`${INPUT_CLS} w-56`}
-        />
+        <div className="relative">
+          <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-subtle" />
+          <input
+            autoFocus
+            value={serial}
+            onChange={e => { setSerial(e.target.value); setPageOffset(0) }}
+            placeholder="Search serial…"
+            className={`${INPUT_CLS} w-56 pl-6`}
+          />
+        </div>
+        <label className="flex items-center gap-1.5 text-xs text-subtle cursor-pointer select-none">
+          <input type="checkbox" checked={discoveredOnly} onChange={e => { setDiscoveredOnly(e.target.checked); setPageOffset(0) }} />
+          Discovered only
+        </label>
         <span className="ml-auto text-[11px] text-subtle">
-          {isLoading ? '—' : `${assets.length} unclaimed · ${mappings.size} mapped`}
+          {isLoading ? '—' : [
+            `${assets.length} ${dSerial ? 'matching' : discoveredOnly ? 'discovered' : 'unclaimed'}`,
+            `${mappings.size} mapped`,
+          ].join(' · ')}
         </span>
       </div>
 
@@ -204,29 +142,40 @@ export default function UnclaimedAssetsPage() {
           {!isLoading && assets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Inbox size={28} className="text-subtle mb-3" />
-              <h2 className="text-sm font-medium text-content">No unclaimed assets</h2>
-              <p className="mt-1 text-xs text-subtle max-w-sm">All hardware is bound to a logical node.</p>
+              {dSerial ? (
+                <h2 className="text-sm font-medium text-content">No {discoveredOnly ? 'discovered' : 'unclaimed'} asset matches “{dSerial}”</h2>
+              ) : discoveredOnly ? (
+                <>
+                  <h2 className="text-sm font-medium text-content">No discovered assets waiting</h2>
+                  <p className="mt-1 text-xs text-subtle max-w-sm">No approved discovery has an asset that isn't bound to a logical node.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-sm font-medium text-content">No unclaimed assets</h2>
+                  <p className="mt-1 text-xs text-subtle max-w-sm">All hardware is bound to a logical node.</p>
+                </>
+              )}
             </div>
           ) : (
             <table className="w-full border-collapse">
               <thead>
                 <tr className="sticky top-0 bg-canvas border-b border-edge z-10">
-                  {['Hardware', 'Serial', 'OS', 'Driver', 'Logical node'].map(h => (
+                  {['Hardware', 'Serial', discoveredOnly && 'Source IP', 'OS', 'Driver', 'Logical node'].filter(Boolean).map(h => (
                     <th key={h} className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-subtle">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {pageAssets.map(asset => {
-                  const ln = mappings.get(asset.id)
+                  const ln = mappings.get(asset.id)?.logicalNode
                   const err = errors.get(asset.id)
                   return (
                     <tr
                       key={asset.id}
-                      onClick={() => setSelectedId(asset.id)}
+                      onClick={() => setSelected(asset)}
                       className={[
                         'border-b border-edge transition-colors cursor-pointer',
-                        asset.id === selectedId ? 'bg-brand/5' : 'hover:bg-surface-hi',
+                        asset.id === selected?.id ? 'bg-brand/5' : 'hover:bg-surface-hi',
                       ].join(' ')}
                     >
                       <td className="px-4 py-2.5 text-xs text-content">
@@ -236,6 +185,7 @@ export default function UnclaimedAssetsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-xs font-mono text-content">{asset.serial_number}</td>
+                      {discoveredOnly && <td className="px-4 py-2.5 text-xs font-mono text-subtle">{asset.source_ip}</td>}
                       <td className="px-4 py-2.5 text-xs text-subtle">{[asset.os, asset.os_version].filter(Boolean).join(' ') || '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-subtle">{asset.ned_id ?? '—'}</td>
                       <td className="px-4 py-2.5 text-xs">
@@ -274,7 +224,7 @@ export default function UnclaimedAssetsPage() {
         {/* Logical node picker */}
         {selected && (
           <div className="w-80 shrink-0 border-l border-edge bg-surface">
-            <Picker key={selected.id} asset={selected} site={dSite} takenIds={takenIds} onPick={pick} />
+            <LogicalNodePicker key={selected.id} asset={selected} siteFilter={site} onSiteFilterChange={setSite} takenIds={takenIds} onPick={pick} />
           </div>
         )}
       </div>

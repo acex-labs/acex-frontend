@@ -77,7 +77,7 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
               return (
                 <tr
                   key={getKey(row) ?? i}
-                  onClick={() => selection ? selection.onToggle(row) : onRowClick?.(row)}
+                  onClick={() => onRowClick ? onRowClick(row) : selection?.onToggle(row)}
                   className={[
                     'border-b border-edge transition-colors cursor-pointer',
                     selected

@@ -48,7 +48,7 @@ const COLUMNS = [
   { key: 'role',     label: 'Role',     sortable: true },
   { key: 'admin_status',     label: 'Admin',        sortable: true },
   { key: 'provision_status', label: 'Provisioning', sortable: true },
-  { key: 'ned_id',   label: 'Driver' },
+  { key: 'ned_id',   label: 'Driver', sortable: true },
   { key: 'regions',  label: 'Regions', render: (v) => v?.join(', ') || '—' },
   { key: 'id',       label: 'ID', sortable: true },
 ]

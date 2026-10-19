@@ -11,12 +11,13 @@ import { formatTime } from '../../components/jobs/jobs'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import DataTable from '../../components/table/DataTable'
 import ZtpNodePanel from '../../components/ztp/ZtpNodePanel'
+import ClaimPanel from '../../components/ztp/ClaimPanel'
 
 // Provisioning moves fast compared to the rest of the inventory.
 const REFRESH_MS = 3_000
 
-// stage: a ZTP stage, or 'stalled'. node: the node shown in the drawer.
-const DEFAULTS = { stage: '', node: '' }
+// stage: a ZTP stage, or 'stalled'. node: the node shown in the drawer. claim: the asset being claimed in it.
+const DEFAULTS = { stage: '', node: '', claim: '' }
 
 // The pipeline, left to right. Each segment filters the table below.
 const PIPELINE = [
@@ -112,12 +113,12 @@ const DEVICE_LISTS = {
     link: { to: '/ztp/discovery?stage=to_review', label: 'Open Discovery →' },
     href: row => `/ztp/discovery?stage=to_review&id=${reviewOf(row).target.discovery_id}`,
   },
+  // No href: a row opens the claim panel in the drawer.
   awaiting_claim: {
     columns: CLAIM_COLUMNS,
     rowKey: 'asset_id',
     empty: 'No approved asset is waiting for a node.',
     link: { to: '/ztp/unclaimed', label: 'Claim →' },
-    href: () => '/ztp/unclaimed',
   },
 }
 
@@ -338,8 +339,9 @@ export default function OverviewPage() {
     queryKey: ['ztp', 'discoveries', 'awaiting-claim'],
     queryFn: fetchAwaitingClaim,
     refetchInterval: REFRESH_MS,
-    enabled: params.stage === 'awaiting_claim',
+    enabled: params.stage === 'awaiting_claim' || params.claim !== '',
   })
+  const claiming = claimable.find(d => String(d.asset_id) === params.claim)
 
   const devices = {
     discovering: [calls, callsLoading],
@@ -351,6 +353,7 @@ export default function OverviewPage() {
 
   const filterStage = key => setParams({ stage: params.stage === key ? '' : key })
   const closeDrawer = () => setParams({ node: '' })
+  const closeClaim = () => setParams({ claim: '' })
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
@@ -399,7 +402,7 @@ export default function OverviewPage() {
                 data={rows}
                 isLoading={isLoading}
                 rowKey={deviceList.rowKey}
-                onRowClick={row => navigate(deviceList.href(row))}
+                onRowClick={row => (deviceList.href ? navigate(deviceList.href(row)) : setParams({ claim: row.asset_id }))}
               />
             ) : (
               <DataTable
@@ -425,6 +428,17 @@ export default function OverviewPage() {
       {selectedNode != null && (
         <Drawer onClose={closeDrawer}>
           <ZtpNodePanel key={selectedNode} nodeId={selectedNode} onClose={closeDrawer} />
+        </Drawer>
+      )}
+
+      {claiming && (
+        <Drawer onClose={closeClaim}>
+          <ClaimPanel
+            key={claiming.asset_id}
+            discovery={claiming}
+            onClaimed={nodeId => setParams({ claim: '', node: nodeId })}
+            onClose={closeClaim}
+          />
         </Drawer>
       )}
     </div>

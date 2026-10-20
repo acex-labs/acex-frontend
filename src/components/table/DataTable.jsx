@@ -54,8 +54,12 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
               >
                 <div className="flex items-center gap-1">
                   {col.label}
-                  {col.sortable && sortKey === col.key && (
-                    sortOrder === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                  {col.sortable && (
+                    sortKey === col.key ? (
+                      sortOrder === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                    ) : (
+                      <ChevronDown size={10} className="opacity-40" />
+                    )
                   )}
                 </div>
               </th>

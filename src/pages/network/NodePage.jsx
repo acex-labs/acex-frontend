@@ -17,6 +17,7 @@ import {
 } from '../../api/inventory'
 import { usePageAiContext } from '../../context/AiContext'
 import ChangeAssetModal from '../../components/nodes/ChangeAssetModal'
+import ChangeLogicalNodeModal from '../../components/nodes/ChangeLogicalNodeModal'
 import VendorIcon from '../../components/ui/VendorIcon'
 import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
 import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
@@ -554,7 +555,7 @@ function NodeCredentialsCard({ nodeId }) {
   )
 }
 
-function OverviewTab({ data, nodeId, onChangeAsset }) {
+function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
   const ln = data.logical_node ?? {}
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -568,13 +569,24 @@ function OverviewTab({ data, nodeId, onChangeAsset }) {
       <Card
         title="Logical Node"
         className="flex flex-col"
-        titleAction={data.logical_node_id && (
-          <Link
-            to={`/network/logical-nodes/${data.logical_node_id}`}
-            className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
-          >
-            Edit
-          </Link>
+        titleAction={(
+          <div className="flex items-center gap-3">
+            {data.logical_node_id && (
+              <Link
+                to={`/network/logical-nodes/${data.logical_node_id}`}
+                className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+              >
+                Edit
+              </Link>
+            )}
+            <button
+              onClick={onChangeLogicalNode}
+              className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+            >
+              <ArrowLeftRight size={11} />
+              Change
+            </button>
+          </div>
         )}
       >
         <Field label="Hostname" value={ln.hostname} />
@@ -596,6 +608,7 @@ export default function NodePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
   const [showChangeAsset, setShowChangeAsset] = useState(false)
+  const [showChangeLogicalNode, setShowChangeLogicalNode] = useState(false)
   const [tabContext, setTabContext] = useState('')
   const [diffPayload, setDiffPayload] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -743,7 +756,12 @@ export default function NodePage() {
         ) : (
           <>
             {activeTab === 'overview' && (
-              <OverviewTab data={data} nodeId={id} onChangeAsset={() => setShowChangeAsset(true)} />
+              <OverviewTab
+                data={data}
+                nodeId={id}
+                onChangeAsset={() => setShowChangeAsset(true)}
+                onChangeLogicalNode={() => setShowChangeLogicalNode(true)}
+              />
             )}
             {activeTab === 'configuration' && (
               <ConfigurationTab nodeId={id} logicalNodeId={data?.logical_node_id} onContextChange={setTabContext} />
@@ -767,6 +785,13 @@ export default function NodePage() {
           currentAssetId={data?.asset_ref_id}
           currentAssetType={data?.asset_ref_type}
           onClose={() => setShowChangeAsset(false)}
+        />
+      )}
+      {showChangeLogicalNode && (
+        <ChangeLogicalNodeModal
+          nodeId={id}
+          currentHostname={hostname}
+          onClose={() => setShowChangeLogicalNode(false)}
         />
       )}
     </div>

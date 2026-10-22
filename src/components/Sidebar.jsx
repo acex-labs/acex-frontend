@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useAdmin } from '../context/AdminContext'
 import { MODULES } from '../modules'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 // For the navigation items in the sidebar, ex. nodes, sites etc under network
 function NavItem({ to, text, icon: Icon, end, collapsed, textSize = '12px' }) {
   return (
@@ -37,7 +38,11 @@ export default function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuth()
   const { mode, cycleMode } = useTheme()
   const { isAdmin, isAdminMode, toggleAdminMode } = useAdmin()
-  const username = user?.profile?.preferred_username || user?.profile?.email || ''
+  const profile = user?.profile
+  const label = profile?.given_name || profile?.preferred_username || profile?.email || ''
+  const fullName =
+    [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || profile?.name || null
+  const email = profile?.email || null
 
   // Only show modules that are either not adminOnly, or adminOnly and mode is active
   const visibleModules = MODULES.filter(m => !m.adminOnly || isAdminMode)
@@ -140,8 +145,30 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* User footer */}
       <div className="border-t border-edge px-2 py-2">
         <div className={['flex items-center gap-2', collapsed ? 'flex-col' : 'px-1'].join(' ')}>
-          <UserCircle size={20} className="text-subtle shrink-0" />
-          {!collapsed && <span className="text-[12px] text-subtle truncate flex-1">{username}</span>}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                className="flex items-center gap-2 min-w-0 flex-1 rounded text-subtle hover:text-content transition-colors"
+                title={fullName || label}
+              >
+                <UserCircle size={20} className="shrink-0" />
+                {!collapsed && <span className="text-[12px] truncate">{label}</span>}
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                side="top"
+                align="start"
+                sideOffset={8}
+                className="z-50 min-w-[200px] rounded-lg border border-edge bg-surface p-1.5 shadow-xl"
+              >
+                <div className="px-2 py-1.5">
+                  {fullName && <p className="text-[13px] font-medium text-content">{fullName}</p>}
+                  {email && <p className="text-[11px] text-subtle truncate">{email}</p>}
+                </div>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
 
           {isAdmin && (
             <button

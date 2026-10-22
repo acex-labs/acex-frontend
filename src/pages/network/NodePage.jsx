@@ -23,6 +23,8 @@ import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
 import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import ConfigurationTab from './ConfigurationTab'
 import ConfigHistory from '../../components/config/ConfigHistory'
+import { Age, LastSynced } from '../../components/config/ConfigSync'
+import { useConfigSync } from '../../hooks/useConfigSync'
 import HardwareTab from '../../components/hardware/HardwareTab'
 import LldpTab from './LldpTab'
 
@@ -557,6 +559,7 @@ function NodeCredentialsCard({ nodeId }) {
 
 function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
   const ln = data.logical_node ?? {}
+  const { data: sync, isSuccess: syncKnown } = useConfigSync(nodeId)
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card title="Node Instance" className="flex flex-col lg:col-span-2">
@@ -565,6 +568,8 @@ function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
         <Field label="Regions" value={data.regions?.join(', ') || null} />
         <Field label="Created" value={data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
+        <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
+        <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
       </Card>
       <Card
         title="Logical Node"

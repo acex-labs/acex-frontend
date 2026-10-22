@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchDesiredConfig, fetchDay0Config, fetchObservedConfig, fetchIntentDiff } from '../../api/config'
 import ConfigViewer from '../../components/config/ConfigViewer'
+import { SyncSummary } from '../../components/config/ConfigSync'
+import { useConfigSync } from '../../hooks/useConfigSync'
 import StructuredConfig from '../../components/config/StructuredConfig'
 import StructuralDiff from '../../components/config/StructuralDiff'
 
@@ -59,6 +61,7 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
   const [desiredView, setDesiredView] = useState('rendered')
   const [observedView, setObservedView] = useState('rendered')
   const [diffView, setDiffView] = useState('structural')
+  const { data: sync, isSuccess: syncKnown } = useConfigSync(nodeId)
 
   const needsDesiredRendered = (sub === 'desired' && desiredView === 'rendered') || (sub === 'diff' && diffView === 'line')
   const needsObservedRendered = (sub === 'observed' && observedView === 'rendered') || (sub === 'diff' && diffView === 'line')
@@ -164,7 +167,12 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
             </>
           )}
           {sub === 'observed' && (
-            <Toggle value={observedView} onChange={setObservedView} options={FORMAT_OPTIONS} />
+            <>
+              <Toggle value={observedView} onChange={setObservedView} options={FORMAT_OPTIONS} />
+              {syncKnown && (
+                <span className="ml-auto text-[11px] text-subtle"><SyncSummary snapshot={sync} /></span>
+              )}
+            </>
           )}
           {sub === 'diff' && (
             <Toggle value={diffView} onChange={setDiffView} options={DIFF_OPTIONS} />

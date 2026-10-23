@@ -16,8 +16,8 @@ export const fetchObservedConfig = (nodeId, output = 'rendered') =>
       return data
     })
 
-export const fetchObservedHistory = (nodeId) =>
-  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed`)
+export const fetchObservedHistory = (nodeId, limit) =>
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed${limit ? `?limit=${limit}` : ''}`)
 
 export const fetchObservedById = (nodeId, configId, output = 'rendered') =>
   apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/${configId}`)

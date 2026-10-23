@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchDesiredConfig, fetchDay0Config, fetchObservedConfig, fetchIntentDiff } from '../../api/config'
+import { fetchDesiredConfig, fetchAnnotatedDesiredConfig, fetchObservedConfig, fetchIntentDiff } from '../../api/config'
 import ConfigViewer from '../../components/config/ConfigViewer'
 import StructuredConfig from '../../components/config/StructuredConfig'
 import StructuralDiff from '../../components/config/StructuralDiff'
+import ConfigHistory from '../../components/config/ConfigHistory'
+import { unparsedText } from '../../components/config/unparsed'
+import ComplianceRules from '../../components/config/ComplianceRules'
 
 const SUB_TABS = [
   { key: 'desired',  label: 'Desired' },
   { key: 'observed', label: 'Observed' },
   { key: 'diff',     label: 'Diff' },
+  { key: 'history',  label: 'History' },
 ]
 
 const FORMAT_OPTIONS = [
@@ -43,19 +47,38 @@ function Toggle({ options, value, onChange }) {
 function CompliancePill({ diff, isLoading }) {
   if (isLoading) return <span className="text-[10px] text-subtle animate-pulse">…</span>
   if (!diff) return null
-  const pct = diff.compliance_percentage ?? 0
-  const color = pct >= 90 ? 'text-green-400 bg-green-500/10 border-green-500/20'
+  const pct = diff.compliance_percentage
+  const color = pct === null ? 'text-subtle bg-surface-hi border-edge'
+              : pct >= 90 ? 'text-green-400 bg-green-500/10 border-green-500/20'
               : pct >= 70 ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
               : 'text-red-400 bg-red-500/10 border-red-500/20'
   return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${color}`}>
-      {pct}% compliant
+    <span className="relative group">
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border cursor-help ${color}`}>
+        {pct === null ? 'No desired config' : `${pct}% compliant`}
+      </span>
+      <span className="absolute right-0 top-full mt-2 z-50 hidden group-hover:block">
+        <ComplianceRules diff={diff} />
+      </span>
     </span>
   )
 }
 
-export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChange }) {
-  const [sub, setSub] = useState('desired')
+// What the device has beyond intent, shown next to compliance but kept out of it.
+function ExtraConfigBadges({ diff }) {
+  if (!diff) return null
+  const badges = [
+    [diff.undeclared_count, 'not declared', 'Components on the device that the desired configuration does not declare.'],
+    [diff.unparsed_count, 'unparsed lines', 'Device configuration the driver does not cover yet. Tells how complete the driver is.'],
+  ].filter(([count]) => count > 0)
+  return badges.map(([count, label, title]) => (
+    <span key={label} title={title} className="text-[10px] px-2 py-0.5 rounded border border-edge bg-surface-hi text-subtle cursor-help">
+      {count} {label}
+    </span>
+  ))
+}
+
+export default function ConfigurationTab({ nodeId, logicalNodeId, nodeHostname, sub, onSubChange, onContextChange, onAnalysisContext }) {
   const [desiredView, setDesiredView] = useState('rendered')
   const [observedView, setObservedView] = useState('rendered')
   const [diffView, setDiffView] = useState('structural')
@@ -64,8 +87,8 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
   const needsObservedRendered = (sub === 'observed' && observedView === 'rendered') || (sub === 'diff' && diffView === 'line')
 
   const { data: desiredRendered, isLoading: desiredRendLoading, error: desiredRendError } = useQuery({
-    queryKey: ['config-day0', nodeId],
-    queryFn: () => fetchDay0Config(nodeId),
+    queryKey: ['config-desired-annotated', nodeId],
+    queryFn: () => fetchAnnotatedDesiredConfig(nodeId),
     enabled: needsDesiredRendered,
     retry: false,
   })
@@ -93,11 +116,12 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
     queryFn: () => fetchIntentDiff(nodeId),
   })
 
-  const desiredRendContent = typeof desiredRendered === 'string' ? desiredRendered : (desiredRendered?.content ?? null)
+  const desiredRendContent = desiredRendered?.content ?? null
   const desiredRendErr = desiredRendError ? 'No NED configured for this node — rendered config unavailable.' : null
 
   useEffect(() => {
-    if (!onContextChange) return
+    // History reports its own context.
+    if (!onContextChange || sub === 'history') return
     let ctx = ''
     if (sub === 'desired') {
       if (desiredView === 'rendered' && desiredRendContent) {
@@ -111,17 +135,22 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
       if (observedView === 'rendered' && observedRendered?.content) {
         ctx = `Viewing: Observed (actual) configuration (rendered)\n\n${observedRendered.content.slice(0, 4000)}`
       } else if (observedView === 'functional' && observedFunctional?.content) {
-        ctx = `Viewing: Observed (actual) configuration (functional/structured)\n\n${JSON.stringify(observedFunctional.content, null, 2).slice(0, 4000)}`
+        const unmatched = observedFunctional.metadata?.unmatched ?? []
+        const parsed = JSON.stringify(observedFunctional.content, null, 2).slice(0, 4000)
+        const unparsed = unmatched.length
+          ? `\n\nLines the driver could not parse (${unmatched.length}):\n${unparsedText(unmatched).slice(0, 2000)}`
+          : ''
+        ctx = `Viewing: Observed (actual) configuration (functional/structured)\n\n${parsed}${unparsed}`
       } else {
         ctx = 'Viewing: Observed (actual) configuration'
       }
     } else if (sub === 'diff') {
       if (intentDiff) {
-        const pct = intentDiff.compliance_percentage ?? 0
+        const pct = intentDiff.compliance_percentage
         const lines = (intentDiff.diff ?? []).map(l =>
           (l.type === 'add' ? '+ ' : l.type === 'remove' ? '- ' : '  ') + l.text
         ).join('\n')
-        ctx = `Viewing: Diff between desired and observed configuration\nCompliance: ${pct}%\n\n${lines.slice(0, 4000)}`
+        ctx = `Viewing: Diff between desired and observed configuration\nCompliance: ${pct === null ? 'n/a, nothing desired' : `${pct}%`}\n\n${lines.slice(0, 4000)}`
       } else {
         ctx = 'Viewing: Diff between desired and observed configuration'
       }
@@ -137,7 +166,7 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
           {SUB_TABS.map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => setSub(key)}
+              onClick={() => onSubChange(key)}
               className={[
                 'px-3 py-2 text-xs border-b-2 -mb-px transition-colors',
                 sub === key ? 'border-brand text-content' : 'border-transparent text-subtle hover:text-content',
@@ -147,7 +176,8 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
             </button>
           ))}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1.5">
+          <ExtraConfigBadges diff={intentDiff} />
           <CompliancePill diff={intentDiff} isLoading={diffLoading} />
         </div>
       </div>
@@ -177,6 +207,7 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
         {sub === 'desired' && desiredView === 'rendered' && (
           <ConfigViewer
             content={desiredRendContent}
+            spans={desiredRendered?.spans}
             isLoading={desiredRendLoading}
             error={desiredRendErr}
           />
@@ -192,7 +223,7 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
           />
         )}
         {sub === 'observed' && observedView === 'functional' && (
-          <StructuredConfig config={observedFunctional?.content || null} isLoading={obsFuncLoading} />
+          <StructuredConfig config={observedFunctional?.content || null} isLoading={obsFuncLoading} unmatched={observedFunctional?.metadata?.unmatched} />
         )}
 
         {sub === 'diff' && diffView === 'structural' && (
@@ -207,6 +238,14 @@ export default function ConfigurationTab({ nodeId, logicalNodeId, onContextChang
           />
         )}
 
+        {sub === 'history' && (
+          <ConfigHistory
+            nodeId={nodeId}
+            nodeHostname={nodeHostname}
+            onAnalysisContext={onAnalysisContext}
+            onContextChange={onContextChange}
+          />
+        )}
       </div>
     </div>
   )

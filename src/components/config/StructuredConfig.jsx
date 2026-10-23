@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
+import UnparsedLines from './UnparsedLines'
 
 function extractVal(v) {
   if (v === null || v === undefined) return null
@@ -94,7 +95,7 @@ function DictSection({ title, dict }) {
   )
 }
 
-export default function StructuredConfig({ config, isLoading }) {
+export default function StructuredConfig({ config, isLoading, unmatched }) {
   if (isLoading) return <div className="p-6 text-xs text-subtle animate-pulse">Loading…</div>
   if (!config)   return <div className="p-6 text-xs text-subtle">No configuration available.</div>
 
@@ -166,6 +167,12 @@ export default function StructuredConfig({ config, isLoading }) {
       {!isEmpty(cfg.lacp) && (
         <Section title="LACP">
           {renderObject(cfg.lacp, 1)}
+        </Section>
+      )}
+
+      {unmatched?.length > 0 && (
+        <Section title={`Not parsed (${unmatched.length} lines)`} defaultOpen>
+          <UnparsedLines unmatched={unmatched} />
         </Section>
       )}
     </div>

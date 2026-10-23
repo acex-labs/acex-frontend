@@ -22,7 +22,6 @@ import VendorIcon from '../../components/ui/VendorIcon'
 import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
 import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import ConfigurationTab from './ConfigurationTab'
-import ConfigHistory from '../../components/config/ConfigHistory'
 import { Age, LastSynced } from '../../components/config/ConfigSync'
 import { useConfigSync } from '../../hooks/useConfigSync'
 import HardwareTab from '../../components/hardware/HardwareTab'
@@ -40,7 +39,7 @@ const NODE_CONFIG_STARTER_LABELS = [
   { key: 'explain',  label: 'Explain configuration' },
 ]
 
-// History tab, once two snapshots are diffed: these run the backend's
+// Configuration's History view, once two snapshots are diffed: these run the backend's
 // dedicated analysis endpoint/chain (see ConfigHistory's onAnalysisContext),
 // not the chat prompt.
 const NODE_HISTORY_STARTER_LABELS = [
@@ -98,7 +97,6 @@ const TABS = [
   { key: 'configuration', label: 'Configuration' },
   { key: 'hardware',      label: 'Hardware' },
   { key: 'lldp',          label: 'LLDP' },
-  { key: 'history',       label: 'History' },
 ]
 
 function AdminStatusEditor({ status, onChange, pending }) {
@@ -612,6 +610,8 @@ export default function NodePage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
+  const configSub = searchParams.get('sub') ?? 'desired'
+  const onHistory = activeTab === 'configuration' && configSub === 'history'
   const [showChangeAsset, setShowChangeAsset] = useState(false)
   const [showChangeLogicalNode, setShowChangeLogicalNode] = useState(false)
   const [tabContext, setTabContext] = useState('')
@@ -639,6 +639,14 @@ export default function NodePage() {
     },
   })
 
+  const setConfigSub = (sub) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('sub', sub)
+      return next
+    }, { replace: true })
+  }
+
   const setTab = (tab) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
@@ -657,21 +665,21 @@ export default function NodePage() {
 
   const starters =
     activeTab === 'overview' ? NODE_OVERVIEW_STARTER_LABELS :
-    activeTab === 'history'  ? (diffPayload ? NODE_HISTORY_STARTER_LABELS : []) :
+    onHistory ? (diffPayload ? NODE_HISTORY_STARTER_LABELS : []) :
     NODE_CONFIG_STARTER_LABELS
 
   const placeholder =
     activeTab === 'overview' ? 'Ask about this node…' :
-    activeTab === 'history'  ? 'Ask about the config history…' :
+    onHistory ? 'Ask about the config history…' :
     'Ask about the configuration…'
 
   usePageAiContext({
     pageName: `Node: ${hostname}`,
-    tabName: TABS.find(t => t.key === activeTab)?.label,
+    tabName: onHistory ? 'Configuration history' : TABS.find(t => t.key === activeTab)?.label,
     context: aiContext,
     starters,
     placeholder,
-    taskPayload: activeTab === 'history' ? diffPayload : null,
+    taskPayload: onHistory ? diffPayload : null,
   })
 
   return (
@@ -769,18 +777,18 @@ export default function NodePage() {
               />
             )}
             {activeTab === 'configuration' && (
-              <ConfigurationTab nodeId={id} logicalNodeId={data?.logical_node_id} onContextChange={setTabContext} />
+              <ConfigurationTab
+                nodeId={id}
+                logicalNodeId={data?.logical_node_id}
+                nodeHostname={hostname}
+                sub={configSub}
+                onSubChange={setConfigSub}
+                onContextChange={setTabContext}
+                onAnalysisContext={setDiffPayload}
+              />
             )}
             {activeTab === 'hardware' && <HardwareTab nodeId={id} data={data} />}
             {activeTab === 'lldp'     && <LldpTab nodeId={id} hostname={data?.logical_node?.hostname} siteName={data?.logical_node?.site} />}
-            {activeTab === 'history'  && (
-              <ConfigHistory
-                nodeId={id}
-                nodeHostname={hostname}
-                onAnalysisContext={setDiffPayload}
-                onContextChange={setTabContext}
-              />
-            )}
           </>
         )}
       </div>

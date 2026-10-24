@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { X } from 'lucide-react'
-import { fetchNodes } from '../../api/inventory'
-import { useSupports } from './capabilities'
+import { fetchAllNodes, fetchNodes } from '../../api/inventory'
 import TableToolbar from '../table/TableToolbar'
 import DataTable from '../table/DataTable'
 import Pagination from '../table/Pagination'
@@ -16,13 +15,23 @@ const FILTERS = [
   { key: 'vendor',   label: 'Vendor',   width: '120px' },
 ]
 
-// Nodes to run an operation on, found by hostname, site, region and vendor. Only nodes whose NED can run it
-// can be chosen; a node chosen for another operation stays chosen, and is counted as skipped. `selected` maps
-// node id to the node, so a choice survives filtering, paging and switching operation.
-export default function NodePicker({ capability, selected, onChange }) {
+const COLUMNS = [
+  { key: 'hostname', label: 'Hostname' },
+  { key: 'site', label: 'Site' },
+  { key: 'role', label: 'Role' },
+  { key: 'ip', label: 'IP Address', render: (_, row) => row.management_connections?.[0]?.target_ip ?? '—' },
+  { key: 'ned_id', label: 'Driver', render: v => v ?? '—' },
+]
+
+// Nodes to run operations on, found by hostname, site, region and vendor, one page at a time or every node the
+// filters match at once. `selected` maps node id to the node, so a choice survives filtering and paging; which of
+// them an operation can run on is the operation's to say.
+export default function NodePicker({ selected, onChange }) {
   const [filters, setFilters] = useState({ hostname: '', site: '', region: '', vendor: '' })
   const [offset, setOffset] = useState(0)
-  const supports = useSupports(capability)
+  // Every node the current filters match, once fetched for selecting them all.
+  const [matching, setMatching] = useState(null)
+  const [fetchingAll, setFetchingAll] = useState(false)
 
   const query = { ...filters, offset, limit: LIMIT, sort: 'hostname', order: 'asc' }
   const { data, isFetching } = useQuery({
@@ -31,7 +40,14 @@ export default function NodePicker({ capability, selected, onChange }) {
     placeholderData: keepPreviousData,
   })
   const nodes = data?.items ?? []
+  const total = data?.total ?? 0
+  const allMatchingSelected = matching?.length > 0 && matching.every(n => selected.has(n.id))
 
+  const filter = vals => {
+    setFilters(vals)
+    setOffset(0)
+    setMatching(null)
+  }
   const toggle = node => {
     const next = new Map(selected)
     next.has(node.id) ? next.delete(node.id) : next.set(node.id, node)
@@ -43,32 +59,36 @@ export default function NodePicker({ capability, selected, onChange }) {
     rows.forEach(r => (all ? next.delete(r.id) : next.set(r.id, r)))
     onChange(next)
   }
-
-  const columns = [
-    { key: 'hostname', label: 'Hostname' },
-    { key: 'site', label: 'Site' },
-    { key: 'role', label: 'Role' },
-    { key: 'ip', label: 'IP Address', render: (_, row) => row.management_connections?.[0]?.target_ip ?? '—' },
-    {
-      key: 'ned_id', label: 'Driver',
-      render: (v, row) => supports(row) ? v : <span title={`${v ?? 'No driver'} can't run ${capability[1]}`}>{v ?? '—'} · no {capability[1]}</span>,
-    },
-  ]
-  const selectable = nodes.filter(supports)
-  const skipped = [...selected.values()].filter(n => !supports(n)).length
+  const toggleMatching = async () => {
+    if (allMatchingSelected) return toggleAll(matching)
+    setFetchingAll(true)
+    try {
+      const all = await fetchAllNodes(filters)
+      setMatching(all)
+      onChange(new Map([...selected, ...all.map(n => [n.id, n])]))
+    } finally {
+      setFetchingAll(false)
+    }
+  }
 
   return (
     <div className="flex flex-col border border-edge rounded-md overflow-hidden min-h-0">
       <TableToolbar
         filters={FILTERS}
         values={filters}
-        onChange={vals => { setFilters(vals); setOffset(0) }}
+        onChange={filter}
         actions={
           <>
-            <span className="text-[11px] text-subtle">
-              {selected.size} selected
-              {skipped > 0 && <span className="text-amber-400"> · {skipped} can't run {capability[1]} and will be skipped</span>}
-            </span>
+            {total > nodes.length && (
+              <button
+                onClick={toggleMatching}
+                disabled={fetchingAll}
+                className="text-[11px] text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+              >
+                {fetchingAll ? `Selecting ${total}…` : `${allMatchingSelected ? 'Deselect' : 'Select'} all ${total} matching`}
+              </button>
+            )}
+            <span className="text-[11px] text-subtle">{selected.size} selected</span>
             {selected.size > 0 && (
               <button onClick={() => onChange(new Map())} className="text-subtle hover:text-content" title="Clear selection">
                 <X size={12} />
@@ -79,20 +99,18 @@ export default function NodePicker({ capability, selected, onChange }) {
       />
       <div className="max-h-72 overflow-auto flex flex-col">
         <DataTable
-          columns={columns}
+          columns={COLUMNS}
           data={nodes}
           isLoading={isFetching && !data}
           selection={{
             ids: new Set(selected.keys()),
             onToggle: toggle,
             onToggleAll: toggleAll,
-            allSelected: selectable.length > 0 && selectable.every(n => selected.has(n.id)),
-            // A chosen node can always be unchosen, even one this operation can't run on.
-            isSelectable: node => supports(node) || selected.has(node.id),
+            allSelected: nodes.length > 0 && nodes.every(n => selected.has(n.id)),
           }}
         />
       </div>
-      <Pagination offset={offset} limit={LIMIT} total={data?.total ?? 0} onChange={setOffset} />
+      <Pagination offset={offset} limit={LIMIT} total={total} onChange={setOffset} />
     </div>
   )
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import NodePicker from '../../components/operations/NodePicker'
 import { useSupports } from '../../components/operations/capabilities'
 import RunsTable from '../../components/operations/RunsTable'
 import RunDrawer from '../../components/operations/RunDrawer'
@@ -52,7 +51,7 @@ const ACTIONS = [
 ]
 
 // Vendor-agnostic methods: the same params and result on every device, whatever its driver.
-export default function StandardActions({ selected, onSelect }) {
+export default function StandardActions({ selected }) {
   const queryClient = useQueryClient()
   const [actionKey, setActionKey] = useState(ACTIONS[0].key)
   const action = ACTIONS.find(a => a.key === actionKey)
@@ -62,6 +61,7 @@ export default function StandardActions({ selected, onSelect }) {
   const [openRun, setOpenRun] = useState(null)
   const supports = useSupports(['actions', action.key])
   const nodes = [...selected.values()].filter(supports)
+  const skipped = selected.size - nodes.length
 
   const choose = key => {
     setActionKey(key)
@@ -82,7 +82,7 @@ export default function StandardActions({ selected, onSelect }) {
 
   return (
     <>
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="space-y-6">
         <section className="space-y-3">
           <div className="flex gap-2">
             {ACTIONS.map(a => (
@@ -95,7 +95,6 @@ export default function StandardActions({ selected, onSelect }) {
               </button>
             ))}
           </div>
-          <NodePicker capability={['actions', action.key]} selected={selected} onChange={onSelect} />
           <action.Form params={params} onChange={setParams} />
           <div className="flex items-center gap-3">
             <button
@@ -105,6 +104,7 @@ export default function StandardActions({ selected, onSelect }) {
             >
               {action.label} from {nodes.length} node{nodes.length === 1 ? '' : 's'}
             </button>
+            {skipped > 0 && <span className="text-[11px] text-amber-400">{skipped} can't run {action.key} and will be skipped</span>}
             {error && <span className="text-xs text-red-400">{error}</span>}
           </div>
         </section>

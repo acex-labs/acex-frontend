@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import NodePicker from '../../components/operations/NodePicker'
 import { useSupports } from '../../components/operations/capabilities'
 import RunsTable from '../../components/operations/RunsTable'
 import RunDrawer from '../../components/operations/RunDrawer'
@@ -9,10 +8,11 @@ import { orderError } from '../../components/operations/runs'
 import { executeCommands } from '../../api/operations'
 
 // Raw commands, run as written on each chosen node, one session per node, output masked by its driver.
-export default function ExecCommands({ selected, onSelect }) {
+export default function ExecCommands({ selected }) {
   const queryClient = useQueryClient()
   const supports = useSupports(['operations', 'execute'])
   const nodes = [...selected.values()].filter(supports)
+  const skipped = selected.size - nodes.length
   const [text, setText] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState(null)
@@ -35,9 +35,8 @@ export default function ExecCommands({ selected, onSelect }) {
 
   return (
     <>
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="space-y-6">
         <section className="space-y-3">
-          <NodePicker capability={['operations', 'execute']} selected={selected} onChange={onSelect} />
           <textarea
             rows={4}
             value={text}
@@ -53,6 +52,7 @@ export default function ExecCommands({ selected, onSelect }) {
             >
               Run on {nodes.length} node{nodes.length === 1 ? '' : 's'}
             </button>
+            {skipped > 0 && <span className="text-[11px] text-amber-400">{skipped} can't run execute and will be skipped</span>}
             <span className="text-[11px] text-subtle">One command per line, run in order. Secrets in the output are masked.</span>
             {error && <span className="text-xs text-red-400">{error}</span>}
           </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Navigate, useParams } from 'react-router-dom'
+import NodePicker from '../../components/operations/NodePicker'
 import ExecCommands from './ExecCommands'
 import StandardActions from './StandardActions'
 
@@ -21,7 +22,7 @@ const SECTIONS = [
 
 export default function BulkActionsPage() {
   const { section } = useParams()
-  // One choice of nodes for every kind of action, kept when switching between them.
+  // One picker and one choice of nodes for every kind of action, kept when switching between them.
   const [selected, setSelected] = useState(new Map())
   const current = SECTIONS.find(s => s.key === section)
   if (!current) return <Navigate to={`/operations/bulk-actions/${SECTIONS[0].key}`} replace />
@@ -42,8 +43,11 @@ export default function BulkActionsPage() {
           </NavLink>
         ))}
       </div>
-      <p className="px-6 pt-4 text-[11px] text-subtle">{current.about}</p>
-      <current.Panel key={current.key} selected={selected} onSelect={setSelected} />
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        <p className="text-[11px] text-subtle">{current.about}</p>
+        <NodePicker selected={selected} onChange={setSelected} />
+        <current.Panel key={current.key} selected={selected} />
+      </div>
     </div>
   )
 }

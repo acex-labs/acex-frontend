@@ -32,6 +32,18 @@ export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
+// Every node matching the filters, fetched a page at a time.
+export const fetchAllNodes = async (filters, pageSize = 500) => {
+  const items = []
+  for (let total = Infinity; items.length < total;) {
+    const page = await fetchNodes({ ...filters, sort: 'hostname', order: 'asc', limit: pageSize, offset: items.length })
+    if (page.items.length === 0) break
+    items.push(...page.items)
+    total = page.total
+  }
+  return items
+}
+
 export const fetchNode = (id) =>
   apiFetch(`/api/v1/inventory/node_instances/${id}`)
 

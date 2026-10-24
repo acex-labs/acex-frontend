@@ -1,7 +1,7 @@
 // How the compliance percentage is counted, with this diff's own numbers. Shown on hover.
 const RULES = [
   'Only what the desired configuration declares is counted. Model defaults and empty sections are not.',
-  'A declared component is compliant when the device has it with the same values.',
+  'A declared component is compliant when the device has it with the same values for what it declares. Attributes left unset are not compared, so device defaults never count against it.',
   'Missing from the device, or present with other values, counts against compliance.',
   'Configuration on the device that is not declared shows as "not declared" in the diff, but does not lower the percentage.',
   'Lines the driver can not parse yet are listed as "not parsed". They show how far the driver covers the device, not compliance.',

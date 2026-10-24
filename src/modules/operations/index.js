@@ -12,7 +12,8 @@ export const OperationsModule = {
   ],
   routes: [
     { path: '/operations/workflows',    placeholder: 'Workflows' },
-    { path: '/operations/bulk-actions', placeholder: 'Bulk Actions' },
+    { path: '/operations/bulk-actions',          load: () => import('../../pages/operations/BulkActionsPage') },
+    { path: '/operations/bulk-actions/:section', load: () => import('../../pages/operations/BulkActionsPage') },
     { path: '/operations/triggers',     placeholder: 'Triggers' },
     { path: '/operations/scheduled',    placeholder: 'Scheduled' },
   ],

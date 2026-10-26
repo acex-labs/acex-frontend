@@ -1,3 +1,5 @@
+import { parseTime } from '../jobs/jobs'
+
 // What a run was ordered to do, in one line: its commands, or its action and target.
 export function runSummary(run) {
   const request = run.request ?? {}
@@ -16,6 +18,12 @@ export function runProgress(run) {
   const total = Object.values(jobs).reduce((a, b) => a + b, 0)
   const done = FINISHED.reduce((a, s) => a + (jobs[s] ?? 0), 0)
   return { done, total, failed: jobs.failed ?? 0 }
+}
+
+// How long a run took, from being ordered to its last job finishing; while it runs, until `now`.
+export function runDuration(run, now = Date.now()) {
+  const end = run.finished_at ? parseTime(run.finished_at).getTime() : now
+  return end - parseTime(run.created_at).getTime()
 }
 
 // Why ordering a run failed, from the API's answer: a message, or the fields that didn't validate.

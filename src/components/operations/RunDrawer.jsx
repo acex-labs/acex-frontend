@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Download, X } from 'lucide-react'
 import { downloadReport, fetchRun } from '../../api/operations'
 import JobStateBadge from '../jobs/JobStateBadge'
-import { formatTime } from '../jobs/jobs'
-import { FINISHED, runProgress, runSummary } from './runs'
+import { formatDuration, formatTime } from '../jobs/jobs'
+import { FINISHED, runDuration, runProgress, runSummary } from './runs'
 
 // What one node answered to raw commands: each command and its masked output.
 function CommandOutputs({ outputs }) {
@@ -83,6 +83,17 @@ export default function RunDrawer({ runId, onClose }) {
   })
   const progress = run ? runProgress(run) : null
 
+  // While the run is going, its running time counts up every second.
+  const running = !!run && !FINISHED.includes(run.state)
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!running) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [running])
+  const took = run?.finished_at ? `Took ${formatDuration(runDuration(run))}`
+    : running ? `Running for ${formatDuration(runDuration(run, now))}` : null
+
   return (
     <>
       <div className="absolute inset-0 z-20 bg-black/20" onClick={onClose} />
@@ -96,7 +107,7 @@ export default function RunDrawer({ runId, onClose }) {
           <div className="p-4 space-y-4">
             <div className="text-[11px] text-subtle space-y-1">
               <div className="font-mono text-content break-all">{runSummary(run)}</div>
-              <div>Ordered by {run.created_by} · {formatTime(run.created_at)}</div>
+              <div>Ordered by {run.created_by} · {formatTime(run.created_at)}{took && ` · ${took}`}</div>
             </div>
             <div>
               <div className="flex justify-between text-[11px] text-subtle mb-1">

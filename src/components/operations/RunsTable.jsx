@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchRuns } from '../../api/operations'
 import DataTable from '../table/DataTable'
 import JobStateBadge from '../jobs/JobStateBadge'
-import { formatTime } from '../jobs/jobs'
-import { runProgress, runSummary, FINISHED } from './runs'
+import { formatDuration, formatTime } from '../jobs/jobs'
+import { runDuration, runProgress, runSummary, FINISHED } from './runs'
 
 // Runs of one kind, newest first, kept fresh while any is still running. A row opens its run.
 export default function RunsTable({ kind, onOpen }) {
@@ -26,6 +26,15 @@ export default function RunsTable({ kind, onOpen }) {
     { key: 'state', label: 'State', render: state => <JobStateBadge state={state} /> },
     { key: 'created_by', label: 'Ordered by' },
     { key: 'created_at', label: 'Ordered', render: formatTime },
+    // Refreshed with the table while the run is going, so a running one's time counts up.
+    {
+      key: 'took', label: 'Took',
+      render: (_, run) => {
+        if (run.finished_at) return <span className="tabular-nums">{formatDuration(runDuration(run))}</span>
+        if (FINISHED.includes(run.state)) return '—'
+        return <span className="tabular-nums text-subtle">{formatDuration(runDuration(run))}</span>
+      },
+    },
   ]
 
   return <DataTable columns={columns} data={data?.items ?? []} isLoading={isFetching && !data} onRowClick={run => onOpen(run.id)} />

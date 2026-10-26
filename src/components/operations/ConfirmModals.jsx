@@ -16,11 +16,12 @@ function Modal({ title, children, onClose }) {
 }
 
 // Raw commands go to the devices as they are: the user sees what will run where, and types the phrase to go on.
-export function ExecuteConfirmModal({ commands, hostnames, onConfirm, onClose }) {
-  const phrase = `execute on ${hostnames.length}`
+// The phrase is "execute on N" unless the caller names its own, e.g. a workflow's.
+export function ExecuteConfirmModal({ commands, hostnames, onConfirm, onClose, phrase = `execute on ${hostnames.length}`, title }) {
   const [typed, setTyped] = useState('')
+  const counts = `${commands.length} command${commands.length === 1 ? '' : 's'} on ${hostnames.length} node${hostnames.length === 1 ? '' : 's'}`
   return (
-    <Modal title={`Run ${commands.length} command${commands.length === 1 ? '' : 's'} on ${hostnames.length} node${hostnames.length === 1 ? '' : 's'}`} onClose={onClose}>
+    <Modal title={title ?? `Run ${counts}`} onClose={onClose}>
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-1">Commands, in order</div>
         <pre className="max-h-40 overflow-auto px-3 py-2 text-xs font-mono bg-surface-hi border border-edge rounded text-content">{commands.join('\n')}</pre>

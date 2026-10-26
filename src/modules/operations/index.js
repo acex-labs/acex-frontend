@@ -5,13 +5,16 @@ export const OperationsModule = {
   label: 'Operations',
   icon: Zap,
   nav: [
-    { to: '/operations/workflows',    text: 'Workflows',    icon: GitBranch },
     { to: '/operations/bulk-actions', text: 'Bulk Actions', icon: ListChecks },
+    { to: '/operations/workflows',    text: 'Workflows',    icon: GitBranch },
     { to: '/operations/triggers',     text: 'Triggers',     icon: Zap },
     { to: '/operations/scheduled',    text: 'Scheduled',    icon: CalendarClock },
   ],
   routes: [
-    { path: '/operations/workflows',    placeholder: 'Workflows' },
+    { path: '/operations/workflows',               load: () => import('../../pages/operations/workflows/WorkflowsPage') },
+    { path: '/operations/workflows/:section',      load: () => import('../../pages/operations/workflows/WorkflowsPage') },
+    { path: '/operations/workflows/edit/:id',      load: () => import('../../pages/operations/workflows/WorkflowBuilderPage') },
+    { path: '/operations/workflows/run/:runId',    load: () => import('../../pages/operations/workflows/WorkflowRunPage') },
     { path: '/operations/bulk-actions',          load: () => import('../../pages/operations/BulkActionsPage') },
     { path: '/operations/bulk-actions/:section', load: () => import('../../pages/operations/BulkActionsPage') },
     { path: '/operations/triggers',     placeholder: 'Triggers' },

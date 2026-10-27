@@ -6,10 +6,8 @@ import PageHeader from '../../components/ui/PageHeader'
 
 const FILTERS = [
   { key: 'id', label: 'CVE ID', placeholder: 'Filter ID' },
-  { key: 'source', label: 'Source', placeholder: 'Filter source' },
   { key: 'published', label: 'Published', placeholder: 'Filter date' },
   { key: 'modified', label: 'Modified', placeholder: 'Filter date' },
-  { key: 'status', label: 'Status', placeholder: 'Filter status' },
   { key: 'severity', label: 'Severity', placeholder: 'Filter severity' },
   { key: 'description', label: 'Description', placeholder: 'Filter description' },
 ]
@@ -65,14 +63,10 @@ function fieldValue(record, key) {
   switch (key) {
     case 'id':
       return textValue(recordValue(record, ['cve_id', 'cveId', 'id']) ?? recordValue(cve, ['cve_id', 'cveId', 'id']))
-    case 'source':
-      return textValue(recordValue(record, ['source', 'source_identifier', 'sourceIdentifier']) ?? recordValue(cve, ['source', 'source_identifier', 'sourceIdentifier']))
     case 'published':
       return textValue(recordValue(record, ['published', 'published_at', 'publishedAt']) ?? recordValue(cve, ['published', 'published_at', 'publishedAt']))
     case 'modified':
       return textValue(recordValue(record, ['last_modified', 'lastModified', 'modified', 'updated_at']) ?? recordValue(cve, ['last_modified', 'lastModified', 'modified']))
-    case 'status':
-      return textValue(recordValue(record, ['vuln_status', 'vulnStatus', 'status']) ?? recordValue(cve, ['vuln_status', 'vulnStatus', 'status']))
     case 'severity':
       return severity(record)
     case 'description':

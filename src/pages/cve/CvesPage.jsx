@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Eye, EyeOff } from 'lucide-react'
 import { fetchCves } from '../../api/cves'
 import PageHeader from '../../components/ui/PageHeader'
+import Pagination from '../../components/table/Pagination'
+
+const PAGE_SIZE = 50
 
 const FILTERS = [
   { key: 'id', label: 'CVE ID', placeholder: 'Filter ID' },
@@ -86,6 +89,7 @@ function getCves(data) {
 
 export default function CvesPage() {
   const [filters, setFilters] = useState({})
+  const [pageOffset, setPageOffset] = useState(0)
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [rawOpen, setRawOpen] = useState(false)
   const { data, isLoading, isError, error } = useQuery({
@@ -99,7 +103,9 @@ export default function CvesPage() {
       const filter = filters[key]?.trim().toLowerCase()
       return !filter || fieldValue(cve, key).toLowerCase().includes(filter)
     })), [cves, filters])
-  const selected = filteredCves.find(item => item.index === selectedIndex) ?? filteredCves[0]
+  const offset = Math.min(pageOffset, Math.max(0, Math.ceil(filteredCves.length / PAGE_SIZE) - 1) * PAGE_SIZE)
+  const pageCves = filteredCves.slice(offset, offset + PAGE_SIZE)
+  const selected = pageCves.find(item => item.index === selectedIndex) ?? pageCves[0]
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -142,7 +148,7 @@ export default function CvesPage() {
                         <input
                           aria-label={`Filter by ${label}`}
                           value={filters[key] ?? ''}
-                          onChange={event => setFilters(current => ({ ...current, [key]: event.target.value }))}
+                          onChange={event => { setFilters(current => ({ ...current, [key]: event.target.value })); setPageOffset(0) }}
                           placeholder={placeholder}
                           className="w-full min-w-0 bg-surface-hi border border-edge rounded px-1.5 py-1 text-[10px] text-content placeholder:text-subtle outline-none focus:border-brand/50"
                         />
@@ -151,7 +157,7 @@ export default function CvesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCves.map(({ cve, index }) => (
+                  {pageCves.map(({ cve, index }) => (
                     <tr
                       key={index}
                       onClick={() => setSelectedIndex(index)}
@@ -175,6 +181,7 @@ export default function CvesPage() {
                 </p>
               )}
             </div>
+            <Pagination offset={offset} limit={PAGE_SIZE} total={filteredCves.length} onChange={setPageOffset} />
           </section>
           {rawOpen && <section id="cve-raw-panel" aria-label="Selected CVE raw data" className="w-1/2 min-w-0 flex flex-col">
             <div className="px-4 py-2 border-b border-edge text-xs font-semibold text-heading">

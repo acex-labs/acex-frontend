@@ -122,8 +122,8 @@ export const updateLogicalNode = (id, patch) =>
 export const deleteLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`, { method: 'DELETE' })
 
-export const fetchAssets = ({ vendor, os, hardware_model, serial_number, assigned, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, serial_number, assigned, limit, offset })}`)
+export const fetchAssets = ({ vendor, os, hardware_model, serial_number, assigned, sort, order, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, serial_number, assigned, sort, order, limit, offset })}`)
 
 export const fetchAsset = (id) =>
   apiFetch(`/api/v1/inventory/assets/${id}`)

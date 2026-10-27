@@ -23,13 +23,25 @@ const normalizeNode = (n) => ({
   logical_node_id: n.logical_node_id,
 })
 
-export const fetchNodes = ({ hostname, site, region, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
+}
+
+// Every node matching the filters, fetched a page at a time.
+export const fetchAllNodes = async (filters, pageSize = 500) => {
+  const items = []
+  for (let total = Infinity; items.length < total;) {
+    const page = await fetchNodes({ ...filters, sort: 'hostname', order: 'asc', limit: pageSize, offset: items.length })
+    if (page.items.length === 0) break
+    items.push(...page.items)
+    total = page.total
+  }
+  return items
 }
 
 export const fetchNode = (id) =>

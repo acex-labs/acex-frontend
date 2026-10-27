@@ -1,8 +1,15 @@
 {
   "name": "acex-frontend",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.4.0",
   "type": "module",
+  "acex": {
+    "changelog": {
+      "name": "ACEX web interface",
+      "output": "src/changelog.json",
+      "paths": ["src", "public", "index.html", "nginx.conf", "entrypoint.sh", "Dockerfile", "vite.config.js"]
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

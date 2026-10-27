@@ -17,11 +17,13 @@ import {
 } from '../../api/inventory'
 import { usePageAiContext } from '../../context/AiContext'
 import ChangeAssetModal from '../../components/nodes/ChangeAssetModal'
+import ChangeLogicalNodeModal from '../../components/nodes/ChangeLogicalNodeModal'
 import VendorIcon from '../../components/ui/VendorIcon'
 import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
 import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
 import ConfigurationTab from './ConfigurationTab'
-import ConfigHistory from '../../components/config/ConfigHistory'
+import { Age, LastSynced } from '../../components/config/ConfigSync'
+import { useConfigSync } from '../../hooks/useConfigSync'
 import HardwareTab from '../../components/hardware/HardwareTab'
 import LldpTab from './LldpTab'
 
@@ -37,7 +39,7 @@ const NODE_CONFIG_STARTER_LABELS = [
   { key: 'explain',  label: 'Explain configuration' },
 ]
 
-// History tab, once two snapshots are diffed: these run the backend's
+// Configuration's History view, once two snapshots are diffed: these run the backend's
 // dedicated analysis endpoint/chain (see ConfigHistory's onAnalysisContext),
 // not the chat prompt.
 const NODE_HISTORY_STARTER_LABELS = [
@@ -95,7 +97,6 @@ const TABS = [
   { key: 'configuration', label: 'Configuration' },
   { key: 'hardware',      label: 'Hardware' },
   { key: 'lldp',          label: 'LLDP' },
-  { key: 'history',       label: 'History' },
 ]
 
 function AdminStatusEditor({ status, onChange, pending }) {
@@ -554,8 +555,9 @@ function NodeCredentialsCard({ nodeId }) {
   )
 }
 
-function OverviewTab({ data, nodeId, onChangeAsset }) {
+function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
   const ln = data.logical_node ?? {}
+  const { data: sync, isSuccess: syncKnown } = useConfigSync(nodeId)
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card title="Node Instance" className="flex flex-col lg:col-span-2">
@@ -564,17 +566,30 @@ function OverviewTab({ data, nodeId, onChangeAsset }) {
         <Field label="Regions" value={data.regions?.join(', ') || null} />
         <Field label="Created" value={data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
+        <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
+        <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
       </Card>
       <Card
         title="Logical Node"
         className="flex flex-col"
-        titleAction={data.logical_node_id && (
-          <Link
-            to={`/network/logical-nodes/${data.logical_node_id}`}
-            className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
-          >
-            Edit
-          </Link>
+        titleAction={(
+          <div className="flex items-center gap-3">
+            {data.logical_node_id && (
+              <Link
+                to={`/network/logical-nodes/${data.logical_node_id}`}
+                className="text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+              >
+                Edit
+              </Link>
+            )}
+            <button
+              onClick={onChangeLogicalNode}
+              className="flex items-center gap-1 text-[11px] text-brand hover:text-brand/80 font-semibold transition-colors"
+            >
+              <ArrowLeftRight size={11} />
+              Change
+            </button>
+          </div>
         )}
       >
         <Field label="Hostname" value={ln.hostname} />
@@ -595,7 +610,10 @@ export default function NodePage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'overview'
+  const configSub = searchParams.get('sub') ?? 'desired'
+  const onHistory = activeTab === 'configuration' && configSub === 'history'
   const [showChangeAsset, setShowChangeAsset] = useState(false)
+  const [showChangeLogicalNode, setShowChangeLogicalNode] = useState(false)
   const [tabContext, setTabContext] = useState('')
   const [diffPayload, setDiffPayload] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -621,6 +639,14 @@ export default function NodePage() {
     },
   })
 
+  const setConfigSub = (sub) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('sub', sub)
+      return next
+    }, { replace: true })
+  }
+
   const setTab = (tab) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
@@ -639,21 +665,21 @@ export default function NodePage() {
 
   const starters =
     activeTab === 'overview' ? NODE_OVERVIEW_STARTER_LABELS :
-    activeTab === 'history'  ? (diffPayload ? NODE_HISTORY_STARTER_LABELS : []) :
+    onHistory ? (diffPayload ? NODE_HISTORY_STARTER_LABELS : []) :
     NODE_CONFIG_STARTER_LABELS
 
   const placeholder =
     activeTab === 'overview' ? 'Ask about this node…' :
-    activeTab === 'history'  ? 'Ask about the config history…' :
+    onHistory ? 'Ask about the config history…' :
     'Ask about the configuration…'
 
   usePageAiContext({
     pageName: `Node: ${hostname}`,
-    tabName: TABS.find(t => t.key === activeTab)?.label,
+    tabName: onHistory ? 'Configuration history' : TABS.find(t => t.key === activeTab)?.label,
     context: aiContext,
     starters,
     placeholder,
-    taskPayload: activeTab === 'history' ? diffPayload : null,
+    taskPayload: onHistory ? diffPayload : null,
   })
 
   return (
@@ -743,21 +769,26 @@ export default function NodePage() {
         ) : (
           <>
             {activeTab === 'overview' && (
-              <OverviewTab data={data} nodeId={id} onChangeAsset={() => setShowChangeAsset(true)} />
+              <OverviewTab
+                data={data}
+                nodeId={id}
+                onChangeAsset={() => setShowChangeAsset(true)}
+                onChangeLogicalNode={() => setShowChangeLogicalNode(true)}
+              />
             )}
             {activeTab === 'configuration' && (
-              <ConfigurationTab nodeId={id} logicalNodeId={data?.logical_node_id} onContextChange={setTabContext} />
+              <ConfigurationTab
+                nodeId={id}
+                logicalNodeId={data?.logical_node_id}
+                nodeHostname={hostname}
+                sub={configSub}
+                onSubChange={setConfigSub}
+                onContextChange={setTabContext}
+                onAnalysisContext={setDiffPayload}
+              />
             )}
             {activeTab === 'hardware' && <HardwareTab nodeId={id} data={data} />}
             {activeTab === 'lldp'     && <LldpTab nodeId={id} hostname={data?.logical_node?.hostname} siteName={data?.logical_node?.site} />}
-            {activeTab === 'history'  && (
-              <ConfigHistory
-                nodeId={id}
-                nodeHostname={hostname}
-                onAnalysisContext={setDiffPayload}
-                onContextChange={setTabContext}
-              />
-            )}
           </>
         )}
       </div>
@@ -767,6 +798,13 @@ export default function NodePage() {
           currentAssetId={data?.asset_ref_id}
           currentAssetType={data?.asset_ref_type}
           onClose={() => setShowChangeAsset(false)}
+        />
+      )}
+      {showChangeLogicalNode && (
+        <ChangeLogicalNodeModal
+          nodeId={id}
+          currentHostname={hostname}
+          onClose={() => setShowChangeLogicalNode(false)}
         />
       )}
     </div>

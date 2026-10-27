@@ -4,15 +4,9 @@ import { API_URL } from '../config.js'
 export const fetchDesiredConfig = (logicalNodeId) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${logicalNodeId}/configuration`)
 
-export const fetchDay0Config = async (nodeId) => {
-  const res = await fetch(`${API_URL}/api/v1/inventory/node_instances/${nodeId}/configuration/desired`)
-  if (!res.ok) {
-    const err = new Error(`API error ${res.status}`)
-    err.status = res.status
-    throw err
-  }
-  return res.text()
-}
+// Rendered desired config, with spans tying each block of text to the config component behind it.
+export const fetchAnnotatedDesiredConfig = (nodeId) =>
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/desired/annotated`)
 
 export const fetchObservedConfig = (nodeId, output = 'rendered') =>
   apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/latest?output=${output}`)
@@ -22,8 +16,8 @@ export const fetchObservedConfig = (nodeId, output = 'rendered') =>
       return data
     })
 
-export const fetchObservedHistory = (nodeId) =>
-  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed`)
+export const fetchObservedHistory = (nodeId, limit) =>
+  apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed${limit ? `?limit=${limit}` : ''}`)
 
 export const fetchObservedById = (nodeId, configId, output = 'rendered') =>
   apiFetch(`/api/v1/inventory/node_instances/${nodeId}/configuration/observed/${configId}`)

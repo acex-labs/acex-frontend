@@ -41,20 +41,23 @@ function descriptions(record) {
 }
 
 function severity(record) {
-  const direct = recordValue(record, ['severity', 'base_severity', 'baseSeverity'])
-    ?? record?.cvss_severity
-  if (direct) return textValue(direct)
+  const score = recordValue(record, ['base_score', 'baseScore', 'cvss_score', 'cvssScore'])
+  if (score !== undefined) return textValue(score)
 
   const cve = record?.cve ?? record
   const metrics = cve?.metrics
-  if (!metrics || typeof metrics !== 'object') return ''
-  for (const [metricName, entries] of Object.entries(metrics)) {
-    if (!metricName.toLowerCase().includes('cvss') || !Array.isArray(entries)) continue
-    const found = entries.find(entry => entry?.cvssData?.baseSeverity || entry?.baseSeverity)
-    const value = found?.cvssData?.baseSeverity ?? found?.baseSeverity
-    if (value) return textValue(value)
+  if (metrics && typeof metrics === 'object') {
+    for (const [metricName, entries] of Object.entries(metrics)) {
+      if (!metricName.toLowerCase().includes('cvss') || !Array.isArray(entries)) continue
+      const found = entries.find(entry => entry?.cvssData?.baseScore != null || entry?.baseScore != null)
+      const value = found?.cvssData?.baseScore ?? found?.baseScore
+      if (value != null) return textValue(value)
+    }
   }
-  return ''
+
+  const direct = recordValue(record, ['severity', 'base_severity', 'baseSeverity'])
+    ?? record?.cvss_severity
+  return direct ? textValue(direct) : ''
 }
 
 function fieldValue(record, key) {

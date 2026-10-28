@@ -1,8 +1,10 @@
 import { parseTime } from '../jobs/jobs'
 
-// What a run was ordered to do, in one line: its commands, or its action and target.
+// What a run was ordered to do, in one line: its commands, its action and target, or the patch's path.
 export function runSummary(run) {
   const request = run.request ?? {}
+  if (run.type.endsWith('.patch.render')) return ['render', request.path || 'whole tree', request.prune && 'prune'].filter(Boolean).join(' ')
+  if (run.type.endsWith('.patch.apply')) return `apply plan ${request.plan_id}`
   if (request.commands) return request.commands.join('; ')
   const action = run.type.split('.').pop()
   const p = request.params ?? {}
@@ -31,4 +33,29 @@ export function orderError(err) {
   if (err.status === 503) return 'No message broker is configured, so nothing can run.'
   if (Array.isArray(err.detail)) return err.detail.map(d => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(' · ')
   return err.detail ?? err.message
+}
+
+// A plan's nodes by what they would get: one group per distinct patch, largest first; the nodes already in sync;
+// those whose read or render failed; and those not done yet.
+export function planGroups(responses) {
+  const patches = new Map()
+  const groups = { patches: [], inSync: [], failed: [], pending: [] }
+  for (const r of responses) {
+    if (r.state === 'failed' || r.state === 'cancelled') groups.failed.push(r)
+    else if (!r.result) groups.pending.push(r)
+    else if (r.result.in_sync) groups.inSync.push(r)
+    else {
+      const hash = r.result.patch_hash
+      if (!patches.has(hash)) patches.set(hash, { hash, patch: r.result.patch, changes: r.result.changes, nodes: [] })
+      patches.get(hash).nodes.push(r)
+    }
+  }
+  groups.patches = [...patches.values()].sort((a, b) => b.nodes.length - a.nodes.length)
+  return groups
+}
+
+// How many components a patch adds, changes and removes.
+export function changeCounts(changes) {
+  const count = op => changes.filter(c => c.op === op).length
+  return { add: count('add'), change: count('change'), remove: count('remove') }
 }

@@ -19,7 +19,7 @@ const INPUT = 'w-full px-3 py-2 text-xs bg-surface-hi border border-edge rounded
 const QUIET = 'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-edge text-subtle hover:text-content disabled:opacity-40 disabled:cursor-not-allowed'
 const LABEL = 'text-[10px] font-semibold uppercase tracking-widest text-subtle'
 
-// The nodes a step runs on, picked as in Bulk Actions. Nodes whose NED can't run the step would stop the run
+// The nodes a step runs on, picked as in Run. Nodes whose NED can't run the step would stop the run
 // from starting, so they are pointed out with a way to drop them.
 function Targets({ step, targets, nodesById, canRun, onChange }) {
   const selected = new Map(targets.map(id => [id, nodesById.get(id) ?? { id, hostname: `#${id}` }]))

@@ -4,6 +4,7 @@ import { ChevronRight, Download, X } from 'lucide-react'
 import { downloadReport, fetchRun } from '../../api/operations'
 import JobStateBadge from '../jobs/JobStateBadge'
 import { formatDuration, formatTime } from '../jobs/jobs'
+import { PatchChanges, PatchText } from './PatchParts'
 import { FINISHED, runDuration, runProgress, runSummary } from './runs'
 
 // What one node answered to raw commands: each command and its masked output.
@@ -26,13 +27,42 @@ function PingResult({ result }) {
   )
 }
 
-// A node's answer in one line, for its collapsed row: the error, the ping's outcome, or how many commands answered.
+const OUTCOMES = {
+  applied: { label: 'Applied and verified', className: 'text-green-400' },
+  residual: { label: 'Applied, but the node still differs', className: 'text-amber-400' },
+  changed: { label: 'Not sent: the node renders another patch than the plan by now', className: 'text-subtle' },
+}
+
+// A rendered patch, or what an apply did: its outcome, what was sent and answered, and what still differs.
+function PatchResult({ result }) {
+  const outcome = OUTCOMES[result.outcome]
+  return (
+    <div className="border-t border-edge">
+      {outcome && <div className={`px-3 py-1.5 text-[11px] ${outcome.className}`}>{outcome.label}</div>}
+      {result.patch && <PatchText patch={result.patch} />}
+      {result.output && <pre className="px-3 py-2 text-[11px] font-mono whitespace-pre-wrap break-all text-subtle border-t border-edge">{result.output}</pre>}
+      {result.changes?.length > 0 && (
+        <div className="border-t border-edge">
+          {outcome && <div className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-widest text-subtle">Still differs</div>}
+          <PatchChanges changes={result.changes} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const isPatch = result => !!result && ('patch_hash' in result || 'outcome' in result)
+
+// A node's answer in one line, for its collapsed row: the error, the ping's outcome, how many commands answered,
+// or what a patch changes and how its apply went.
 function responseSummary(response) {
   if (response.error) return response.error.split('\n')[0]
   const result = response.result
   if (!result) return null
   if (result.outputs) return `${result.outputs.length} command${result.outputs.length === 1 ? '' : 's'}`
   if ('sent' in result) return `${result.received}/${result.sent} received · ${result.success_rate}%`
+  if ('outcome' in result) return result.outcome
+  if ('patch_hash' in result) return result.in_sync ? 'in sync' : `${result.changes.length} change${result.changes.length === 1 ? '' : 's'}`
   return null
 }
 
@@ -64,6 +94,7 @@ function Response({ response }) {
       )}
       {open && response.result?.outputs && <CommandOutputs outputs={response.result.outputs} />}
       {open && response.result && 'sent' in response.result && <PingResult result={response.result} />}
+      {open && isPatch(response.result) && <PatchResult result={response.result} />}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import JobStateBadge from '../jobs/JobStateBadge'
 import { formatDuration, formatTime } from '../jobs/jobs'
 import { runDuration, runProgress, runSummary, FINISHED } from './runs'
 
-// Runs of one kind, newest first, kept fresh while any is still running. A row opens its run.
+// Runs of one kind, newest first, kept fresh while any is still running. A row opens its run: onOpen(id, run).
 export default function RunsTable({ kind, onOpen }) {
   const { data, isFetching } = useQuery({
     queryKey: ['runs', kind],
@@ -37,5 +37,5 @@ export default function RunsTable({ kind, onOpen }) {
     },
   ]
 
-  return <DataTable columns={columns} data={data?.items ?? []} isLoading={isFetching && !data} onRowClick={run => onOpen(run.id)} />
+  return <DataTable columns={columns} data={data?.items ?? []} isLoading={isFetching && !data} onRowClick={run => onOpen(run.id, run)} />
 }

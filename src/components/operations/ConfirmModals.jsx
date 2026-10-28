@@ -54,6 +54,45 @@ export function ExecuteConfirmModal({ commands, hostnames, onConfirm, onClose, p
   )
 }
 
+// A plan's patches go out to the devices: the user sees the path, whether undeclared config is removed and on
+// which nodes, and types "apply on N" to go on.
+export function ApplyConfirmModal({ path, prune, patches, hostnames, onConfirm, onClose }) {
+  const [typed, setTyped] = useState('')
+  const phrase = `apply on ${hostnames.length}`
+  return (
+    <Modal title={`Apply ${patches} patch${patches === 1 ? '' : 'es'} on ${hostnames.length} node${hostnames.length === 1 ? '' : 's'}`} onClose={onClose}>
+      <div className="text-xs text-content">
+        <span className="font-mono">{path || 'The whole configuration tree'}</span> and everything below it is brought to its desired state.
+        {prune && <span className="text-red-400"> Config there that desired doesn't declare is removed.</span>}
+      </div>
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-1">Nodes</div>
+        <div className="max-h-32 overflow-auto text-xs text-content">{hostnames.join(', ')}</div>
+      </div>
+      <label className="text-[11px] text-subtle">
+        A node that renders another patch than the plan's by now is left as it is. Type <span className="font-mono text-content">{phrase}</span> to go on.
+        <input
+          autoFocus
+          value={typed}
+          onChange={e => setTyped(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && typed === phrase && onConfirm()}
+          className="mt-1.5 w-full px-3 py-2 text-xs font-mono bg-surface-hi border border-edge rounded-md text-content focus:outline-none focus:border-brand/50"
+        />
+      </label>
+      <div className="flex justify-end gap-2">
+        <button onClick={onClose} className="px-3 py-1.5 text-xs rounded border border-edge text-subtle hover:text-content">Cancel</button>
+        <button
+          onClick={onConfirm}
+          disabled={typed !== phrase}
+          className="px-3 py-1.5 text-xs font-semibold rounded bg-red-500/15 border border-red-500/40 text-red-400 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Apply
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 export function ConfirmModal({ title, children, onConfirm, onClose }) {
   return (
     <Modal title={title} onClose={onClose}>

@@ -18,7 +18,22 @@ export const runAction = (action, nodeIds, params) =>
     body: JSON.stringify({ node_ids: nodeIds, params }),
   })
 
-// Runs, newest first; kind is "execute" or "actions".
+// A plan: on each node, the patch that brings its configuration at `path` to the desired state, rendered from a
+// live read; with `prune`, removing what desired doesn't declare there too. Nothing is sent. Answers the run.
+export const renderPatch = (nodeIds, path, prune) =>
+  apiFetch('/api/v1/operations/patch/render', {
+    method: 'POST',
+    body: JSON.stringify({ node_ids: nodeIds, path, prune }),
+  })
+
+// Sends a plan's patches to the nodes chosen from it; each is patched only if it still renders the plan's patch.
+export const applyPatch = (planId, nodeIds) =>
+  apiFetch('/api/v1/operations/patch/apply', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId, node_ids: nodeIds }),
+  })
+
+// Runs, newest first; kind is "execute", "actions" or "patch".
 export const fetchRuns = (params = {}) => apiFetch(`/api/v1/operations/runs?${query(params)}`)
 
 // One run with every node's response, sorted by hostname.

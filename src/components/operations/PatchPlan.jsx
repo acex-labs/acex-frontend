@@ -4,8 +4,8 @@ import { ChevronRight, X } from 'lucide-react'
 import { applyPatch, fetchRun } from '../../api/operations'
 import JobStateBadge from '../jobs/JobStateBadge'
 import { ApplyConfirmModal } from './ConfirmModals'
-import { ChangeCounts, PatchChanges, PatchText } from './PatchParts'
-import { FINISHED, orderError, planGroups, runProgress } from './runs'
+import { ChangeCounts, PatchChanges, PatchText, Unrendered } from './PatchParts'
+import { FINISHED, orderError, planGroups, runProgress, scopeText } from './runs'
 
 // Nodes that would get the same patch: a row with how many and what changes, opening to the patch and the nodes,
 // each of which can be left out.
@@ -29,6 +29,7 @@ function PatchGroup({ group, excluded, onExclude }) {
             {chosen === ids.length ? ids.length : `${chosen} of ${ids.length}`} node{ids.length === 1 ? '' : 's'}
           </span>
           <ChangeCounts changes={group.changes} />
+          {group.unrendered.length > 0 && <span className="text-[10px] text-subtle">+{group.unrendered.length} it can't write</span>}
           <span className="ml-auto text-[11px] font-mono text-subtle truncate max-w-md">{group.patch.split('\n')[0]}</span>
         </button>
       </div>
@@ -36,6 +37,7 @@ function PatchGroup({ group, excluded, onExclude }) {
         <div className="border-t border-edge">
           <PatchChanges changes={group.changes} />
           <PatchText patch={group.patch} />
+          {group.unrendered.length > 0 && <Unrendered changes={group.unrendered} />}
           <div className="px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-edge">
             {group.nodes.map(n => (
               <label key={n.node_id} className="flex items-center gap-1.5 text-[11px] text-content">
@@ -89,7 +91,7 @@ export default function PatchPlan({ planId, onApplied, onClose }) {
     <section className="border border-edge rounded-md overflow-hidden">
       <div className="px-4 py-2 border-b border-edge flex items-center gap-2">
         <span className="text-[11px] font-semibold text-subtle uppercase tracking-wider">Plan {planId}</span>
-        <span className="text-[11px] font-mono text-content">{request.path || 'whole tree'}</span>
+        <span className="text-[11px] font-mono text-content truncate">{scopeText(request.paths)}</span>
         {request.prune && <span className="text-[10px] font-semibold uppercase text-red-400">prune</span>}
         <JobStateBadge state={run.state} />
         <button onClick={onClose} className="ml-auto text-subtle hover:text-content"><X size={14} /></button>
@@ -100,6 +102,7 @@ export default function PatchPlan({ planId, onApplied, onClose }) {
             <span>{progress.done} of {progress.total} nodes read</span>
             <span className="text-content">{groups.patches.reduce((a, g) => a + g.nodes.length, 0)} with a patch</span>
             <span>{groups.inSync.length} in sync</span>
+            {groups.unwritable.length > 0 && <span>{groups.unwritable.length} only differ where their driver can't write</span>}
             {groups.failed.length > 0 && <span className="text-red-400">{groups.failed.length} failed</span>}
           </div>
           <div className="h-1.5 bg-surface-hi rounded-full overflow-hidden">
@@ -113,6 +116,18 @@ export default function PatchPlan({ planId, onApplied, onClose }) {
               {groups.patches.length} distinct patch{groups.patches.length === 1 ? '' : 'es'}
             </div>
             {groups.patches.map(g => <PatchGroup key={g.hash} group={g} excluded={excluded} onExclude={exclude} />)}
+          </div>
+        )}
+
+        {groups.unwritable.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Differs only where the driver can't write</div>
+            {groups.unwritable.map(r => (
+              <div key={r.job_id} className="text-[11px] font-mono truncate">
+                <span className="text-content">{r.hostname ?? `Node ${r.node_id}`}</span>
+                <span className="text-subtle"> · {r.result.unrendered.map(c => c.path).join(', ')}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -147,7 +162,7 @@ export default function PatchPlan({ planId, onApplied, onClose }) {
 
       {confirming && (
         <ApplyConfirmModal
-          path={request.path}
+          paths={request.paths ?? []}
           prune={request.prune}
           patches={groups.patches.filter(g => g.nodes.some(n => !excluded.has(n.node_id))).length}
           hostnames={chosen.map(n => n.hostname ?? `Node ${n.node_id}`)}

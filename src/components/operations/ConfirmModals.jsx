@@ -54,15 +54,15 @@ export function ExecuteConfirmModal({ commands, hostnames, onConfirm, onClose, p
   )
 }
 
-// A plan's patches go out to the devices: the user sees the path, whether undeclared config is removed and on
+// A plan's patches go out to the devices: the user sees the paths, whether undeclared config is removed and on
 // which nodes, and types "apply on N" to go on.
-export function ApplyConfirmModal({ path, prune, patches, hostnames, onConfirm, onClose }) {
+export function ApplyConfirmModal({ paths, prune, patches, hostnames, onConfirm, onClose }) {
   const [typed, setTyped] = useState('')
   const phrase = `apply on ${hostnames.length}`
   return (
     <Modal title={`Apply ${patches} patch${patches === 1 ? '' : 'es'} on ${hostnames.length} node${hostnames.length === 1 ? '' : 's'}`} onClose={onClose}>
       <div className="text-xs text-content">
-        <span className="font-mono">{path || 'The whole configuration tree'}</span> and everything below it is brought to its desired state.
+        <span className="font-mono">{paths.length ? paths.join(', ') : 'The whole configuration tree'}</span> and everything below is brought to its desired state.
         {prune && <span className="text-red-400"> Config there that desired doesn't declare is removed.</span>}
       </div>
       <div>

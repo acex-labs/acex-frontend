@@ -1,9 +1,9 @@
 import { parseTime } from '../jobs/jobs'
 
-// What a run was ordered to do, in one line: its commands, its action and target, or the patch's path.
+// What a run was ordered to do, in one line: its commands, its action and target, or the patch's paths.
 export function runSummary(run) {
   const request = run.request ?? {}
-  if (run.type.endsWith('.patch.render')) return ['render', request.path || 'whole tree', request.prune && 'prune'].filter(Boolean).join(' ')
+  if (run.type.endsWith('.patch.render')) return ['render', scopeText(request.paths), request.prune && 'prune'].filter(Boolean).join(' ')
   if (run.type.endsWith('.patch.apply')) return `apply plan ${request.plan_id}`
   if (request.commands) return request.commands.join('; ')
   const action = run.type.split('.').pop()
@@ -36,17 +36,20 @@ export function orderError(err) {
 }
 
 // A plan's nodes by what they would get: one group per distinct patch, largest first; the nodes already in sync;
-// those whose read or render failed; and those not done yet.
+// those that differ only where their driver can't write; those whose read or render failed; and those not done yet.
 export function planGroups(responses) {
   const patches = new Map()
-  const groups = { patches: [], inSync: [], failed: [], pending: [] }
+  const groups = { patches: [], inSync: [], unwritable: [], failed: [], pending: [] }
   for (const r of responses) {
     if (r.state === 'failed' || r.state === 'cancelled') groups.failed.push(r)
     else if (!r.result) groups.pending.push(r)
     else if (r.result.in_sync) groups.inSync.push(r)
+    else if (!r.result.patch_hash) groups.unwritable.push(r)
     else {
       const hash = r.result.patch_hash
-      if (!patches.has(hash)) patches.set(hash, { hash, patch: r.result.patch, changes: r.result.changes, nodes: [] })
+      if (!patches.has(hash)) {
+        patches.set(hash, { hash, patch: r.result.patch, changes: r.result.changes, unrendered: r.result.unrendered ?? [], nodes: [] })
+      }
       patches.get(hash).nodes.push(r)
     }
   }
@@ -59,3 +62,6 @@ export function changeCounts(changes) {
   const count = op => changes.filter(c => c.op === op).length
   return { add: count('add'), change: count('change'), remove: count('remove') }
 }
+
+// A patch's paths in one line; none is the whole tree.
+export const scopeText = paths => (paths?.length ? paths.join(', ') : 'whole tree')

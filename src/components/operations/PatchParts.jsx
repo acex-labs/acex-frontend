@@ -38,3 +38,15 @@ export function ChangeCounts({ changes }) {
     </span>
   )
 }
+
+// What differs that the node's driver has no syntax for, so the patch leaves it out.
+export function Unrendered({ changes }) {
+  return (
+    <div className="border-t border-edge">
+      <div className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-widest text-subtle">Its driver can't write</div>
+      <div className="px-3 py-2 space-y-0.5 text-[11px] font-mono text-subtle">
+        {changes.map((c, i) => <div key={i}>{OPS[c.op]?.sign ?? '?'} {c.path}</div>)}
+      </div>
+    </div>
+  )
+}

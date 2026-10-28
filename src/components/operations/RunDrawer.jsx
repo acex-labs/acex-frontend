@@ -4,7 +4,7 @@ import { ChevronRight, Download, X } from 'lucide-react'
 import { downloadReport, fetchRun } from '../../api/operations'
 import JobStateBadge from '../jobs/JobStateBadge'
 import { formatDuration, formatTime } from '../jobs/jobs'
-import { PatchChanges, PatchText } from './PatchParts'
+import { PatchChanges, PatchText, Unrendered } from './PatchParts'
 import { FINISHED, runDuration, runProgress, runSummary } from './runs'
 
 // What one node answered to raw commands: each command and its masked output.
@@ -47,6 +47,7 @@ function PatchResult({ result }) {
           <PatchChanges changes={result.changes} />
         </div>
       )}
+      {result.unrendered?.length > 0 && <Unrendered changes={result.unrendered} />}
     </div>
   )
 }

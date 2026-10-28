@@ -8,10 +8,10 @@ import ApplyPatch from './ApplyPatch'
 // What can be run on nodes you choose, once and now; each kind listed with its runs.
 const SECTIONS = [
   {
-    key: 'exec',
-    label: 'Exec Commands',
-    about: 'Raw, vendor-specific commands, sent as written. Output is masked before it is stored.',
-    Panel: ExecCommands,
+    key: 'apply',
+    label: 'Apply',
+    about: 'Bring a path of each node\'s configuration to its desired state. Every node is read live and grouped by the patch it would get; only the nodes you choose from that plan are sent theirs.',
+    Panel: ApplyPatch,
   },
   {
     key: 'standard',
@@ -20,11 +20,11 @@ const SECTIONS = [
     Panel: StandardActions,
   },
   {
-    key: 'apply',
-    label: 'Apply',
-    about: 'Bring a path of each node\'s configuration to its desired state. Every node is read live and grouped by the patch it would get; only the nodes you choose from that plan are sent theirs.',
-    Panel: ApplyPatch,
-  },
+    key: 'exec',
+    label: 'Exec Commands',
+    about: 'Raw, vendor-specific commands, sent as written. Output is masked before it is stored.',
+    Panel: ExecCommands,
+  }
 ]
 
 export default function RunPage() {

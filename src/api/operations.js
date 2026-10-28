@@ -18,13 +18,16 @@ export const runAction = (action, nodeIds, params) =>
     body: JSON.stringify({ node_ids: nodeIds, params }),
   })
 
-// A plan: on each node, the patch that brings its configuration at `path` to the desired state, rendered from a
+// A plan: on each node, the patch that brings its configuration at `paths` to the desired state, rendered from a
 // live read; with `prune`, removing what desired doesn't declare there too. Nothing is sent. Answers the run.
-export const renderPatch = (nodeIds, path, prune) =>
+export const renderPatch = (nodeIds, paths, prune) =>
   apiFetch('/api/v1/operations/patch/render', {
     method: 'POST',
-    body: JSON.stringify({ node_ids: nodeIds, path, prune }),
+    body: JSON.stringify({ node_ids: nodeIds, paths, prune }),
   })
+
+// The shape of the configuration tree a patch's paths walk: branches, components, collections and attributes.
+export const fetchConfigTree = () => apiFetch('/api/v1/operations/patch/tree')
 
 // Sends a plan's patches to the nodes chosen from it; each is patched only if it still renders the plan's patch.
 export const applyPatch = (planId, nodeIds) =>

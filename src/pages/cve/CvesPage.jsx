@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Eye, EyeOff } from 'lucide-react'
+import { ChevronDown, ChevronsUpDown, ChevronUp, Eye, EyeOff } from 'lucide-react'
 import { fetchCves } from '../../api/cves'
 import PageHeader from '../../components/ui/PageHeader'
 import Pagination from '../../components/table/Pagination'
+import { sortCves } from './sortCves'
 
 const PAGE_SIZE = 50
 
@@ -92,6 +93,7 @@ export default function CvesPage() {
   const [pageOffset, setPageOffset] = useState(0)
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [rawOpen, setRawOpen] = useState(false)
+  const [sort, setSort] = useState({ key: null, order: 'asc' })
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['cves'],
     queryFn: fetchCves,
@@ -103,9 +105,21 @@ export default function CvesPage() {
       const filter = filters[key]?.trim().toLowerCase()
       return !filter || fieldValue(cve, key).toLowerCase().includes(filter)
     })), [cves, filters])
+  const sortedCves = useMemo(
+    () => sortCves(filteredCves, sort.key, sort.order, fieldValue),
+    [filteredCves, sort],
+  )
   const offset = Math.min(pageOffset, Math.max(0, Math.ceil(filteredCves.length / PAGE_SIZE) - 1) * PAGE_SIZE)
-  const pageCves = filteredCves.slice(offset, offset + PAGE_SIZE)
+  const pageCves = sortedCves.slice(offset, offset + PAGE_SIZE)
   const selected = pageCves.find(item => item.index === selectedIndex) ?? pageCves[0]
+
+  function handleSort(key) {
+    setSort(current => ({
+      key,
+      order: current.key === key && current.order === 'asc' ? 'desc' : 'asc',
+    }))
+    setPageOffset(0)
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -137,8 +151,22 @@ export default function CvesPage() {
                 <thead className="sticky top-0 z-10 bg-surface">
                   <tr>
                     {FILTERS.map(({ key, label }) => (
-                      <th key={key} className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-subtle border-b border-edge">
-                        {label}
+                      <th
+                        key={key}
+                        aria-sort={sort.key === key ? (sort.order === 'asc' ? 'ascending' : 'descending') : undefined}
+                        className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-subtle border-b border-edge"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSort(key)}
+                          aria-label={`Sort by ${label}${sort.key === key && sort.order === 'asc' ? ', descending' : ', ascending'}`}
+                          className={`inline-flex items-center gap-1 cursor-pointer hover:text-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand ${sort.key === key ? 'text-brand' : ''}`}
+                        >
+                          {label}
+                          {sort.key === key
+                            ? (sort.order === 'asc' ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />)
+                            : <ChevronsUpDown size={14} aria-hidden="true" />}
+                        </button>
                       </th>
                     ))}
                   </tr>

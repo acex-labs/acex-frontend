@@ -5,6 +5,7 @@ title: Browse and discover CVEs
 The new CVEs section lets you browse vulnerabilities with filters for CVE ID,
 published date, modified date, severity, and description. Results are shown 50
 per page, and you can open a panel to inspect the selected CVE's raw data.
+The list retrieves all available backend pages before filtering and sorting.
 
 Use the arrows in the column headings to sort the filtered results across all
 pages. Select the same heading again to reverse the order. Dates are sorted

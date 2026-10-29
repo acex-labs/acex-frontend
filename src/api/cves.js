@@ -1,6 +1,13 @@
 import { apiFetch } from './client.js'
+import { fetchAllCvePages } from './cvePagination.js'
 
-export const fetchCves = () => apiFetch('/api/v1/cves')
+export const fetchCves = ({ signal } = {}) => fetchAllCvePages(
+  ({ limit, offset, signal: pageSignal }) => apiFetch(
+    `/api/v1/cves?${new URLSearchParams({ limit, offset })}`,
+    { signal: pageSignal },
+  ),
+  signal,
+)
 
 export const discoverCves = payload => apiFetch('/api/v1/cves/discover', {
   method: 'POST',

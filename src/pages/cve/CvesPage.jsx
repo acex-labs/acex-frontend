@@ -13,6 +13,7 @@ const FILTERS = [
   { key: 'published', label: 'Published', placeholder: 'Filter date' },
   { key: 'modified', label: 'Modified', placeholder: 'Filter date' },
   { key: 'severity', label: 'Severity', placeholder: 'Filter severity' },
+  { key: 'severityScore', label: 'Severity Score', placeholder: 'Filter score' },
   { key: 'description', label: 'Description', placeholder: 'Filter description' },
 ]
 
@@ -42,24 +43,23 @@ function descriptions(record) {
     || textValue(record?.cve?.descriptions)
 }
 
-function severity(record) {
-  const score = recordValue(record, ['base_score', 'baseScore', 'cvss_score', 'cvssScore'])
-  if (score !== undefined) return textValue(score)
-
+function baseMetric(record, camelCaseName, snakeCaseName) {
   const cve = record?.cve ?? record
+  const direct = recordValue(record, [camelCaseName, snakeCaseName])
+    ?? recordValue(cve, [camelCaseName, snakeCaseName])
+  if (direct !== undefined) return direct
+
   const metrics = cve?.metrics
   if (metrics && typeof metrics === 'object') {
     for (const [metricName, entries] of Object.entries(metrics)) {
       if (!metricName.toLowerCase().includes('cvss') || !Array.isArray(entries)) continue
-      const found = entries.find(entry => entry?.cvssData?.baseScore != null || entry?.baseScore != null)
-      const value = found?.cvssData?.baseScore ?? found?.baseScore
+      const found = entries.find(entry => entry?.cvssData?.[camelCaseName] != null || entry?.[camelCaseName] != null)
+      const value = found?.cvssData?.[camelCaseName] ?? found?.[camelCaseName]
       if (value != null) return textValue(value)
     }
   }
 
-  const direct = recordValue(record, ['severity', 'base_severity', 'baseSeverity'])
-    ?? record?.cvss_severity
-  return direct ? textValue(direct) : ''
+  return undefined
 }
 
 function fieldValue(record, key) {
@@ -72,20 +72,16 @@ function fieldValue(record, key) {
     case 'modified':
       return textValue(recordValue(record, ['last_modified', 'lastModified', 'modified', 'updated_at']) ?? recordValue(cve, ['last_modified', 'lastModified', 'modified']))
     case 'severity':
-      return severity(record)
+      return textValue(baseMetric(record, 'baseSeverity', 'base_severity')
+        ?? recordValue(record, ['severity', 'cvss_severity']))
+    case 'severityScore':
+      return textValue(baseMetric(record, 'baseScore', 'base_score')
+        ?? recordValue(record, ['cvss_score', 'cvssScore']))
     case 'description':
       return descriptions(record)
     default:
       return ''
   }
-}
-
-function getCves(data) {
-  if (Array.isArray(data)) return data
-  for (const key of ['cves', 'vulnerabilities', 'items', 'results', 'data']) {
-    if (Array.isArray(data?.[key])) return data[key]
-  }
-  return []
 }
 
 export default function CvesPage() {
@@ -98,7 +94,7 @@ export default function CvesPage() {
     queryKey: ['cves'],
     queryFn: fetchCves,
   })
-  const cves = useMemo(() => getCves(data), [data])
+  const cves = useMemo(() => data ?? [], [data])
   const filteredCves = useMemo(() => cves
     .map((cve, index) => ({ cve, index }))
     .filter(({ cve }) => FILTERS.every(({ key }) => {

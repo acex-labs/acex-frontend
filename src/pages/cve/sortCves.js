@@ -5,7 +5,7 @@ function sortValue(value, key) {
     const date = Date.parse(value)
     if (!Number.isNaN(date)) return { type: 0, value: date }
   }
-  if (key === 'severity') {
+  if (key === 'severityScore') {
     const score = Number(value)
     if (Number.isFinite(score)) return { type: 0, value: score }
   }

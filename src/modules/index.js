@@ -7,6 +7,7 @@ import { ZtpModule }        from './ztp'
 import { SettingsModule }   from './settings'
 import { PlatformModule }   from './platform'
 import { ActivityModule }   from './activity'
+import { CveModule }        from './cve'
 
 /**
  * All registered modules in display order.
@@ -35,6 +36,7 @@ export const MODULES = [
   ObserveModule,
   AutopilotModule,
   ZtpModule,
+  CveModule,
   ActivityModule,
   SettingsModule,
   PlatformModule,  // adminOnly — only visible when admin mode is on

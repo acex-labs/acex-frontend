@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Pencil, Trash2, RefreshCw, GitBranch, ShieldAlert } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, RefreshCw, GitBranch } from 'lucide-react'
 import {
   fetchGitRepositories,
   createGitRepository,
@@ -36,7 +36,6 @@ function errorText(err, fallback) {
   const detail = err?.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) return detail.map(d => d.msg?.replace(/^Value error, /, '')).filter(Boolean).join('; ')
-  if (err?.status === 403) return 'Requires the naas-admin role.'
   return fallback
 }
 
@@ -409,14 +408,10 @@ export default function GitRepositoriesPage() {
     queryKey: ['git-repositories'],
     queryFn: fetchGitRepositories,
     refetchInterval: 60_000,
-    // The backend decides who may see repositories; a 403 won't change on retry.
-    retry: (count, err) => err?.status !== 403 && count < 3,
   })
-  const forbidden = error?.status === 403
   const { data: credentials } = useQuery({
     queryKey: ['credentials', 'all'],
     queryFn: () => fetchCredentials({ limit: 1000 }),
-    enabled: !forbidden,
   })
   const allCredentials = credentials?.items ?? (Array.isArray(credentials) ? credentials : [])
   const tokenCredentials = allCredentials.filter(c => c.credential_type === 'token')
@@ -429,15 +424,6 @@ export default function GitRepositoriesPage() {
       old.some(r => r.id === saved.id) ? old.map(r => (r.id === saved.id ? saved : r)) : [...old, saved])
     queryClient.invalidateQueries({ queryKey: ['git-repositories'] })
     queryClient.invalidateQueries({ queryKey: ['credentials'] })
-  }
-
-  if (forbidden) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-2 text-xs text-subtle">
-        <ShieldAlert size={18} className="text-amber-400" />
-        Git repositories can only be managed by administrators ({errorText(error, 'naas-admin role')}).
-      </div>
-    )
   }
 
   return (

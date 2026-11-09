@@ -11,7 +11,7 @@ function useSiteInitialData(id) {
     }
   }
 }
-import { ChevronLeft, MapPin, Mail, Phone, Plus, X, Pencil, Check, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Mail, Phone, Plus, X, Pencil, Check, Trash2 } from 'lucide-react'
 import {
   fetchSite,
   updateSite,
@@ -26,14 +26,19 @@ import {
   createRegionAssignment,
   deleteRegionAssignment,
 } from '../../api/inventory'
+import { fetchSiteCompliance } from '../../api/operations'
 import { usePageAiContext } from '../../context/AiContext'
 import SiteMap from '../../components/map/SiteMap'
+import ComplianceRing from '../../components/sites/ComplianceRing'
+import { COMPLIANCE_TARGET } from '../../components/sites/compliance'
+import SiteComplianceTab from './SiteComplianceTab'
 import SiteTopologyTab from './SiteTopologyTab'
 
 const TABS = [
   { key: 'overview',  label: 'Overview' },
-  { key: 'nodes',     label: 'Nodes' },
-  { key: 'topology',  label: 'Topology' },
+  { key: 'nodes',      label: 'Nodes' },
+  { key: 'compliance', label: 'Compliance' },
+  { key: 'topology',   label: 'Topology' },
 ]
 
 function buildSiteContext(site, regions, nodeCount) {
@@ -219,7 +224,7 @@ function ContactsCard({ siteName }) {
   if (loadingAssignments) return null
 
   return (
-    <div className="bg-surface border border-edge rounded-md overflow-hidden">
+    <div className="flex-1 bg-surface border border-edge rounded-md overflow-hidden">
       <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between">
         <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Contacts</h3>
         <button
@@ -407,42 +412,66 @@ function RegionsCard({ siteId, siteName }) {
   )
 }
 
-function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange, onShowNodes }) {
+function ComplianceCard({ siteName, onShowDetails }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['site-compliance', siteName],
+    queryFn: () => fetchSiteCompliance(siteName),
+    enabled: !!siteName,
+  })
+
+  const summary = data?.summary
+  const pct = summary?.compliance_percentage ?? null
+  const measured = Object.values(data?.nodes ?? {}).filter(n => n.compliance_percentage != null)
+  const below = measured.filter(n => n.compliance_percentage < COMPLIANCE_TARGET).length
+
+  return (
+    <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
+      <div className="px-4 py-2.5 border-b border-edge flex items-center justify-between">
+        <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">Compliance</h3>
+        <button
+          onClick={onShowDetails}
+          className="flex items-center gap-0.5 text-[10px] text-subtle hover:text-content transition-colors"
+        >
+          Details
+          <ChevronRight size={10} />
+        </button>
+      </div>
+      {isError ? (
+        <div className="px-4 py-3 text-xs text-subtle">Compliance unavailable.</div>
+      ) : (
+        <div className="flex-1 p-4 flex items-center gap-6">
+          <ComplianceRing pct={pct} size={120} variant="lg" loading={isLoading} />
+          <div className="space-y-1 text-xs">
+            {isLoading ? (
+              <div className="text-subtle animate-pulse">Checking…</div>
+            ) : pct === null ? (
+              <div className="text-subtle">No desired config</div>
+            ) : (
+              <>
+                <div className="text-content tabular-nums">
+                  {summary.compliant_count} / {summary.total_desired} components compliant
+                </div>
+                <div className="text-subtle tabular-nums">
+                  {below === 0
+                    ? `All ${measured.length} nodes at or above ${COMPLIANCE_TARGET}%`
+                    : `${below} of ${measured.length} nodes below ${COMPLIANCE_TARGET}%`}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange, onShowNodes, onShowCompliance }) {
   const hasCoords = site.latitude != null && site.longitude != null
 
   return (
-    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-      {/* Left: info */}
-      <div className="space-y-4">
-        <Card title="Site">
-          {editing ? (
-            <>
-              <EditField label="Name" value={draft.name} onChange={v => onDraftChange('name', v)} />
-              <EditField label="Display Name" value={draft.display_name} onChange={v => onDraftChange('display_name', v)} />
-              <EditField label="Address"      value={draft.address}      onChange={v => onDraftChange('address', v)} />
-              <EditField label="City"         value={draft.city}         onChange={v => onDraftChange('city', v)} />
-              <EditField label="Country"      value={draft.country}      onChange={v => onDraftChange('country', v)} />
-              <EditField label="Latitude"  type="number" value={draft.latitude}  onChange={v => onDraftChange('latitude', v)} />
-              <EditField label="Longitude" type="number" value={draft.longitude} onChange={v => onDraftChange('longitude', v)} />
-            </>
-          ) : (
-            <>
-              <Field label="Name"         value={site.name} />
-              <Field label="Display Name" value={site.display_name} />
-              <Field label="Address"      value={site.address} />
-              <Field label="City"         value={site.city} />
-              <Field label="Country"      value={site.country} />
-              {hasCoords && (
-                <Field label="Coords" value={`${site.latitude}, ${site.longitude}`} />
-              )}
-            </>
-          )}
-        </Card>
-
-        <RegionsCard siteId={siteId} siteName={site.name} />
-
-        <ContactsCard siteName={site.name} />
-
+    // Rows of two that stretch to the same height, so their edges line up.
+    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="flex flex-col gap-4">
         <button
           onClick={onShowNodes}
           className="bg-surface border border-edge rounded-md px-5 py-4 text-left w-full hover:border-brand/40 transition-colors"
@@ -452,10 +481,40 @@ function OverviewTab({ site, siteId, nodeCount, editing, draft, onDraftChange, o
           </div>
           <div className="text-[10px] uppercase tracking-widest text-subtle mt-0.5">Node Instances</div>
         </button>
+
+        <RegionsCard siteId={siteId} siteName={site.name} />
+
+        <ContactsCard siteName={site.name} />
       </div>
 
-      {/* Right: map */}
-      <div className="bg-surface border border-edge rounded-md overflow-hidden" style={{ height: 340 }}>
+      <ComplianceCard siteName={site.name} onShowDetails={onShowCompliance} />
+
+      <Card title="Site">
+        {editing ? (
+          <>
+            <EditField label="Name" value={draft.name} onChange={v => onDraftChange('name', v)} />
+            <EditField label="Display Name" value={draft.display_name} onChange={v => onDraftChange('display_name', v)} />
+            <EditField label="Address"      value={draft.address}      onChange={v => onDraftChange('address', v)} />
+            <EditField label="City"         value={draft.city}         onChange={v => onDraftChange('city', v)} />
+            <EditField label="Country"      value={draft.country}      onChange={v => onDraftChange('country', v)} />
+            <EditField label="Latitude"  type="number" value={draft.latitude}  onChange={v => onDraftChange('latitude', v)} />
+            <EditField label="Longitude" type="number" value={draft.longitude} onChange={v => onDraftChange('longitude', v)} />
+          </>
+        ) : (
+          <>
+            <Field label="Name"         value={site.name} />
+            <Field label="Display Name" value={site.display_name} />
+            <Field label="Address"      value={site.address} />
+            <Field label="City"         value={site.city} />
+            <Field label="Country"      value={site.country} />
+            {hasCoords && (
+              <Field label="Coords" value={`${site.latitude}, ${site.longitude}`} />
+            )}
+          </>
+        )}
+      </Card>
+
+      <div className="bg-surface border border-edge rounded-md overflow-hidden" style={{ minHeight: 340 }}>
         {hasCoords ? (
           <SiteMap sites={[site]} />
         ) : (
@@ -729,6 +788,7 @@ export default function SitePage() {
                   editing={editing}
                   draft={draft}
                   onShowNodes={() => setTab('nodes')}
+                  onShowCompliance={() => setTab('compliance')}
                   onDraftChange={setDraftField}
                 />
               </div>
@@ -736,6 +796,11 @@ export default function SitePage() {
             {activeTab === 'nodes' && (
               <div className="overflow-auto flex-1">
                 <NodesTab siteName={siteName} />
+              </div>
+            )}
+            {activeTab === 'compliance' && (
+              <div className="overflow-auto flex-1">
+                <SiteComplianceTab siteName={siteName} />
               </div>
             )}
             {activeTab === 'topology' && <SiteTopologyTab siteName={siteName} />}

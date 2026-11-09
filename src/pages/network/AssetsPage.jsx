@@ -35,11 +35,11 @@ const CLUSTER_FILTERS = [
 
 const ASSET_COLUMNS = [
   { key: 'vendor',         label: 'Vendor',    sortable: true },
-  { key: 'hardware_model', label: 'Model' },
+  { key: 'hardware_model', label: 'Model',     sortable: true },
   { key: 'os',             label: 'OS',        sortable: true },
-  { key: 'os_version',     label: 'Version' },
-  { key: 'ned_id',         label: 'Driver' },
-  { key: 'serial_number',  label: 'Serial' },
+  { key: 'os_version',     label: 'Version',   sortable: true },
+  { key: 'ned_id',         label: 'Driver',    sortable: true },
+  { key: 'serial_number',  label: 'Serial',    sortable: true },
   { key: 'type',           label: 'Type' },
 ]
 

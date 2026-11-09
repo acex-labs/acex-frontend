@@ -17,7 +17,8 @@ function SkeletonRows({ count, cols }) {
   ))
 }
 
-// selection prop: { ids: Set, onToggle(id), onToggleAll(allRows), allSelected }
+// selection prop: { ids: Set, onToggle(id), onToggleAll(allRows), allSelected, isSelectable?(row) }
+// A row isSelectable rejects is shown dimmed and can't be selected.
 export default function DataTable({ columns, data, isLoading, sortKey, sortOrder, onSort, onRowClick, selection, rowKey = 'id' }) {
   const handleSort = (col) => {
     if (!col.sortable || !onSort) return
@@ -37,7 +38,7 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
                 <input
                   type="checkbox"
                   checked={selection.allSelected && data.length > 0}
-                  onChange={() => selection.onToggleAll(data)}
+                  onChange={() => selection.onToggleAll(selection.isSelectable ? data.filter(selection.isSelectable) : data)}
                   className="accent-brand cursor-pointer"
                 />
               </th>
@@ -54,8 +55,12 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
               >
                 <div className="flex items-center gap-1">
                   {col.label}
-                  {col.sortable && sortKey === col.key && (
-                    sortOrder === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                  {col.sortable && (
+                    sortKey === col.key ? (
+                      sortOrder === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                    ) : (
+                      <ChevronDown size={10} className="opacity-40" />
+                    )
                   )}
                 </div>
               </th>
@@ -74,12 +79,14 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
           ) : (
             data.map((row, i) => {
               const selected = selection?.ids.has(getKey(row))
+              const selectable = !selection?.isSelectable || selection.isSelectable(row)
               return (
                 <tr
                   key={getKey(row) ?? i}
-                  onClick={() => onRowClick ? onRowClick(row) : selection?.onToggle(row)}
+                  onClick={() => onRowClick ? onRowClick(row) : selectable && selection?.onToggle(row)}
                   className={[
-                    'border-b border-edge transition-colors cursor-pointer',
+                    'border-b border-edge transition-colors',
+                    selectable ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed',
                     selected
                       ? 'bg-brand/5 hover:bg-brand/8'
                       : i % 2 === 1
@@ -92,8 +99,9 @@ export default function DataTable({ columns, data, isLoading, sortKey, sortOrder
                       <input
                         type="checkbox"
                         checked={!!selected}
+                        disabled={!selectable}
                         onChange={() => selection.onToggle(row)}
-                        className="accent-brand cursor-pointer"
+                        className="accent-brand cursor-pointer disabled:cursor-not-allowed"
                       />
                     </td>
                   )}

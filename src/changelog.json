@@ -4,6 +4,255 @@
   "name": "ACEX web interface",
   "releases": [
     {
+      "version": "0.4.1",
+      "date": "2026-11-09",
+      "summary": "Run commands and apply configuration on many nodes at once, build workflows, browse CVEs, follow compliance per site and node, and read what's new from Settings.",
+      "entries": [
+        {
+          "id": "20261028-apply-a-path-of-the-configuration-to",
+          "kind": "added",
+          "title": "Apply a path of the configuration to selected nodes from a reviewed plan",
+          "description": "Operations > Run > Apply: check what to patch in a tree of the configuration, from the whole of it down to a single attribute, and render a plan. Beside the tree, a chosen node's desired configuration lights the lines the scope covers, and parts no driver of the chosen nodes can write are faded. Every chosen node is read live and the nodes are grouped by the patch they would get, with what each patch adds, changes and removes, and what their driver can't write. Choose groups and nodes and apply: a node that renders another patch by then is left as it is, and every patched node is read again to verify. With prune, config at the path that the desired configuration doesn't declare is removed too.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261013-approvals-page-for-reviewing-what-discov",
+          "kind": "added",
+          "title": "Approvals page for reviewing what discovered devices report",
+          "description": "ZTP > Approvals lists discoveries under the tabs To review, Approved, Rejected and All. Opening one shows what approving would do to the asset (create, update, no change or blocked) and any conflicts; you can approve or reject it, or select several and approve or reject them in one step after a preview. Approving does not push any configuration.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            },
+            {
+              "label": "#17",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261028-cves-can-be-sorted-by-column",
+          "kind": "added",
+          "title": "Browse and discover CVEs",
+          "description": "The new CVEs section lets you browse vulnerabilities with filters for CVE ID,\npublished date, modified date, severity, and description. Results are shown 50\nper page, and you can open a panel to inspect the selected CVE's raw data.\nThe list retrieves all available backend pages before filtering and sorting.\n\nUse the arrows in the column headings to sort the filtered results across all\npages. Select the same heading again to reverse the order. Dates are sorted\nchronologically and numeric severity scores numerically, with missing values\nshown last.\n\nDiscover CVEs queues an NVD discovery job for a vendor and optional date range,\nwith a link to the job. CVE Settings lets you replace the NVD API key without\ndisplaying the saved key.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261025-build-workflows-of-saved-steps-on-a",
+          "kind": "added",
+          "title": "Build workflows on a canvas and follow their runs",
+          "description": "Operations > Workflows lists your workflows and every run. A workflow opens on a canvas between Start and End.\n\n**Building a workflow**\n\n- **Add step** places a box of the kind you choose:\n  - Execute: raw commands\n  - Action: ping from the node\n  - Probe: ping from ACEX\n  - Compute\n  - Assert\n  - Condition, with a true side and a false side\n  - Wait\n- Clicking a box opens it. There you fill in what it does, pick its nodes as in Bulk Actions, and name the\n  artifacts it leaves, for example `version = regex(result.output, \"Version (\\S+)\")`.\n- Later steps use an artifact by its name, for example `show interface {iface}` or\n  `percent(reachable) >= 95`. A click on an artifact from an earlier step puts its name where your cursor is.\n- Boxes show what keeps them from running. Loops with no way out or no wait get a warning, and **Max rounds**\n  stops a loop that runs away.\n\n**Running it**\n\n- **Run** goes straight through.\n- **Evaluate** pauses after each step, so you can check its results before you continue.\n- **Dry run** shows what each step would send without reaching any device.\n\nA workflow with execute steps asks you to type \"execute\" and its name before it runs.\n\n**Following a run**\n\nA run shows each step's state on the canvas, which side a condition took, when a wait ends, and every round\nof a step that loops.\n\n- **Artifacts:** the list of steps opens to each round's artifacts, in a table with a row per node and a column\n  per artifact. A cell opens to its whole value.\n- **What each step did:** you see what each node answered.\n- **Failed checks:** a failed assert shows what each check read on the nodes where it failed, and a condition\n  shows what it read to choose its side.\n\nA run can be stopped while it runs and deleted once it has finished.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261024-run-commands-and-ping-from-operations",
+          "kind": "added",
+          "title": "Bulk Actions: run commands and ping on many nodes from Operations",
+          "description": "Operations > Bulk Actions has two kinds of action. Exec Commands runs raw commands on the nodes you choose, after you confirm by typing what will run. Standard Actions are vendor-agnostic methods that take the same parameters and give the same result on every device, starting with ping (target, count, timeout, VRF, source interface and packet size). The nodes you choose stay chosen when you switch between them; only nodes whose driver supports the action can be chosen, and any that can't run it are skipped. Each run is listed with its progress; open it to see every node's response, and download the report as CSV or JSON.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261013-discovery-page-lists-devices-that-have-c",
+          "kind": "added",
+          "title": "Discovery page lists devices that have called in",
+          "description": "ZTP > Discovery shows each device that fetched its bootstrap, with its stage (waiting for worker, discovering, failed, reported), last seen time and the discovery attempts behind it. You can filter by stage, group devices by subnet, and retry a failed discovery.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-new-activity-menu-with-a-jobs-page-for-b",
+          "kind": "added",
+          "title": "New Activity menu with a Jobs page for background work",
+          "description": "Activity > Jobs lists the jobs the backend has handed to workers, newest first, and refreshes every few seconds. Filter by state or type. Open a job to see its details, error, data and result; a batch also lists the jobs inside it.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-nodes-can-be-filtered-by-admin-status-an",
+          "kind": "added",
+          "title": "Nodes can be filtered by admin status and provisioning status",
+          "description": "The Nodes page toolbar has two new drop-downs, Admin and Provisioning. They apply as soon as you pick a value and combine with the existing filters.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-open-a-node-on-the-ztp-overview-to-follo",
+          "kind": "added",
+          "title": "Open a node on the ZTP Overview to follow it and act on it",
+          "description": "Clicking a node opens a side panel with its progress (asset claimed, device discovered, identity approved, provisioning, provisioned), its discoveries and its provisioning jobs. From there you can Start ZTP, Provision, go Back to ready, Cancel ZTP or Unclaim the node; most of these ask for a second click first.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#17",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-requeue-cancel-delete-and-purge-jobs-fro",
+          "kind": "added",
+          "title": "Requeue, cancel, delete and purge jobs from the Jobs page",
+          "description": "Each job has buttons to queue it again (failed, cancelled or queued jobs), cancel it (queued or running) and delete it after a confirmation. A Purge button deletes all failed jobs, all cancelled jobs or every job, again after confirmation.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261022-see-when-a-node-s-configuration-was-last",
+          "kind": "added",
+          "title": "See when a node's configuration was last synced",
+          "description": "The Overview of a node has two new rows, Config last synced and Config last changed, and the Observed configuration shows the same above the config text. Hover a time to see the exact date. A node that has not been polled since this release shows \"Not recorded yet\" until the collection agent polls it again, every six hours by default.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261027-settings-about-shows-the-build-of-every",
+          "kind": "added",
+          "title": "Settings > About shows the build of every component and the agents",
+          "description": "Every line on the About page now starts with the build of its component, written like its image tag (`dev-` and the commit for development builds) and linking to the commit, followed by the version, and a link shows what has landed on dev since. A new Agents section lists the collection and telemetry agents with their status and, once they report it, the version and build they run.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261106-sites-show-compliance-on-overview-and",
+          "kind": "added",
+          "title": "Sites show compliance on the Overview and per node on a Compliance tab",
+          "description": "The site Overview has a Compliance card under the map: a ring with how much of the site's desired configuration the devices match, and how many nodes are below 90 %. The new Compliance tab adds the site's totals, including undeclared components and unparsed lines, and a bar per node, worst first. Click a node to open its configuration.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261027-sort-the-assets-table-by-any-column",
+          "kind": "added",
+          "title": "Sort the Assets table by any column",
+          "description": null,
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261013-unclaimed-assets-page-maps-hardware-to-p",
+          "kind": "added",
+          "title": "Unclaimed Assets page maps hardware to planned nodes",
+          "description": "ZTP > Unclaimed Assets lists hardware that is not yet bound to a logical node. Select an asset, pick a planned node (or, by searching, one in service whose device is being replaced), and apply all mappings at once. Replacements need a second confirmation because those nodes must be provisioned again.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-ztp-overview-shows-every-node-s-progress",
+          "kind": "added",
+          "title": "ZTP Overview shows every node's progress through provisioning",
+          "description": "The ZTP Overview page was an empty placeholder. It now shows counts per stage (Awaiting device, Discovering, Awaiting approval, Ready, Provisioning, Provisioned), a \"Needs attention\" card for failed and stalled nodes, a backlog of unclaimed assets and a fleet coverage bar. Click a stage to filter the table; the page refreshes itself every 15 seconds.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            },
+            {
+              "label": "#17",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261013-ztp-settings-page-to-choose-the-driver-a",
+          "kind": "added",
+          "title": "ZTP Settings page to choose the driver and bootstrap login per method",
+          "description": "ZTP > Settings lists the ways a device can bootstrap. For each method you choose the NED (driver) used to discover such devices and set the login the bootstrap gives them, and see when and by whom it was last changed. A warning shows while no NED or no login is set.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#17",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261028-bulk-actions-under-operations-is-now",
+          "kind": "changed",
+          "title": "Bulk Actions under Operations is now called Run",
+          "description": "It holds Exec Commands, Standard Actions and the new Apply, each run once on the nodes you choose. Links to /operations/bulk-actions no longer work.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261013-provisioning-status-badges-follow-the-zt",
+          "kind": "changed",
+          "title": "Provisioning status badges follow the ZTP stages",
+          "description": "Provisioning status badges now use ZTP stage names (enrolled, awaiting device, awaiting approval, ready, provisioning, provisioned, failed) with underscores shown as spaces, and \"ready\" is blue. The old \"pending\" and \"bootstrapping\" values are no longer listed. Which statuses a node can have is decided by the backend.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "#16",
+              "url": null
+            },
+            {
+              "label": "#17",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261022-sidebar-shows-your-first-name-instead-of",
+          "kind": "changed",
+          "title": "Sidebar shows your first name instead of your email address",
+          "description": null,
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        }
+      ]
+    },
+    {
       "version": "0.0.35",
       "date": "2026-10-01",
       "entries": [

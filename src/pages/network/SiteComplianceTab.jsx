@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { fetchSiteCompliance } from '../../api/operations'
+import { fetchSiteCompliance } from '../../api/compliance'
 import { fetchNodes } from '../../api/inventory'
 import { complianceTone } from '../../components/sites/compliance'
 
@@ -52,11 +52,11 @@ export default function SiteComplianceTab({ siteName }) {
   if (isLoading) return <div className="p-6 text-xs text-subtle animate-pulse">Checking compliance…</div>
   if (isError) return <div className="p-6 text-xs text-subtle">Compliance unavailable.</div>
 
-  const summary = data?.summary ?? {}
+  const summary = data?.summary?.configuration ?? {}
   const pct = summary.compliance_percentage ?? null
   const nodesById = new Map((nodeData?.items ?? []).map(n => [String(n.id), n]))
   const rows = Object.entries(data?.nodes ?? {})
-    .map(([id, compliance]) => ({ id, node: nodesById.get(id), compliance }))
+    .map(([id, { configuration: compliance }]) => ({ id, node: nodesById.get(id), compliance }))
     .sort((a, b) => (a.compliance.compliance_percentage ?? Infinity) - (b.compliance.compliance_percentage ?? Infinity))
 
   if (!rows.length) return <div className="p-6 text-xs text-subtle">No nodes at this site.</div>
@@ -91,6 +91,7 @@ export default function SiteComplianceTab({ siteName }) {
           <tbody>
             {rows.map(({ id, node, compliance }) => {
               const nodePct = compliance.compliance_percentage ?? null
+              const collected = compliance.status !== 'not_collected'
               return (
                 <tr
                   key={id}
@@ -100,15 +101,15 @@ export default function SiteComplianceTab({ siteName }) {
                   <td className="px-4 py-2 font-medium text-content whitespace-nowrap">{node?.hostname || id}</td>
                   <td className="px-4 py-2">
                     {nodePct === null
-                      ? <span className="text-[11px] text-subtle">No desired config</span>
+                      ? <span className="text-[11px] text-subtle">Not collected</span>
                       : <ComplianceBar pct={nodePct} />}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-content">{nodePct === null ? '—' : `${nodePct}%`}</td>
                   <td className="px-4 py-2 text-right tabular-nums text-subtle whitespace-nowrap">
-                    {compliance.compliant_count} / {compliance.total_desired}
+                    {collected ? `${compliance.compliant_count} / ${compliance.total_desired}` : '—'}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-subtle">{compliance.undeclared_count}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-subtle">{compliance.unparsed_count}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-subtle">{collected ? compliance.undeclared_count : '—'}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-subtle">{collected ? compliance.unparsed_count : '—'}</td>
                 </tr>
               )
             })}

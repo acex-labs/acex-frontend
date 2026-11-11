@@ -4,10 +4,6 @@ import { API_URL } from '../config.js'
 const query = params =>
   new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null))
 
-// Compliance of every node at a site, plus a summary over the site.
-export const fetchSiteCompliance = siteName =>
-  apiFetch(`/api/v1/operations/compliance/site/${encodeURIComponent(siteName)}`)
-
 // Raw commands, run in order on each node; answers the run.
 export const executeCommands = (nodeIds, commands) =>
   apiFetch('/api/v1/operations/execute', {

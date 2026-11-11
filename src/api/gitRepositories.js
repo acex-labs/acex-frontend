@@ -1,6 +1,6 @@
 import { apiFetch } from './client'
 
-// Git repositories the backend reads ConfigMaps from. Admin only (naas-admin role).
+// Git repositories the backend reads ConfigMaps from.
 
 const BASE = '/api/v1/git_repositories'
 

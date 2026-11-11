@@ -1,7 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchStats, fetchAllSites } from '../api/inventory'
+import { fetchComplianceOverview, COMPLIANCE_STALE_TIME } from '../api/compliance'
 import SiteMap from '../components/map/SiteMap'
+import { ConfigurationComplianceCard, SoftwareComplianceCard } from '../components/compliance/ComplianceCards'
+import SiteRanking from '../components/compliance/SiteRanking'
 
 const STAT_DEFS = [
   { key: 'nodes',   label: 'Nodes',   href: '/network/nodes' },
@@ -38,6 +41,12 @@ export default function DashboardPage() {
     staleTime: 120_000,
   })
 
+  const compliance = useQuery({
+    queryKey: ['compliance', 'overview'],
+    queryFn: fetchComplianceOverview,
+    staleTime: COMPLIANCE_STALE_TIME,
+  })
+
   const navigate = useNavigate()
 
   return (
@@ -53,6 +62,36 @@ export default function DashboardPage() {
           {STAT_DEFS.map(({ key, label, href }) => (
             <StatCard key={key} label={label} value={stats?.[key]} href={href} />
           ))}
+        </div>
+
+        {/* Compliance: two separate KPIs, and the sites that pull each down */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ConfigurationComplianceCard
+            summary={compliance.data?.summary.configuration}
+            loading={compliance.isLoading}
+            error={compliance.isError}
+            to="/compliance/overview"
+          />
+          <SoftwareComplianceCard
+            summary={compliance.data?.summary.software}
+            loading={compliance.isLoading}
+            error={compliance.isError}
+            to="/compliance/overview"
+          />
+          <SiteRanking
+            sites={compliance.data?.sites}
+            kind="configuration"
+            order="worst"
+            title="5 worst sites · configuration"
+            loading={compliance.isLoading}
+          />
+          <SiteRanking
+            sites={compliance.data?.sites}
+            kind="software"
+            order="worst"
+            title="5 worst sites · software"
+            loading={compliance.isLoading}
+          />
         </div>
 
         {/* Map */}

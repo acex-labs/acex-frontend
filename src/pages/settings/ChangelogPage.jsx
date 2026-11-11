@@ -5,7 +5,6 @@ import remarkGfm from 'remark-gfm'
 
 import { fetchChangelog } from '../../api/changelog'
 import PageHeader from '../../components/ui/PageHeader'
-import { useAdmin } from '../../context/AdminContext'
 
 // In the order they are shown within a release.
 const KINDS = [
@@ -37,7 +36,7 @@ const AUDIENCE_FILTERS = [
 const AUDIENCE_NAME = { user: 'users', admin: 'administrators', developer: 'developers' }
 const STORAGE_KEY = 'acex.whatsnew.audience'
 
-// The choice a person made before, if any; otherwise the view that fits their role.
+// The choice a person made before, if any; otherwise the given fallback.
 const readStoredAudience = fallback => {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
@@ -319,9 +318,7 @@ const SELECT_CLASS =
 export default function ChangelogPage() {
   const [componentId, setComponentId] = useState(null)
   const [version, setVersion] = useState('latest')
-  const { isAdmin } = useAdmin() ?? {}
-  // What the person chose before, if anything. Without a choice the view follows their role, also when the
-  // role is only known a moment after the page opened.
+  // What the person chose before, if anything. Without a choice the view is the users' one.
   const [chosen, setChosen] = useState(() => readStoredAudience(null))
   // Set when a highlight leads to notes the chosen point of view would hide. It is not the person's choice:
   // it is dropped at the next navigation, and the notice says why the list changed.
@@ -335,7 +332,7 @@ export default function ChangelogPage() {
     staleTime: 300_000,
   })
 
-  const ownId = chosen ?? (isAdmin ? 'admin' : 'user')
+  const ownId = chosen ?? 'user'
   const filterOf = id => AUDIENCE_FILTERS.find(f => f.id === id) ?? AUDIENCE_FILTERS[0]
   const filter = filterOf(override ?? ownId)
   const highlights = data?.highlights ?? []

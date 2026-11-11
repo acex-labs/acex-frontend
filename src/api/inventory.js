@@ -128,8 +128,16 @@ export const fetchAssets = ({ vendor, os, hardware_model, serial_number, assigne
 export const fetchAsset = (id) =>
   apiFetch(`/api/v1/inventory/assets/${id}`)
 
+// Declared hardware; per model, the OSes an installed NED supports on it and whether it is enabled.
 export const fetchPlatforms = () =>
   apiFetch('/api/v1/platforms')
+
+// A model name may hold a slash (CISCO1941/K9); encoded, the backend reads it whole. 404 for an undeclared model.
+export const enableHardwareModel = model =>
+  apiFetch(`/api/v1/platforms/enabled_models/${encodeURIComponent(model)}`, { method: 'PUT' })
+
+export const disableHardwareModel = model =>
+  apiFetch(`/api/v1/platforms/enabled_models/${encodeURIComponent(model)}`, { method: 'DELETE' })
 
 export const createAsset = (data) =>
   apiFetch('/api/v1/inventory/assets', {

@@ -26,7 +26,7 @@ import {
   createRegionAssignment,
   deleteRegionAssignment,
 } from '../../api/inventory'
-import { fetchSiteCompliance } from '../../api/operations'
+import { fetchSiteCompliance } from '../../api/compliance'
 import { usePageAiContext } from '../../context/AiContext'
 import SiteMap from '../../components/map/SiteMap'
 import ComplianceRing from '../../components/sites/ComplianceRing'
@@ -419,9 +419,11 @@ function ComplianceCard({ siteName, onShowDetails }) {
     enabled: !!siteName,
   })
 
-  const summary = data?.summary
+  const summary = data?.summary?.configuration
   const pct = summary?.compliance_percentage ?? null
-  const measured = Object.values(data?.nodes ?? {}).filter(n => n.compliance_percentage != null)
+  const measured = Object.values(data?.nodes ?? {})
+    .map(n => n.configuration)
+    .filter(c => c.compliance_percentage != null)
   const below = measured.filter(n => n.compliance_percentage < COMPLIANCE_TARGET).length
 
   return (
@@ -445,7 +447,7 @@ function ComplianceCard({ siteName, onShowDetails }) {
             {isLoading ? (
               <div className="text-subtle animate-pulse">Checking…</div>
             ) : pct === null ? (
-              <div className="text-subtle">No desired config</div>
+              <div className="text-subtle">Nothing collected yet</div>
             ) : (
               <>
                 <div className="text-content tabular-nums">

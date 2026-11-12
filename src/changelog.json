@@ -4,6 +4,142 @@
   "name": "ACEX web interface",
   "releases": [
     {
+      "version": "0.6.0",
+      "date": "2026-11-12",
+      "summary": "Compliance gets its own section and policies, the dashboard shows it and can search the inventory, and ConfigMaps can be synced from git.",
+      "entries": [
+        {
+          "id": "20261111-naas-admin-mode-and-platform-admin-page-removed",
+          "kind": "removed",
+          "title": "Admin mode and the Platform > Admin page are gone",
+          "description": "The `naas-admin` role no longer means anything to the frontend: the admin mode toggle, the Platform menu with its Admin page and the `NAAS_ADMIN_URL` setting are removed. What's new starts on the Users view unless you have picked another one.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": []
+        },
+        {
+          "id": "20261112-compliance-overview-for-the-whole",
+          "kind": "added",
+          "title": "Compliance overview for the whole installation",
+          "description": "The new Compliance section starts with an overview of configuration compliance and software compliance over every node, shown as two separate figures. It ranks the five best and the five worst sites for each, and lists every region with its own figures. The figures are measured when the page opens and kept for five minutes.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261111-configmap-builder-supports-multiple-filters",
+          "kind": "added",
+          "title": "ConfigMap builder, Reconcile and Translator support multiple filters",
+          "description": "Add several filters in the ConfigMap builder, Reconcile or Translator. All\nfilters are sent together when generating, reconciling or translating.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261106-sync-configmaps-from-git-repositories",
+          "kind": "added",
+          "title": "ConfigMaps can be synced from git repositories",
+          "description": "Settings has a Git Repositories page. Add a repository with its HTTPS URL, branch and the\ndirectory that holds the ConfigMaps, and pick a token credential or paste a personal access token, which is\nsaved as a credential. For a git server signed by an internal CA, paste its CA certificate under Trust an internal CA. The backend loads the ConfigMaps at once and again whenever the branch moves. The page\nshows each repository's status, loaded commit and ConfigMaps, and why the last sync failed; Sync now loads the\nlatest commit straight away.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261112-hardware-models-page-chooses-which",
+          "kind": "added",
+          "title": "Hardware Models page chooses which models the installation runs",
+          "description": "Settings > Hardware Models shows every model ACEX knows, with its operating system and whether a driver supports it. A model is enabled when a device of it is added, or by hand here. Only enabled models can be named in a software policy.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261112-search-the-whole-inventory-from-the",
+          "kind": "added",
+          "title": "Search the whole inventory from the dashboard",
+          "description": "The dashboard has a search field. Type at least two characters to find nodes, logical nodes, sites, regions, assets, asset clusters and contacts, grouped by kind with the best hits first. A node is also found by its management IP address or by the serial number of its asset. Choosing a hit opens it.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "acex#371",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261112-software-policy-page-approves-the",
+          "kind": "added",
+          "title": "Software policy page approves the versions a vendor or hardware model may run",
+          "description": "Compliance > Policies lists the approved software versions per vendor and hardware model, and lets you add, change and withdraw them. A model's own versions beat its vendor's, one version for each operating system can be marked golden, and the page suggests the versions your devices already run. A version that is not approved is not allowed.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            },
+            {
+              "label": "acex#372",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261112-the-dashboard-shows-configuration-and",
+          "kind": "added",
+          "title": "The dashboard shows configuration and software compliance",
+          "description": "Two cards under the search of the dashboard, one for configuration compliance and one for software compliance, each with its percentage and what it is made of. Details opens the compliance overview.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261112-a-site-s-compliance-tab-shows-software",
+          "kind": "changed",
+          "title": "A site's Compliance tab shows software next to configuration",
+          "description": "The tab has a configuration section with a row per node and a software section with a row per asset: the hardware model, the version it runs, the golden version and whether the version is golden, accepted or not allowed. Assets without an approved version are marked as having no policy.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            }
+          ]
+        },
+        {
+          "id": "20261111-site-compliance-shows-nodes-without-a",
+          "kind": "fixed",
+          "title": "Site compliance shows nodes without a collected configuration as not collected",
+          "description": "The Compliance card on a site and the Compliance tab read their figures from the new compliance API. A node whose\nconfiguration has not been collected is listed as not collected, with dashes instead of counts, and is left out of\nthe site's percentage. Before, it was shown as having no desired configuration.",
+          "breaking": false,
+          "audience": "user",
+          "refs": [
+            {
+              "label": "acex#368",
+              "url": null
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.4.1",
       "date": "2026-11-09",
       "summary": "Run commands and apply configuration on many nodes at once, build workflows, browse CVEs, follow compliance per site and node, and read what's new from Settings.",

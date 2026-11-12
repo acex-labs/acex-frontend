@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { MODULES } from '../modules'
+import { activeModules } from '../modules'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 // For the navigation items in the sidebar, ex. nodes, sites etc under network
 function NavItem({ to, text, icon: Icon, end, collapsed, textSize = '12px' }) {
@@ -42,8 +42,10 @@ export default function Sidebar({ collapsed, onToggle }) {
     [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || profile?.name || null
   const email = profile?.email || null
 
+  const modules = activeModules()
+
   const findActiveSection = () =>
-    MODULES.find(m =>
+    modules.find(m =>
       m.nav?.some(item =>
         item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
       )
@@ -53,7 +55,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   const [open, setOpen] = useState(() => {
     const initial = {}
-    MODULES.forEach(m => { initial[m.id] = false })
+    modules.forEach(m => { initial[m.id] = false })
     if (activeSection) initial[activeSection] = true
     return initial
   })
@@ -89,7 +91,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <NavItem to="/" text="Dashboard" icon={LayoutDashboard} end collapsed={collapsed} textSize="14px" />
         </div>
 
-        {MODULES.map(m => {
+        {modules.map(m => {
           const isOpen = collapsed || open[m.id]
           const SectionIcon = m.icon
 

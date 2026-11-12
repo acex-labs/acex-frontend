@@ -8,6 +8,7 @@ import { AuthProvider } from './auth/AuthContext.jsx'
 import { initUserManager, getUserManager } from './auth/oidc.js'
 import { installFetchInterceptor } from './auth/fetchInterceptor.js'
 import { API_URL } from './config.js'
+import { loadServices } from './services.js'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,10 @@ async function bootstrap() {
       '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">Failed to load — please refresh or contact support.</div>'
     return
   }
+
+  // Which other backends exist, from ACEX. Never blocks the app: without it only
+  // the modules that need those services are hidden.
+  await loadServices()
 
   renderApp()
 }

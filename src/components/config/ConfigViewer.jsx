@@ -3,14 +3,21 @@ import { Copy, Check } from 'lucide-react'
 
 // Each line's origin: that of the innermost span holding it. Spans nest — an interface block holds
 // a span per field line — so the innermost one names the most specific component behind the line.
+// Spans of the same width (a one-line hostname inside the one-line system.config) are told apart by
+// path, the deeper one being the more specific. A span with no origin, such as a container no
+// component is placed at, never hides one that has one.
 function lineOrigins(lineCount, spans) {
   const origins = new Array(lineCount).fill(null)
-  const widths = new Array(lineCount).fill(Infinity)
+  const best = new Array(lineCount).fill(null)  // [width, depth] of the span chosen for each line
   for (const span of spans ?? []) {
+    if (!span.origin) continue
+    const width = span.end - span.start
+    const depth = span.path?.length ?? 0
     for (let n = span.start; n <= span.end && n <= lineCount; n++) {
-      if (span.end - span.start < widths[n - 1]) {
-        widths[n - 1] = span.end - span.start
-        origins[n - 1] = span.origin ?? null
+      const b = best[n - 1]
+      if (!b || width < b[0] || (width === b[0] && depth > b[1])) {
+        best[n - 1] = [width, depth]
+        origins[n - 1] = span.origin
       }
     }
   }

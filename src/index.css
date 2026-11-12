@@ -14,6 +14,13 @@
   --color-content:     var(--content);
   --color-heading:     var(--heading);
   --color-subtle:      var(--subtle);
+
+  /* Compliance parts, validated as a set against both surfaces (dataviz palette check). */
+  --color-cmp-good:        var(--cmp-good);
+  --color-cmp-accepted:    var(--cmp-accepted);
+  --color-cmp-bad:         var(--cmp-bad);
+  --color-cmp-unknown:     var(--cmp-unknown);
+  --color-cmp-unmeasured:  var(--cmp-unmeasured);
 }
 
 /* Dark theme (default) */
@@ -35,6 +42,14 @@
   --heading:     #FFFFFF;
   --subtle:      #7A8090;
 
+  /* Compliance parts: golden / compliant, accepted, not allowed / deviating, unknown, not measured.
+     Good, bad and unknown are the fixed status steps; unknown always comes with its label. */
+  --cmp-good:       #0CA30C;
+  --cmp-accepted:   #3987E5;
+  --cmp-bad:        #D03B3B;
+  --cmp-unknown:    #FAB219;
+  --cmp-unmeasured: #4B5160;
+
   color-scheme: dark;
 }
 
@@ -54,6 +69,9 @@
   --content:     #1A1D21;
   --heading:     #1A1D21;
   --subtle:      #6B7280;
+
+  --cmp-accepted:   #2A78D6;
+  --cmp-unmeasured: #C3C2B7;
 
   color-scheme: light;
 }

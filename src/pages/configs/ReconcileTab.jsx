@@ -13,7 +13,7 @@ const MODES = [
 export default function ReconcileTab() {
   const [node,        setNode]        = useState(null)
   const [mode,        setMode]        = useState('diff')
-  const [filter,      setFilter]      = useState(null)
+  const [filters,     setFilters]     = useState([])
   const [className,   setClassName]   = useState('ReconcileConfigMap')
   const [code,        setCode]        = useState('')
   const [reconciling, setReconciling] = useState(false)
@@ -26,7 +26,7 @@ export default function ReconcileTab() {
     try {
       const body = {
         class_name:       className,
-        filter:           filter ?? null,
+        filter:           filters,
         mode,
         include_removed:  true,
         include_changed:  true,
@@ -99,7 +99,7 @@ export default function ReconcileTab() {
           </div>
 
           {/* Filter */}
-          <FilterEditor value={filter} onChange={setFilter} />
+          <FilterEditor value={filters} onChange={setFilters} multiple />
         </div>
 
         {/* Run button */}

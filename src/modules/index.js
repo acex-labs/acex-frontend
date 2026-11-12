@@ -2,10 +2,10 @@ import { NetworkModule }    from './network'
 import { ConfigsModule }    from './configs'
 import { OperationsModule } from './operations'
 import { ObserveModule }    from './observe'
+import { ComplianceModule } from './compliance'
 import { AutopilotModule }  from './autopilot'
 import { ZtpModule }        from './ztp'
 import { SettingsModule }   from './settings'
-import { PlatformModule }   from './platform'
 import { ActivityModule }   from './activity'
 import { CveModule }        from './cve'
 
@@ -22,7 +22,6 @@ import { CveModule }        from './cve'
  *   id:        string          — unique identifier
  *   label:     string          — sidebar section heading
  *   icon:      LucideIcon      — section icon
- *   adminOnly: boolean?        — only shown when admin mode is active
  *   nav:    [{ to, text, icon }]
  *   routes: [{ path, load?, placeholder? }]
  *            load = () => import('...')   (code-split page)
@@ -34,10 +33,10 @@ export const MODULES = [
   ConfigsModule,
   OperationsModule,
   ObserveModule,
+  ComplianceModule,
   AutopilotModule,
   ZtpModule,
   CveModule,
   ActivityModule,
   SettingsModule,
-  PlatformModule,  // adminOnly — only visible when admin mode is on
 ]

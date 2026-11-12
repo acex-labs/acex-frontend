@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ChevronDown, Menu, PanelLeftClose,
-  LogOut, UserCircle, Sun, Moon, Monitor, ShieldAlert,
+  LogOut, UserCircle, Sun, Moon, Monitor,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { useAdmin } from '../context/AdminContext'
 import { MODULES } from '../modules'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 // For the navigation items in the sidebar, ex. nodes, sites etc under network
@@ -37,18 +36,14 @@ export default function Sidebar({ collapsed, onToggle }) {
   const location = useLocation()
   const { user, logout } = useAuth()
   const { mode, cycleMode } = useTheme()
-  const { isAdmin, isAdminMode, toggleAdminMode } = useAdmin()
   const profile = user?.profile
   const label = profile?.given_name || profile?.preferred_username || profile?.email || ''
   const fullName =
     [profile?.given_name, profile?.family_name].filter(Boolean).join(' ') || profile?.name || null
   const email = profile?.email || null
 
-  // Only show modules that are either not adminOnly, or adminOnly and mode is active
-  const visibleModules = MODULES.filter(m => !m.adminOnly || isAdminMode)
-
   const findActiveSection = () =>
-    visibleModules.find(m =>
+    MODULES.find(m =>
       m.nav?.some(item =>
         item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
       )
@@ -58,7 +53,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   const [open, setOpen] = useState(() => {
     const initial = {}
-    visibleModules.forEach(m => { initial[m.id] = false })
+    MODULES.forEach(m => { initial[m.id] = false })
     if (activeSection) initial[activeSection] = true
     return initial
   })
@@ -88,26 +83,13 @@ export default function Sidebar({ collapsed, onToggle }) {
         />
       </div>
 
-      {/* Admin mode banner */}
-      {isAdminMode && !collapsed && (
-        <div className="mx-2 mb-1 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5">
-          <ShieldAlert size={10} className="text-amber-400 shrink-0" />
-          <span className="text-[12px] text-amber-400 font-semibold">Admin mode</span>
-        </div>
-      )}
-      {isAdminMode && collapsed && (
-        <div className="flex justify-center mb-1">
-          <ShieldAlert size={12} className="text-amber-400" />
-        </div>
-      )}
-
       {/* Dashboard */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 space-y-px">
         <div className="space-y-0.5 pt-0.5 pb-1">
           <NavItem to="/" text="Dashboard" icon={LayoutDashboard} end collapsed={collapsed} textSize="14px" />
         </div>
 
-        {visibleModules.map(m => {
+        {MODULES.map(m => {
           const isOpen = collapsed || open[m.id]
           const SectionIcon = m.icon
 
@@ -119,7 +101,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                   className={[
                     'flex items-center justify-between w-full px-2 py-1 mt-2',
                     'text-[12px] font-semibold uppercase tracking-widest rounded transition-colors',
-                    m.adminOnly ? 'text-amber-500/70 hover:text-amber-400' : 'text-subtle hover:text-content',
+                    'text-subtle hover:text-content',
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-1.5">
@@ -169,16 +151,6 @@ export default function Sidebar({ collapsed, onToggle }) {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-
-          {isAdmin && (
-            <button
-              onClick={toggleAdminMode}
-              title={isAdminMode ? 'Exit admin mode' : 'Enter admin mode'}
-              className={['transition-colors p-0.5 rounded', isAdminMode ? 'text-amber-400 hover:text-amber-300' : 'text-subtle hover:text-amber-400'].join(' ')}
-            >
-              <ShieldAlert size={20} />
-            </button>
-          )}
 
           <button onClick={cycleMode} title={`Theme: ${mode}`} className="text-subtle hover:text-brand transition-colors p-0.5 rounded">
             {mode === 'system' ? <Monitor size={20} /> : mode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}

@@ -15,7 +15,7 @@ function toVarName(componentName, count) {
 export default function BuilderTab() {
   const counter = useRef(0)
   const [className,  setClassName]  = useState('MyConfigMap')
-  const [filter,     setFilter]     = useState(null)
+  const [filters,    setFilters]    = useState([])
   const [instances,  setInstances]  = useState([])
   const [code,       setCode]       = useState('')
   const [generating, setGenerating] = useState(false)
@@ -54,7 +54,7 @@ export default function BuilderTab() {
     try {
       const body = {
         class_name: className,
-        filter: filter ?? null,
+        filter: filters,
         components: instances.map(i => ({
           component:     i.component,
           variable_name: i.variableName,
@@ -99,7 +99,7 @@ export default function BuilderTab() {
           </div>
 
           {/* Filter */}
-          <FilterEditor value={filter} onChange={setFilter} />
+          <FilterEditor value={filters} onChange={setFilters} multiple />
         </div>
 
         {/* Instance list */}

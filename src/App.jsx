@@ -4,7 +4,6 @@ import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
 import { AiProvider } from './context/AiContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { AdminProvider } from './context/AdminContext'
 import { MODULES } from './modules'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -32,7 +31,6 @@ export default function App() {
   return (
     <RequireAuth>
       <ThemeProvider>
-      <AdminProvider>
       <AiProvider>
       <Layout>
       <Suspense fallback={null}>
@@ -45,7 +43,6 @@ export default function App() {
       </Suspense>
       </Layout>
       </AiProvider>
-      </AdminProvider>
       </ThemeProvider>
     </RequireAuth>
   )

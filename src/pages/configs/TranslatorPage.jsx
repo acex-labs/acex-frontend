@@ -20,7 +20,7 @@ vlan 10
 export default function TranslatorPage() {
   const [nedId,      setNedId]      = useState('')
   const [configText, setConfigText] = useState('')
-  const [filter,     setFilter]     = useState(null)
+  const [filters,    setFilters]    = useState([])
   const [code,       setCode]       = useState('')
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState(null)
@@ -41,7 +41,7 @@ export default function TranslatorPage() {
       const result = await translateConfig({
         ned_id:      nedId,
         config_text: configText,
-        filter:      filter ?? null,
+        filter:      filters,
       })
       setCode(result.code ?? result)
     } catch (e) {
@@ -85,7 +85,7 @@ export default function TranslatorPage() {
             </select>
 
             <div className="flex-1">
-              <FilterEditor value={filter} onChange={setFilter} />
+              <FilterEditor value={filters} onChange={setFilters} multiple />
             </div>
 
             <button

@@ -26,11 +26,11 @@ import {
   createRegionAssignment,
   deleteRegionAssignment,
 } from '../../api/inventory'
-import { fetchSiteCompliance } from '../../api/operations'
+import { fetchSiteCompliance } from '../../api/compliance'
 import { usePageAiContext } from '../../context/AiContext'
 import SiteMap from '../../components/map/SiteMap'
-import ComplianceRing from '../../components/sites/ComplianceRing'
-import { COMPLIANCE_TARGET } from '../../components/sites/compliance'
+import ComplianceRing from '../../components/compliance/ComplianceRing'
+import { COMPLIANCE_TARGET } from '../../components/compliance/compliance'
 import SiteComplianceTab from './SiteComplianceTab'
 import SiteTopologyTab from './SiteTopologyTab'
 
@@ -412,6 +412,24 @@ function RegionsCard({ siteId, siteName }) {
   )
 }
 
+// One KPI of the card: a heading naming it, its ring, and the lines that explain the figure.
+function ComplianceKpi({ title, pct, loading, lines }) {
+  return (
+    <div className="flex-1 min-w-0 space-y-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-subtle">{title}</div>
+      <div className="flex items-center gap-4">
+        <ComplianceRing pct={pct} size={96} variant="lg" loading={loading} />
+        <div className="space-y-1 text-xs min-w-0">
+          {loading
+            ? <div className="text-subtle animate-pulse">Checking…</div>
+            : lines.map(line => <div key={line.text} className={line.muted ? 'text-subtle' : 'text-content'}>{line.text}</div>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Configuration and software compliance of the site: separate KPIs, side by side.
 function ComplianceCard({ siteName, onShowDetails }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['site-compliance', siteName],
@@ -419,10 +437,33 @@ function ComplianceCard({ siteName, onShowDetails }) {
     enabled: !!siteName,
   })
 
-  const summary = data?.summary
-  const pct = summary?.compliance_percentage ?? null
-  const measured = Object.values(data?.nodes ?? {}).filter(n => n.compliance_percentage != null)
+  const configuration = data?.summary?.configuration
+  const configurationPct = configuration?.compliance_percentage ?? null
+  const measured = Object.values(data?.nodes ?? {})
+    .map(n => n.configuration)
+    .filter(n => n.compliance_percentage != null)
   const below = measured.filter(n => n.compliance_percentage < COMPLIANCE_TARGET).length
+  const configurationLines = configurationPct === null
+    ? [{ text: 'No configuration collected', muted: true }]
+    : [
+        { text: `${configuration.compliant_count} / ${configuration.total_desired} components compliant` },
+        {
+          text: below === 0
+            ? `All ${measured.length} nodes at or above ${COMPLIANCE_TARGET}%`
+            : `${below} of ${measured.length} nodes below ${COMPLIANCE_TARGET}%`,
+          muted: true,
+        },
+      ]
+
+  const software = data?.summary?.software
+  const softwarePct = software?.compliance_percentage ?? null
+  const compliant = (software?.golden_count ?? 0) + (software?.accepted_count ?? 0)
+  const softwareLines = softwarePct === null
+    ? [{ text: 'No asset covered by the software policy', muted: true }]
+    : [
+        { text: `${compliant} / ${compliant + software.not_allowed_count} assets on an approved version` },
+        { text: `${software.golden_count} on golden`, muted: true },
+      ]
 
   return (
     <div className="bg-surface border border-edge rounded-md overflow-hidden flex flex-col">
@@ -439,26 +480,9 @@ function ComplianceCard({ siteName, onShowDetails }) {
       {isError ? (
         <div className="px-4 py-3 text-xs text-subtle">Compliance unavailable.</div>
       ) : (
-        <div className="flex-1 p-4 flex items-center gap-6">
-          <ComplianceRing pct={pct} size={120} variant="lg" loading={isLoading} />
-          <div className="space-y-1 text-xs">
-            {isLoading ? (
-              <div className="text-subtle animate-pulse">Checking…</div>
-            ) : pct === null ? (
-              <div className="text-subtle">No desired config</div>
-            ) : (
-              <>
-                <div className="text-content tabular-nums">
-                  {summary.compliant_count} / {summary.total_desired} components compliant
-                </div>
-                <div className="text-subtle tabular-nums">
-                  {below === 0
-                    ? `All ${measured.length} nodes at or above ${COMPLIANCE_TARGET}%`
-                    : `${below} of ${measured.length} nodes below ${COMPLIANCE_TARGET}%`}
-                </div>
-              </>
-            )}
-          </div>
+        <div className="flex-1 p-4 flex flex-col sm:flex-row gap-6">
+          <ComplianceKpi title="Configuration" pct={configurationPct} loading={isLoading} lines={configurationLines} />
+          <ComplianceKpi title="Software" pct={softwarePct} loading={isLoading} lines={softwareLines} />
         </div>
       )}
     </div>

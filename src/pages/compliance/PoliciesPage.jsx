@@ -55,7 +55,8 @@ function AddVersion({ offered, versions, examples }) {
   const osOptions = offeredOs(vendorEntry, form.hardware_model)
   const os = osOptions.includes(form.os) ? form.os : osOptions.length === 1 ? osOptions[0] : ''
   const example = examples?.[os]?.[0]
-  const golden = versions.find(v => v.golden && sameTarget(v, form))
+  // One golden version per vendor, model and OS.
+  const golden = versions.find(v => v.golden && v.os === os && sameTarget(v, form))
   // What the inventory runs, less what is already approved here.
   const inUse = useQuery({
     queryKey: ['policies', 'software', 'versions', form.vendor, form.hardware_model, os],

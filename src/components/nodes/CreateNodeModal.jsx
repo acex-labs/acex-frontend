@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { X, Check } from 'lucide-react'
 import { fetchLogicalNodes, fetchAssets, fetchAssetClusters, createNodeInstance } from '../../api/inventory'
+import { useDebounce } from '../../hooks/useDebounce'
 import VendorIcon from '../ui/VendorIcon'
 import { ADMIN_STATUSES } from './nodeStatus'
 
@@ -98,6 +99,8 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
   const [selectedLogicalNode, setSelectedLogicalNode] = useState(null)
 
   const [assetTab, setAssetTab] = useState('single')
+  const [assetSearch, setAssetSearch] = useState('')
+  const dAssetSearch = useDebounce(assetSearch.trim(), 300)
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [adminStatus, setAdminStatus] = useState('planned')
   const [provisionStatus, setProvisionStatus] = useState('unprovisioned')
@@ -114,11 +117,12 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
   const logicalNodes = logicalNodesData?.items ?? []
 
   const { data: assetsData, isLoading: assetsLoading } = useQuery({
-    queryKey: ['assets-picker', 'unassigned-for-node'],
-    queryFn: () => fetchAssets({ assigned: false, limit: 200 }),
+    queryKey: ['assets-picker', 'unassigned-for-node', dAssetSearch],
+    queryFn: () => fetchAssets({ assigned: false, q: dAssetSearch || undefined, limit: 200 }),
     enabled: assetTab === 'single',
   })
   const assets = assetsData?.items ?? []
+  const assetsTotal = assetsData?.total ?? assets.length
 
   const { data: clustersData, isLoading: clustersLoading } = useQuery({
     queryKey: ['asset-clusters-picker', 'unassigned-for-node'],
@@ -210,13 +214,24 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
                   </button>
                 ))}
               </div>
+              {assetTab === 'single' && (
+                <input
+                  type="text"
+                  placeholder="Search serial, vendor, model…"
+                  value={assetSearch}
+                  onChange={e => setAssetSearch(e.target.value)}
+                  className={`${INPUT_CLS} mt-2`}
+                />
+              )}
             </FormField>
             <div className="border border-edge rounded max-h-72 overflow-y-auto">
               {assetTab === 'single' ? (
                 assetsLoading ? (
                   <div className="px-3 py-3 text-xs text-subtle animate-pulse">Loading…</div>
                 ) : assets.length === 0 ? (
-                  <div className="px-3 py-3 text-xs text-subtle">No unassigned assets available.</div>
+                  <div className="px-3 py-3 text-xs text-subtle">
+                    {dAssetSearch ? 'No unassigned assets match your search.' : 'No unassigned assets available.'}
+                  </div>
                 ) : (
                   assets.map(asset => (
                     <AssetRow
@@ -244,6 +259,11 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
                 )
               )}
             </div>
+            {assetTab === 'single' && !assetsLoading && assetsTotal > assets.length && (
+              <div className="mt-1 text-[11px] text-subtle">
+                Showing {assets.length} of {assetsTotal} — refine your search
+              </div>
+            )}
           </div>
 
           <div className="md:col-span-2">

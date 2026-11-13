@@ -99,6 +99,43 @@ export function analyse(triage, steps, observations = []) {
   }
 }
 
+// Everyone visibly involved, with the work that shows what each person did. Names are compared trimmed, not
+// case-folded, so the spelling chosen in the triage remains the identity shown in the footer.
+export function participants(triage, steps, observations = []) {
+  const people = new Map()
+  const person = value => {
+    const name = value?.trim()
+    if (!name) return null
+    if (!people.has(name)) {
+      people.set(name, { name, isLead: false, branches: [], ownedSteps: [], verdicts: [], observations: [] })
+    }
+    return people.get(name)
+  }
+
+  const lead = person(triage.assignee)
+  if (lead) lead.isLead = true
+  steps.forEach(s => {
+    const owner = person(s.assignee)
+    if (owner) {
+      owner.ownedSteps.push({ id: s.id, title: s.title, kind: s.kind, status: s.status })
+      if (s.kind === 'hypothesis') owner.branches.push({ id: s.id, title: s.title || 'Untitled hypothesis' })
+    }
+    if (s.status === 'root_cause' || s.status === 'not_root_cause') {
+      person(s.validated_by)?.verdicts.push({ id: s.id, title: s.title || 'Untitled hypothesis', status: s.status })
+    }
+  })
+  observations.forEach(o => {
+    person(o.created_by)?.observations.push({ id: o.id, title: observationTitle(o) })
+  })
+
+  return [...people.values()].map(p => ({
+    ...p,
+    observationCount: p.observations.length,
+    rootCauseCount: p.verdicts.filter(v => v.status === 'root_cause').length,
+    notRootCauseCount: p.verdicts.filter(v => v.status === 'not_root_cause').length,
+  })).sort((a, b) => Number(b.isLead) - Number(a.isLead) || a.name.localeCompare(b.name))
+}
+
 const SIZES = { root: { width: 270, height: 100 }, step: { width: 250, height: 118 }, verdict: { width: 150, height: 40 } }
 
 // Positions left to right, the tree laid out from its structure; nothing is dragged or saved. `verdicts` are the

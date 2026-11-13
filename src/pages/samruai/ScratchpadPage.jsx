@@ -13,8 +13,9 @@ import {
 import { useAuth } from '../../auth/AuthContext'
 import { ConfirmModal } from '../../components/operations/ConfirmModals'
 import Assessment, { PriorityBadge } from '../../components/samruai/Assessment'
-import { KINDS, ROOT, STATUSES, analyse, layout, observationTitle } from '../../components/samruai/hypotree'
+import { KINDS, ROOT, STATUSES, analyse, layout, observationTitle, participants } from '../../components/samruai/hypotree'
 import ObservationsPanel from '../../components/samruai/ObservationsPanel'
+import ParticipantsBar from '../../components/samruai/ParticipantsBar'
 import { TRIAGES_KEY, TRIAGE_STATUSES, triageKey, triageTitle } from '../../components/samruai/triage'
 import usePatcher from '../../components/samruai/usePatcher'
 import Drawer from '../../components/workflows/Drawer'
@@ -368,6 +369,7 @@ function Scratchpad({ triage, steps, observations }) {
   }
 
   const tree = useMemo(() => analyse(triage, steps, observations), [triage, steps, observations])
+  const involved = useMemo(() => participants(triage, steps, observations), [triage, steps, observations])
   // The ends of validated hypobranches, drawn after their last node.
   const verdicts = [...tree.ends].filter(([, h]) => h.status !== 'open').map(([end, h]) => ({ id: `verdict:${h.id}`, after: end, hypothesis: h }))
   const shape = [...steps.map(s => `${s.id}:${s.parent_id}`), ...verdicts.map(v => `${v.id}:${v.after}`)].join(',')
@@ -510,37 +512,40 @@ function Scratchpad({ triage, steps, observations }) {
         Actions follow one another (<Wrench size={9} className="inline" />); only a hypothesis opens another thread, a hypobranch (<GitFork size={9} className="inline rotate-90" />). A hypobranch is validated at its end: root cause or not. Observations sit beside the tree, as evidence for or against hypotheses.
       </div>
       <div className="flex-1 min-h-0 flex">
-        <div className="flex-1 relative">
-          <WorkflowCanvas
-            nodeTypes={NODE_TYPES}
-            nodes={nodes}
-            edges={edges}
-            onNodeClick={(_, n) => n.type !== 'verdict' && setOpen(n.id === ROOT ? ROOT : Number(n.id))}
-            onPaneClick={() => setOpen(null)}
-          />
-          {open === ROOT && (
-            <Drawer title="Triage" backdrop={false} onClose={() => setOpen(null)}>
-              <TriagePanel triage={triage} tree={tree} me={me} error={patcher.errors[ROOT]} onPatch={p => patcher.patch(ROOT, p)} onAdd={kind => add(ROOT, kind)} />
-            </Drawer>
-          )}
-          {openStep && (
-            <Drawer title={openStep.title || KINDS[openStep.kind]?.label} backdrop={false} onClose={() => setOpen(null)}>
-              <StepPanel
-                key={openStep.id}
-                step={openStep}
-                tree={tree}
-                me={me}
-                error={patcher.errors[`step:${openStep.id}`]}
-                onPatch={p => patcher.patch(`step:${openStep.id}`, p)}
-                onAdd={kind => add(openStep.id, kind)}
-                onRemove={() => removeStep(openStep.id)}
-                onValidate={validate}
-                onOpen={setOpen}
-                onOpenObservation={showObservation}
-                onBrowseObservations={() => showObservation(null)}
-              />
-            </Drawer>
-          )}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 relative">
+            <WorkflowCanvas
+              nodeTypes={NODE_TYPES}
+              nodes={nodes}
+              edges={edges}
+              onNodeClick={(_, n) => n.type !== 'verdict' && setOpen(n.id === ROOT ? ROOT : Number(n.id))}
+              onPaneClick={() => setOpen(null)}
+            />
+            {open === ROOT && (
+              <Drawer title="Triage" backdrop={false} onClose={() => setOpen(null)}>
+                <TriagePanel triage={triage} tree={tree} me={me} error={patcher.errors[ROOT]} onPatch={p => patcher.patch(ROOT, p)} onAdd={kind => add(ROOT, kind)} />
+              </Drawer>
+            )}
+            {openStep && (
+              <Drawer title={openStep.title || KINDS[openStep.kind]?.label} backdrop={false} onClose={() => setOpen(null)}>
+                <StepPanel
+                  key={openStep.id}
+                  step={openStep}
+                  tree={tree}
+                  me={me}
+                  error={patcher.errors[`step:${openStep.id}`]}
+                  onPatch={p => patcher.patch(`step:${openStep.id}`, p)}
+                  onAdd={kind => add(openStep.id, kind)}
+                  onRemove={() => removeStep(openStep.id)}
+                  onValidate={validate}
+                  onOpen={setOpen}
+                  onOpenObservation={showObservation}
+                  onBrowseObservations={() => showObservation(null)}
+                />
+              </Drawer>
+            )}
+          </div>
+          <ParticipantsBar people={involved} />
         </div>
         {observing && (
           <ObservationsPanel

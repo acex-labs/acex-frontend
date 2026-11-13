@@ -118,7 +118,7 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
 
   const { data: assetsData, isLoading: assetsLoading } = useQuery({
     queryKey: ['assets-picker', 'unassigned-for-node', dAssetSearch],
-    queryFn: () => fetchAssets({ assigned: false, q: dAssetSearch || undefined, limit: 200 }),
+    queryFn: () => fetchAssets({ assigned: false, q: dAssetSearch || undefined, sort: 'serial_number', limit: 200 }),
     enabled: assetTab === 'single',
   })
   const assets = assetsData?.items ?? []

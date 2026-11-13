@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Handle, MarkerType, Position, ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import {
-  ArrowLeft, CircleCheck, CircleX, Eye, Gavel, GitFork, Handshake, Lightbulb, Plus, RotateCcw, Stethoscope, ThumbsDown,
-  ThumbsUp, Trash2, UserRound, Wrench,
+  ArrowLeft, CircleCheck, CircleX, Eye, Gavel, GitFork, Handshake, Lightbulb, Network, Plus, RotateCcw, Stethoscope,
+  ThumbsDown, ThumbsUp, Trash2, UserRound, Wrench,
 } from 'lucide-react'
 import {
   createObservation, createStep, deleteObservation, deleteStep, deleteTriage, fetchObservations, fetchSteps, fetchTriage,
@@ -15,10 +15,12 @@ import { ConfirmModal } from '../../components/operations/ConfirmModals'
 import Assessment, { PriorityBadge } from '../../components/samruai/Assessment'
 import { KINDS, ROOT, STATUSES, analyse, layout, observationTitle, participants } from '../../components/samruai/hypotree'
 import ObservationsPanel from '../../components/samruai/ObservationsPanel'
+import NodeChips from '../../components/samruai/NodeChips'
 import ParticipantsBar from '../../components/samruai/ParticipantsBar'
 import { TRIAGES_KEY, TRIAGE_STATUSES, triageKey, triageTitle } from '../../components/samruai/triage'
 import usePatcher from '../../components/samruai/usePatcher'
 import Drawer from '../../components/workflows/Drawer'
+import NodePicker from '../../components/operations/NodePicker'
 import WorkflowCanvas from '../../components/workflows/WorkflowCanvas'
 
 const LABEL = 'text-[10px] font-semibold uppercase tracking-widest text-subtle'
@@ -70,6 +72,13 @@ function TriageNode({ data, selected }) {
       {description
         ? <div className="text-xs text-content line-clamp-3 whitespace-pre-line">{description}</div>
         : <div className="text-xs text-amber-400">Describe the fault</div>}
+      {(data.triage.node_ids?.length ?? 0) > 0 && (
+        <div className="flex items-center gap-1 min-w-0" title="Affected ACEX nodes">
+          <Network size={10} className="shrink-0 text-subtle" />
+          <NodeChips ids={data.triage.node_ids.slice(0, 3)} className="flex-1" />
+          {data.triage.node_ids.length > 3 && <span className="shrink-0 text-[10px] text-subtle">+{data.triage.node_ids.length - 3}</span>}
+        </div>
+      )}
       <Handle type="source" position={Position.Right} style={HANDLE} />
       <AddAfter data={data} />
     </div>
@@ -161,7 +170,7 @@ function AddButtons({ canAddAction, onAdd }) {
   )
 }
 
-function TriagePanel({ triage, tree, me, error, onPatch, onAdd }) {
+function TriagePanel({ triage, tree, me, error, onPatch, onAdd, onPickNodes }) {
   return (
     <>
       <label className="block space-y-1">
@@ -189,6 +198,14 @@ function TriagePanel({ triage, tree, me, error, onPatch, onAdd }) {
         <textarea rows={3} value={triage.impact_description ?? ''} onChange={e => onPatch({ impact_description: e.target.value })}
           placeholder="Sites, services, customers, users." className={`${INPUT} resize-y`} />
       </label>
+      <div className="space-y-1">
+        <span className={LABEL}>Affected nodes</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <NodeChips ids={triage.node_ids ?? []} onRemove={id => onPatch({ node_ids: (triage.node_ids ?? []).filter(i => i !== id) })} />
+          <button type="button" onClick={onPickNodes} className={QUIET}><Network size={12} /> Add nodes</button>
+        </div>
+        <p className="text-[11px] text-subtle">Devices from the ACEX network module that the fault is on.</p>
+      </div>
       <Assessment impact={triage.impact} urgency={triage.urgency} onChange={onPatch} />
       {error && <p className="text-[11px] text-red-400">Not saved: {error}</p>}
       <div className="pt-4 border-t border-edge flex flex-wrap gap-2">
@@ -344,6 +361,9 @@ function Scratchpad({ triage, steps, observations }) {
   const [observation, setObservation] = useState(null)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState(null)
+  // Picking affected nodes: the Map of choices lives here until the picker closes, then it is saved.
+  const [picking, setPicking] = useState(false)
+  const [pickMap, setPickMap] = useState(() => new Map())
 
   // The list of triages is fetched again when it is shown, so only this triage is kept up to date here.
   const setTriage = fields => queryClient.setQueryData(triageKey(triage.id), t => ({ ...t, ...fields }))
@@ -425,6 +445,17 @@ function Scratchpad({ triage, steps, observations }) {
     queryClient.removeQueries({ queryKey: observationsKey(triage.id) })
     queryClient.invalidateQueries({ queryKey: TRIAGES_KEY })
     navigate('/samruai/triage')
+  }
+
+  // The node picker edits a copy: saved against the triage only when it closes, and only when anything changed.
+  const pickNodes = () => {
+    setPickMap(new Map((triage.node_ids ?? []).map(id => [id, null])))
+    setPicking(true)
+  }
+  const closePicker = () => {
+    setPicking(false)
+    const ids = [...pickMap.keys()].sort((a, b) => a - b)
+    if (JSON.stringify(ids) !== JSON.stringify(triage.node_ids ?? [])) patcher.patch(ROOT, { node_ids: ids })
   }
 
   // The hypotheses the observation open in the panel bears on, and how.
@@ -523,7 +554,14 @@ function Scratchpad({ triage, steps, observations }) {
             />
             {open === ROOT && (
               <Drawer title="Triage" backdrop={false} onClose={() => setOpen(null)}>
-                <TriagePanel triage={triage} tree={tree} me={me} error={patcher.errors[ROOT]} onPatch={p => patcher.patch(ROOT, p)} onAdd={kind => add(ROOT, kind)} />
+                <TriagePanel triage={triage} tree={tree} me={me} error={patcher.errors[ROOT]} onPatch={p => patcher.patch(ROOT, p)} onAdd={kind => add(ROOT, kind)} onPickNodes={pickNodes} />
+              </Drawer>
+            )}
+            {picking && (
+              <Drawer title="Affected nodes" backdrop={false} onClose={closePicker}>
+                <p className="text-[11px] text-subtle">Devices from the ACEX network module that the triage is about. Saved when the picker is closed.</p>
+                <NodePicker selected={pickMap} onChange={setPickMap} />
+                <button onClick={closePicker} className={QUIET}>Done</button>
               </Drawer>
             )}
             {openStep && (
@@ -552,6 +590,7 @@ function Scratchpad({ triage, steps, observations }) {
             observations={observations}
             hypotheses={tree.hypotheses}
             selected={observation}
+            triageNodeIds={triage.node_ids ?? []}
             errors={patcher.errors}
             onSelect={setObservation}
             onAdd={addObservation}

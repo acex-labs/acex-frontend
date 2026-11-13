@@ -141,11 +141,12 @@ const SIZES = { root: { width: 270, height: 100 }, step: { width: 250, height: 1
 // Positions left to right, the tree laid out from its structure; nothing is dragged or saved. `verdicts` are the
 // ends of validated hypobranches: { id, after } with `after` the node they follow.
 export function layout(steps, verdicts = []) {
+  // Dagre writes the layout result onto the node object, so each node needs its own copy.
   const g = new dagre.graphlib.Graph().setGraph({ rankdir: 'LR', nodesep: 28, ranksep: 64 }).setDefaultEdgeLabel(() => ({}))
-  g.setNode(ROOT, SIZES.root)
-  steps.forEach(s => g.setNode(String(s.id), SIZES.step))
+  g.setNode(ROOT, { ...SIZES.root })
+  steps.forEach(s => g.setNode(String(s.id), { ...SIZES.step }))
   steps.forEach(s => g.setEdge(s.parent_id == null ? ROOT : String(s.parent_id), String(s.id)))
-  verdicts.forEach(v => { g.setNode(v.id, SIZES.verdict); g.setEdge(String(v.after), v.id) })
+  verdicts.forEach(v => { g.setNode(v.id, { ...SIZES.verdict }); g.setEdge(String(v.after), v.id) })
   dagre.layout(g)
   const at = (id, size) => { const { x, y } = g.node(id); return { x: x - size.width / 2, y: y - size.height / 2 } }
   return new Map([

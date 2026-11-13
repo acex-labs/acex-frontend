@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { fetchTriages } from '../../api/samruai'
 import { formatTime } from '../../components/jobs/jobs'
 import { PriorityBadge } from '../../components/samruai/Assessment'
+import NodeChips from '../../components/samruai/NodeChips'
 import { TRIAGES_KEY, TRIAGE_STATUSES, triageTitle } from '../../components/samruai/triage'
 import DataTable from '../../components/table/DataTable'
 import TableToolbar from '../../components/table/TableToolbar'
@@ -24,6 +25,7 @@ const COLUMNS = [
     render: s => <span className={`px-1.5 py-0.5 text-[10px] rounded border ${TRIAGE_STATUSES[s].className}`}>{TRIAGE_STATUSES[s].label}</span>,
   },
   { key: 'assignee', label: 'Lead', render: v => v ?? <span className="text-amber-400">None</span> },
+  { key: 'node_ids', label: 'Nodes', render: v => <NodeChips ids={v ?? []} /> },
   { key: 'steps', label: 'Steps' },
   { key: 'created_by', label: 'Started by', render: v => v ?? '—' },
   { key: 'created_at', label: 'Started', render: formatTime },

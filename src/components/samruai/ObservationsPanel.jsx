@@ -1,5 +1,6 @@
-import { ArrowLeft, Eye, Plus, ThumbsDown, ThumbsUp, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Eye, Network, Plus, ThumbsDown, ThumbsUp, Trash2, X } from 'lucide-react'
 import { STATUSES, observationTitle } from './hypotree'
+import NodeChips, { NodeToggle } from './NodeChips'
 
 const LABEL = 'text-[10px] font-semibold uppercase tracking-widest text-subtle'
 const INPUT = 'w-full px-2.5 py-1.5 text-xs bg-surface-hi border border-edge rounded-md text-content placeholder:text-subtle focus:outline-none focus:border-brand/50'
@@ -42,6 +43,9 @@ function List({ observations, onSelect, onAdd }) {
             <div className={`text-xs truncate ${o.title.trim() ? 'text-content font-semibold' : 'text-subtle'}`}>{observationTitle(o)}</div>
             <div className="flex items-center gap-2 text-[10px] text-subtle">
               {o.source && <span className="truncate">{o.source}</span>}
+              {(o.node_ids?.length ?? 0) > 0 && (
+                <span className="shrink-0 flex items-center gap-0.5" title="Observed on these ACEX nodes"><Network size={10} /> {o.node_ids.length}</span>
+              )}
               <span className="shrink-0">{new Date(o.observed_at ?? o.created_at).toLocaleString()}</span>
               <span className="ml-auto shrink-0"><LinkCounts links={o.links} /></span>
             </div>
@@ -74,8 +78,10 @@ function HypothesisRow({ step, effect, onLink, onUnlink, onOpen }) {
   )
 }
 
-function Detail({ observation, hypotheses, error, onPatch, onLink, onUnlink, onOpenStep, onDelete }) {
+function Detail({ observation, hypotheses, triageNodeIds, error, onPatch, onLink, onUnlink, onOpenStep, onDelete }) {
   const effects = new Map(observation.links.map(l => [l.step_id, l.effect]))
+  const nodeIds = observation.node_ids ?? []
+  const setNodes = ids => onPatch({ node_ids: ids })
   return (
     <div className="p-3 space-y-3">
       <label className="block space-y-1">
@@ -96,6 +102,20 @@ function Detail({ observation, hypotheses, error, onPatch, onLink, onUnlink, onO
         <span className={LABEL}>Notes</span>
         <textarea rows={4} value={observation.body} onChange={e => onPatch({ body: e.target.value })} placeholder="Output, numbers, how it was seen." className={`${INPUT} resize-y`} />
       </label>
+      <div className="space-y-1">
+        <span className={LABEL}>Observed on</span>
+        {triageNodeIds.length === 0 ? (
+          <p className="text-[11px] text-subtle">Add affected nodes to the triage first, then mark where this was seen.</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-1">
+              <NodeChips ids={nodeIds} onRemove={id => setNodes(nodeIds.filter(i => i !== id))} />
+              {nodeIds.length === 0 && <span className="text-[11px] text-subtle">Not tied to a node.</span>}
+            </div>
+            <NodeToggle availableIds={triageNodeIds} selectedIds={nodeIds} onToggle={id => setNodes([...nodeIds, id])} />
+          </>
+        )}
+      </div>
       <div className="text-[10px] text-subtle">Written down {new Date(observation.created_at).toLocaleString()}{observation.created_by && ` by ${observation.created_by}`}</div>
       {error && <p className="text-[11px] text-red-400">Not saved: {error}</p>}
 
@@ -126,7 +146,7 @@ function Detail({ observation, hypotheses, error, onPatch, onLink, onUnlink, onO
 
 // The triage's observations, from the right beside the hypotree: the list, or one of them to fill in and use as
 // evidence.
-export default function ObservationsPanel({ observations, hypotheses, selected, errors, onSelect, onAdd, onClose, onPatch, onLink, onUnlink, onOpenStep, onDelete }) {
+export default function ObservationsPanel({ observations, hypotheses, selected, triageNodeIds = [], errors, onSelect, onAdd, onClose, onPatch, onLink, onUnlink, onOpenStep, onDelete }) {
   const observation = selected != null && observations.find(o => o.id === selected)
   return (
     <aside className="w-80 shrink-0 flex flex-col border-l border-edge bg-surface overflow-hidden">
@@ -144,6 +164,7 @@ export default function ObservationsPanel({ observations, hypotheses, selected, 
             key={observation.id}
             observation={observation}
             hypotheses={hypotheses}
+            triageNodeIds={triageNodeIds}
             error={errors[`obs:${observation.id}`]}
             onPatch={p => onPatch(observation.id, p)}
             onLink={(stepId, effect) => onLink(observation.id, stepId, effect)}

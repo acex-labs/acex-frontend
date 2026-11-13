@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { Network } from 'lucide-react'
 import { createTriage } from '../../api/samruai'
 import { useAuth } from '../../auth/AuthContext'
+import Drawer from '../../components/workflows/Drawer'
+import NodePicker from '../../components/operations/NodePicker'
+import NodeChips from '../../components/samruai/NodeChips'
 import Assessment from '../../components/samruai/Assessment'
 import { TRIAGES_KEY, triageKey } from '../../components/samruai/triage'
 import PageHeader from '../../components/ui/PageHeader'
@@ -25,6 +29,10 @@ export default function NewTriagePage() {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  // Affected ACEX nodes, optional: chosen in a picker, sent with the triage when it is started.
+  const [nodeIds, setNodeIds] = useState([])
+  const [picking, setPicking] = useState(false)
+  const [pickMap, setPickMap] = useState(() => new Map())
   const set = changes => setForm(f => ({ ...f, ...changes }))
   const missing = [!form.description.trim() && 'a description', !form.impact && 'the impact', !form.urgency && 'the urgency'].filter(Boolean)
 
@@ -33,7 +41,7 @@ export default function NewTriagePage() {
     setSaving(true)
     setError(null)
     try {
-      const triage = await createTriage({ ...form, description: form.description.trim(), impact_description: form.impact_description.trim() })
+      const triage = await createTriage({ ...form, description: form.description.trim(), impact_description: form.impact_description.trim(), node_ids: nodeIds })
       queryClient.setQueryData(triageKey(triage.id), triage)
       queryClient.invalidateQueries({ queryKey: TRIAGES_KEY })
       navigate(`/samruai/triage/${triage.id}`)
@@ -41,6 +49,11 @@ export default function NewTriagePage() {
       setError(err.detail ?? err.message)
       setSaving(false)
     }
+  }
+
+  const closePicker = () => {
+    setPicking(false)
+    setNodeIds([...pickMap.keys()].sort((a, b) => a - b))
   }
 
   return (
@@ -76,6 +89,16 @@ export default function NewTriagePage() {
                 className={`${INPUT} resize-y`}
               />
             </label>
+            <div className="space-y-1">
+              <span className={LABEL}>Affected nodes</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <NodeChips ids={nodeIds} onRemove={id => setNodeIds(ids => ids.filter(i => i !== id))} />
+                <button type="button" onClick={() => setPicking(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-edge text-subtle hover:text-content">
+                  <Network size={12} /> Add nodes
+                </button>
+              </div>
+              <span className="block text-[11px] text-subtle">Devices from the ACEX network module that the fault is on. Optional.</span>
+            </div>
           </div>
           <Assessment impact={form.impact} urgency={form.urgency} onChange={set} />
         </div>
@@ -88,6 +111,13 @@ export default function NewTriagePage() {
           {missing.length > 0 && <span className="text-[11px] text-subtle">Needs {missing.join(', ').replace(/, ([^,]*)$/, ' and $1')}.</span>}
         </div>
       </form>
+      {picking && (
+        <Drawer title="Affected nodes" backdrop onClose={closePicker}>
+          <p className="text-[11px] text-subtle">Devices from the ACEX network module that the triage is about. Saved when the picker is closed.</p>
+          <NodePicker selected={pickMap} onChange={setPickMap} />
+          <button type="button" onClick={closePicker} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-edge text-subtle hover:text-content">Done</button>
+        </Drawer>
+      )}
     </div>
   )
 }

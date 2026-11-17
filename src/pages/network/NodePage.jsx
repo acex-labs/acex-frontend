@@ -555,6 +555,18 @@ function NodeCredentialsCard({ nodeId }) {
   )
 }
 
+// The collection agent that made the last attempt, with a link to its page under Settings.
+function AgentLink({ collection }) {
+  return (
+    <Link
+      to={`/settings/collection-agents/${collection.agent_id}`}
+      className="text-brand hover:text-brand/80 transition-colors"
+    >
+      {collection.agent_name ?? `Agent ${collection.agent_id}`}
+    </Link>
+  )
+}
+
 // What the collection agents found on their last try, and when the node's configuration was last read and last changed.
 // A node no agent has reported on yet has no `collection`.
 function CollectionCard({ collection, sync, syncKnown }) {
@@ -566,7 +578,8 @@ function CollectionCard({ collection, sync, syncKnown }) {
       {failing && <Field label="Not collected since" value={collection.failing_since ? <Age iso={collection.failing_since} /> : null} />}
       {failing && <Field label="Attempts in a row" value={collection.consecutive_failures || null} />}
       {failing && <Field label="Reason" value={collection.message} />}
-      <Field label="Last attempt" value={collection.last_attempt_at ? <Age iso={collection.last_attempt_at} /> : null} />
+      <Field label="Last attempt" value={collection?.last_attempt_at ? <Age iso={collection.last_attempt_at} /> : null} />
+      <Field label="Agent" value={collection?.agent_id != null ? <AgentLink collection={collection} /> : null} />
       <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
       <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
     </Card>

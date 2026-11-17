@@ -16,7 +16,7 @@ export const SettingsModule = {
   routes: [
     { path: '/settings/credentials',       load: () => import('../../pages/settings/CredentialsPage') },
     { path: '/settings/telemetry-agents',  load: () => import('../../pages/settings/TelemetryAgentsPage') },
-    { path: '/settings/collection-agents', load: () => import('../../pages/settings/CollectionAgentsPage') },
+    { path: '/settings/collection-agents/:id?', load: () => import('../../pages/settings/CollectionAgentsPage') },
     { path: '/settings/git-repositories',  load: () => import('../../pages/settings/GitRepositoriesPage') },
     { path: '/settings/hardware-models',   load: () => import('../../pages/settings/HardwareModelsPage') },
     { path: '/settings/changelog',         load: () => import('../../pages/settings/ChangelogPage') },

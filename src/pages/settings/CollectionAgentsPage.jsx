@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import {
@@ -38,7 +39,12 @@ function Section({ title, children }) {
 export default function CollectionAgentsPage() {
   const qc = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
-  const [selectedId, setSelectedId] = useState(null)
+  // The agent that is open is in the address, so a link can point at it: /settings/collection-agents/<id>
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { search } = useLocation()
+  const selectedId = id ? Number(id) : null
+  const select = (agentId) => navigate(`/settings/collection-agents${agentId == null ? '' : `/${agentId}`}${search}`)
 
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE })
@@ -80,7 +86,7 @@ export default function CollectionAgentsPage() {
     try {
       await deleteCollectionAgent(selected.id)
       invalidate()
-      setSelectedId(null)
+      select(null)
     } finally {
       setDeleting(false)
     }
@@ -156,7 +162,7 @@ export default function CollectionAgentsPage() {
     },
   ]
 
-  const handleRowClick = (row) => setSelectedId(prev => prev === row.id ? null : row.id)
+  const handleRowClick = (row) => select(selectedId === row.id ? null : row.id)
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -199,7 +205,7 @@ export default function CollectionAgentsPage() {
           <div className="flex-1 overflow-auto">
             <DetailPanel
               agent={selected}
-              onClose={() => setSelectedId(null)}
+              onClose={() => select(null)}
               onEdit={handleOpenEdit}
               onDelete={handleDelete}
               deleting={deleting}

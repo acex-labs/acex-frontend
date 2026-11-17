@@ -13,7 +13,6 @@ import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkActionsModal from '../../components/bulk/BulkActionsModal'
 import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
 import CreateNodeModal from '../../components/nodes/CreateNodeModal'
-import { CollectionBadge } from '../../components/nodes/NodeStatusBadge'
 import { ADMIN_STATUSES, PROVISION_STATUSES, COLLECTION_FILTER_OPTIONS } from '../../components/nodes/nodeStatus'
 
 const DEFAULTS = {
@@ -47,12 +46,6 @@ const FILTERS = [
   { key: 'id',       label: 'ID',       width: '90px'  },
 ]
 
-// A badge with the reason when the node was not collected; a node no agent has reported on shows a dash.
-function collectionCell(collection) {
-  if (collection?.status === 'failing') return <CollectionBadge collection={collection} />
-  return collection?.status === 'ok' ? <span className="text-subtle">Collected</span> : '—'
-}
-
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
   { key: 'ip', label: 'IP Address', sortable: true, render: (_, row) => row.management_connections?.[0]?.target_ip ?? '—' },
@@ -60,7 +53,6 @@ const COLUMNS = [
   { key: 'role',     label: 'Role',     sortable: true },
   { key: 'admin_status',     label: 'Admin',        sortable: true },
   { key: 'provision_status', label: 'Provisioning', sortable: true },
-  { key: 'collection', label: 'Collection', render: collectionCell },
   { key: 'ned_id',   label: 'Driver', sortable: true },
   { key: 'regions',  label: 'Regions', render: (v) => v?.join(', ') || '—' },
   { key: 'id',       label: 'ID', sortable: true },

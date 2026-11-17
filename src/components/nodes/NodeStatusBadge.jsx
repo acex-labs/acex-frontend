@@ -31,8 +31,12 @@ function collectionTitle({ failing_since, consecutive_failures, message }) {
 }
 
 // Red when the collection agents could not collect the node on their last try, with the reason as the label and the
-// rest in the tooltip. Nothing for a node that was collected or that no agent has reported on.
-export function CollectionBadge({ collection }) {
+// rest in the tooltip. A node that was collected gets a green label only when `showOk` is set, for the node's own
+// page; next to its name and in lists the label is for the exception. Nothing for a node no agent has reported on.
+export function CollectionBadge({ collection, showOk = false }) {
+  if (showOk && collection?.status === 'ok') {
+    return <span className={`${BADGE_CLS} bg-green-500/10 text-green-400`} title="Collected on the last attempt">collected</span>
+  }
   if (collection?.status !== 'failing') return null
   return (
     <span className={`${BADGE_CLS} bg-red-500/10 text-red-400`} title={collectionTitle(collection)}>

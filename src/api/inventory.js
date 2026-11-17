@@ -21,7 +21,6 @@ const normalizeNode = (n) => ({
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
   logical_node_id: n.logical_node_id,
-  collection:     n.collection ?? null,
 })
 
 export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, sort, order, limit = 50, offset = 0 } = {}) => {

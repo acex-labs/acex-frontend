@@ -571,7 +571,7 @@ function AgentLink({ collection }) {
 // A node no agent has reported on yet has no `collection`.
 function CollectionCard({ collection, sync, syncKnown }) {
   const failing = collection?.status === 'failing'
-  const status = !collection ? 'Not reported by a collection agent yet' : failing ? <CollectionBadge collection={collection} /> : 'Collected'
+  const status = collection ? <CollectionBadge collection={collection} showOk /> : 'Not reported by a collection agent yet'
   return (
     <Card title="Collection" className="flex flex-col">
       <Field label="Status" value={status} />

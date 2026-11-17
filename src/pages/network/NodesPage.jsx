@@ -1,14 +1,18 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Layers, Plus } from 'lucide-react'
+import { Columns3, Layers, Plus } from 'lucide-react'
 import { fetchNodes } from '../../api/inventory'
 import { apiFetch } from '../../api/client'
 import { useQueryParams } from '../../hooks/useQueryParams'
+import { useTableColumns } from '../../hooks/useTableColumns'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
+import ConfigureTableModal from '../../components/table/ConfigureTableModal'
+import { Age } from '../../components/config/ConfigSync'
+import { CollectionBadge } from '../../components/nodes/NodeStatusBadge'
 import BulkSelectionTray from '../../components/bulk/BulkSelectionTray'
 import BulkActionsModal from '../../components/bulk/BulkActionsModal'
 import BulkConfirmModal from '../../components/bulk/BulkConfirmModal'
@@ -42,10 +46,18 @@ const FILTERS = [
   { key: 'role',     label: 'Role',     width: '120px' },
   { key: 'admin_status',     label: 'Admin',        width: '120px', options: ADMIN_STATUSES },
   { key: 'provision_status', label: 'Provisioning', width: '130px', options: PROVISION_STATUSES },
-  { key: 'collection_status', label: 'Collection',  width: '140px', options: COLLECTION_FILTER_OPTIONS },
+  { key: 'collection_status', label: 'Collection',  width: '140px', options: COLLECTION_FILTER_OPTIONS, column: 'collection' },
   { key: 'id',       label: 'ID',       width: '90px'  },
 ]
 
+// A badge with the reason when the node was not collected; a node no agent has reported on shows a dash.
+function collectionCell(_, row) {
+  const collection = row.collection
+  if (collection?.status === 'failing') return <CollectionBadge collection={collection} />
+  return collection?.status === 'ok' ? <span className="text-subtle">Collected</span> : '—'
+}
+
+// Every column the list can show. Which of them are shown, and in which order, is chosen with Configure Table.
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
   { key: 'ip', label: 'IP Address', sortable: true, render: (_, row) => row.management_connections?.[0]?.target_ip ?? '—' },
@@ -56,12 +68,27 @@ const COLUMNS = [
   { key: 'ned_id',   label: 'Driver', sortable: true },
   { key: 'regions',  label: 'Regions', render: (v) => v?.join(', ') || '—' },
   { key: 'id',       label: 'ID', sortable: true },
+  { key: 'collection', label: 'Collection', render: collectionCell },
+  {
+    key: 'collection_since', label: 'Not collected since',
+    render: (_, row) => row.collection?.failing_since ? <Age iso={row.collection.failing_since} /> : '—',
+  },
+  { key: 'collection_agent', label: 'Collection agent', render: (_, row) => row.collection?.agent_name ?? '—' },
 ]
+
+// What the list shows until someone chooses.
+const DEFAULT_COLUMN_KEYS = ['hostname', 'ip', 'site', 'role', 'admin_status', 'provision_status', 'ned_id', 'regions', 'id']
 
 export default function NodesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [params, setParams] = useQueryParams(DEFAULTS)
+  const { columns, keys: columnKeys, choose: chooseColumns } = useTableColumns('nodes', COLUMNS, DEFAULT_COLUMN_KEYS)
+  const [showColumns, setShowColumns] = useState(false)
+
+  // A filter that belongs to a column is offered while the column is shown, and while it is in use, so that a filter
+  // with a value (from a shared address, say) is never hidden.
+  const filters = FILTERS.filter(f => !f.column || columnKeys.includes(f.column) || params[f.key])
 
   // ── Bulk mode ─────────────────────────────────────────────────
   const [bulkMode, setBulkMode]     = useState(false)
@@ -203,6 +230,13 @@ export default function NodesPage() {
         actions={
           <>
             <button
+              onClick={() => setShowColumns(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border border-edge text-subtle hover:text-content transition-colors"
+            >
+              <Columns3 size={12} />
+              Configure Table
+            </button>
+            <button
               onClick={toggleBulkMode}
               className={[
                 'flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold border transition-colors',
@@ -226,7 +260,7 @@ export default function NodesPage() {
       />
 
       <TableToolbar
-        filters={FILTERS}
+        filters={filters}
         values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, management_connection_ip: params.management_connection_ip, admin_status: params.admin_status, provision_status: params.provision_status, collection_status: params.collection_status }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
@@ -245,7 +279,7 @@ export default function NodesPage() {
       )}
 
       <DataTable
-        columns={COLUMNS}
+        columns={columns}
         data={nodes}
         isLoading={isFetching}
         sortKey={params.sort}
@@ -281,6 +315,16 @@ export default function NodesPage() {
           actionSpec={actionSpec}
           nodeInfoCache={nodeInfoCache.current}
           onClose={handleConfirmClose}
+        />
+      )}
+
+      {showColumns && (
+        <ConfigureTableModal
+          allColumns={COLUMNS}
+          selectedKeys={columnKeys}
+          defaultKeys={DEFAULT_COLUMN_KEYS}
+          onApply={(keys) => { chooseColumns(keys); setShowColumns(false) }}
+          onClose={() => setShowColumns(false)}
         />
       )}
 

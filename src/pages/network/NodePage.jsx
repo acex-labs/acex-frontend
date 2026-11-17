@@ -555,19 +555,21 @@ function NodeCredentialsCard({ nodeId }) {
   )
 }
 
-// What the collection agents found on their last try. A node no agent has reported on yet has no `collection`.
-function CollectionFields({ collection }) {
-  if (!collection) return <Field label="Collection" value="Not reported by a collection agent yet" />
-  const failing = collection.status === 'failing'
+// What the collection agents found on their last try, and when the node's configuration was last read and last changed.
+// A node no agent has reported on yet has no `collection`.
+function CollectionCard({ collection, sync, syncKnown }) {
+  const failing = collection?.status === 'failing'
+  const status = !collection ? 'Not reported by a collection agent yet' : failing ? <CollectionBadge collection={collection} /> : 'Collected'
   return (
-    <>
-      <Field label="Collection" value={failing ? <CollectionBadge collection={collection} /> : 'Collected'} />
+    <Card title="Collection" className="flex flex-col">
+      <Field label="Status" value={status} />
       {failing && <Field label="Not collected since" value={collection.failing_since ? <Age iso={collection.failing_since} /> : null} />}
       {failing && <Field label="Attempts in a row" value={collection.consecutive_failures || null} />}
       {failing && <Field label="Reason" value={collection.message} />}
-      <Field label="Last collected" value={collection.last_success_at ? <Age iso={collection.last_success_at} /> : null} />
       <Field label="Last attempt" value={collection.last_attempt_at ? <Age iso={collection.last_attempt_at} /> : null} />
-    </>
+      <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
+      <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
+    </Card>
   )
 }
 
@@ -576,16 +578,14 @@ function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
   const { data: sync, isSuccess: syncKnown } = useConfigSync(nodeId)
   return (
     <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 auto-rows-max gap-4">
-      <Card title="Node Instance" className="flex flex-col lg:col-span-2">
+      <Card title="Node Instance" className="flex flex-col">
         <Field label="Admin status"     value={data.admin_status} />
         <Field label="Provision status" value={data.provision_status} />
         <Field label="Regions" value={data.regions?.join(', ') || null} />
         <Field label="Created" value={data.created_at ? new Date(data.created_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
-        <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
-        <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
-        <CollectionFields collection={data.collection} />
       </Card>
+      <CollectionCard collection={data.collection} sync={sync} syncKnown={syncKnown} />
       <Card
         title="Logical Node"
         className="flex flex-col"

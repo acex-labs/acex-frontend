@@ -12,6 +12,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import DataTable from '../../components/table/DataTable'
 import Pagination from '../../components/table/Pagination'
+import AgentCollectionPanel from '../../components/agents/AgentCollectionPanel'
 import MatchRulesPanel from '../../components/agents/MatchRulesPanel'
 import NodeAssignmentPanel from '../../components/agents/NodeAssignmentPanel'
 import { useAgentNodeSet } from '../../components/agents/useAgentNodeSet'
@@ -368,6 +369,9 @@ function DetailPanel({ agent, onClose, onEdit, onDelete, deleting, onAddNodes, o
 
         {/* Right column */}
         <div className="space-y-6">
+          <Section title="Collection">
+            <AgentCollectionPanel agentId={agent.id} />
+          </Section>
           <div>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">Deploy</span>

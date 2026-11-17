@@ -21,14 +21,15 @@ const normalizeNode = (n) => ({
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
   logical_node_id: n.logical_node_id,
+  collection:     n.collection ?? null,
 })
 
-export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, sort, order, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, sort, order, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 

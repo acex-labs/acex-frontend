@@ -20,7 +20,7 @@ import ChangeAssetModal from '../../components/nodes/ChangeAssetModal'
 import ChangeLogicalNodeModal from '../../components/nodes/ChangeLogicalNodeModal'
 import VendorIcon from '../../components/ui/VendorIcon'
 import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
-import { AdminStatusBadge, ProvisionStatusBadge } from '../../components/nodes/NodeStatusBadge'
+import { AdminStatusBadge, ProvisionStatusBadge, CollectionBadge } from '../../components/nodes/NodeStatusBadge'
 import ConfigurationTab from './ConfigurationTab'
 import { Age, LastSynced } from '../../components/config/ConfigSync'
 import { useConfigSync } from '../../hooks/useConfigSync'
@@ -555,11 +555,27 @@ function NodeCredentialsCard({ nodeId }) {
   )
 }
 
+// What the collection agents found on their last try. A node no agent has reported on yet has no `collection`.
+function CollectionFields({ collection }) {
+  if (!collection) return <Field label="Collection" value="Not reported by a collection agent yet" />
+  const failing = collection.status === 'failing'
+  return (
+    <>
+      <Field label="Collection" value={failing ? <CollectionBadge collection={collection} /> : 'Collected'} />
+      {failing && <Field label="Not collected since" value={collection.failing_since ? <Age iso={collection.failing_since} /> : null} />}
+      {failing && <Field label="Attempts in a row" value={collection.consecutive_failures || null} />}
+      {failing && <Field label="Reason" value={collection.message} />}
+      <Field label="Last collected" value={collection.last_success_at ? <Age iso={collection.last_success_at} /> : null} />
+      <Field label="Last attempt" value={collection.last_attempt_at ? <Age iso={collection.last_attempt_at} /> : null} />
+    </>
+  )
+}
+
 function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
   const ln = data.logical_node ?? {}
   const { data: sync, isSuccess: syncKnown } = useConfigSync(nodeId)
   return (
-    <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="overflow-auto flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 auto-rows-max gap-4">
       <Card title="Node Instance" className="flex flex-col lg:col-span-2">
         <Field label="Admin status"     value={data.admin_status} />
         <Field label="Provision status" value={data.provision_status} />
@@ -568,6 +584,7 @@ function OverviewTab({ data, nodeId, onChangeAsset, onChangeLogicalNode }) {
         <Field label="Updated" value={data.updated_at ? new Date(data.updated_at).toLocaleDateString('sv-SE') : null} />
         <Field label="Config last synced" value={syncKnown ? <LastSynced snapshot={sync} /> : null} />
         <Field label="Config last changed" value={sync ? <Age iso={sync.created_at} /> : null} />
+        <CollectionFields collection={data.collection} />
       </Card>
       <Card
         title="Logical Node"
@@ -706,6 +723,7 @@ export default function NodePage() {
               />
             )}
             {data?.provision_status && <ProvisionStatusBadge status={data.provision_status} />}
+            <CollectionBadge collection={data?.collection} />
           </div>
 
           {!isLoading && data && (

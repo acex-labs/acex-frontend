@@ -48,7 +48,9 @@ export default function TableToolbar({ filters = [], values = {}, onChange, acti
           style={{ width: f.width ?? '140px' }}
         >
           <option value="">{f.label}</option>
-          {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+          {f.options.map(o => typeof o === 'string'
+            ? <option key={o} value={o}>{o}</option>
+            : <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : (
         <div key={f.key} className="relative">

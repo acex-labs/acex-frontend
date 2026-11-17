@@ -21,6 +21,7 @@ import ChangeLogicalNodeModal from '../../components/nodes/ChangeLogicalNodeModa
 import VendorIcon from '../../components/ui/VendorIcon'
 import { ADMIN_STATUSES } from '../../components/nodes/nodeStatus'
 import { AdminStatusBadge, ProvisionStatusBadge, CollectionBadge } from '../../components/nodes/NodeStatusBadge'
+import AgentLink from '../../components/nodes/AgentLink'
 import ConfigurationTab from './ConfigurationTab'
 import { Age, LastSynced } from '../../components/config/ConfigSync'
 import { useConfigSync } from '../../hooks/useConfigSync'
@@ -552,18 +553,6 @@ function NodeCredentialsCard({ nodeId }) {
         </div>
       )}
     </div>
-  )
-}
-
-// The collection agent that made the last attempt, with a link to its page under Settings.
-function AgentLink({ collection }) {
-  return (
-    <Link
-      to={`/settings/collection-agents/${collection.agent_id}`}
-      className="text-brand hover:text-brand/80 transition-colors"
-    >
-      {collection.agent_name ?? `Agent ${collection.agent_id}`}
-    </Link>
   )
 }
 

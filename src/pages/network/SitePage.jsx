@@ -29,6 +29,7 @@ import {
 import { fetchSiteCompliance } from '../../api/compliance'
 import { usePageAiContext } from '../../context/AiContext'
 import SiteMap from '../../components/map/SiteMap'
+import AgentLink from '../../components/nodes/AgentLink'
 import ComplianceRing from '../../components/compliance/ComplianceRing'
 import { COMPLIANCE_TARGET } from '../../components/compliance/compliance'
 import SiteComplianceTab from './SiteComplianceTab'
@@ -569,7 +570,7 @@ function NodesTab({ siteName }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-edge">
-            {['Hostname', 'Role', 'Admin', 'Provisioning', 'Driver'].map(h => (
+            {['Hostname', 'Role', 'Admin', 'Provisioning', 'Driver', 'Collection agent'].map(h => (
               <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider text-subtle pb-2 pr-6">{h}</th>
             ))}
           </tr>
@@ -594,6 +595,11 @@ function NodesTab({ siteName }) {
               <td className="py-2 pr-6 text-subtle">{n.admin_status || '—'}</td>
               <td className="py-2 pr-6 text-subtle">{n.provision_status || '—'}</td>
               <td className="py-2 pr-6 text-subtle">{n.ned_id || '—'}</td>
+              <td className="py-2 pr-6 text-subtle">
+                {n.collection?.agent_id != null
+                  ? <AgentLink collection={n.collection} onClick={e => e.stopPropagation()} />
+                  : '—'}
+              </td>
             </tr>
           ))}
         </tbody>

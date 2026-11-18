@@ -2,19 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { createLogicalNode, fetchAllSites } from '../../api/inventory'
+import FormField from '../ui/FormField'
+import { FieldError, FormError } from '../ui/ApiError'
 
 const INPUT_CLS = 'w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors'
-
-function FormField({ label, required, children }) {
-  return (
-    <div className="mb-3">
-      <label className="block text-[11px] text-subtle mb-1">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
 
 export default function CreateLogicalNodeModal({ onClose, onSuccess }) {
   const [hostname, setHostname] = useState('')
@@ -55,11 +46,18 @@ export default function CreateLogicalNodeModal({ onClose, onSuccess }) {
         </div>
 
         <div className="p-4 overflow-auto flex-1">
-          <FormField label="Hostname" required>
+          <FormField
+            label="Hostname"
+            required
+            error={<FieldError error={mutation.error} field="hostname" />}
+          >
             <input
               type="text"
               value={hostname}
-              onChange={e => setHostname(e.target.value)}
+              onChange={e => {
+                setHostname(e.target.value)
+                if (mutation.isError) mutation.reset()
+              }}
               autoFocus
               className={INPUT_CLS}
             />
@@ -94,9 +92,7 @@ export default function CreateLogicalNodeModal({ onClose, onSuccess }) {
             />
           </FormField>
 
-          {mutation.isError && (
-            <p className="mt-2 text-[11px] text-red-400">Failed to create logical node.</p>
-          )}
+          <FormError error={mutation.error} fallback="Failed to create logical node." fields={['hostname']} />
         </div>
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-edge shrink-0">

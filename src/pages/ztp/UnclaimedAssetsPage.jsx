@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Inbox, X, ArrowRight, Search, AlertTriangle } from 'lucide-react'
 import { fetchAssets } from '../../api/inventory'
+import { apiErrorMessage } from '../../api/apiError'
 import { claimAsset, fetchAwaitingClaim } from '../../api/ztp'
 import { useDebounce } from '../../hooks/useDebounce'
 import PageHeader from '../../components/ui/PageHeader'
@@ -90,7 +91,7 @@ export default function UnclaimedAssetsPage() {
     const remaining = new Map()
     results.forEach((r, i) => {
       if (r.status === 'rejected') {
-        failed.set(entries[i][0], r.reason?.message ?? 'Failed')
+        failed.set(entries[i][0], apiErrorMessage(r.reason, r.reason?.message ?? 'Failed'))
         remaining.set(entries[i][0], entries[i][1])
       }
     })

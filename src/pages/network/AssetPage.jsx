@@ -54,7 +54,7 @@ export default function AssetPage() {
 
   const { data: boundNodeData } = useQuery({
     queryKey: ['nodes', 'by-asset', id],
-    queryFn: () => fetchNodes({ asset_ref_id: id, limit: 1 }),
+    queryFn: () => fetchNodes({ asset_ref_id: id, asset_ref_type: 'asset', limit: 1 }),
     enabled: !!id,
   })
   const boundNode = boundNodeData?.items?.[0] ?? null

@@ -91,7 +91,7 @@ export default function ChangeAssetModal({ nodeId, onClose }) {
   const [tab, setTab] = useState('single')
   const [selected, setSelected] = useState(null)
 
-  const [singleF, setSingleF] = useState({ vendor: '', model: '' })
+  const [singleF, setSingleF] = useState({ vendor: '', model: '', serial: '' })
   const [clusterF, setClusterF] = useState({ name: '' })
   const [dSingle, setDSingle] = useState(singleF)
   const [dCluster, setDCluster] = useState(clusterF)
@@ -115,6 +115,7 @@ export default function ChangeAssetModal({ nodeId, onClose }) {
     queryFn: () => fetchAssets({
       vendor:         dSingle.vendor || undefined,
       hardware_model: dSingle.model || undefined,
+      serial_number:  dSingle.serial.trim() || undefined,
       assigned:       false,
       limit: 100,
     }),
@@ -188,9 +189,10 @@ export default function ChangeAssetModal({ nodeId, onClose }) {
         <div className="px-4 py-3 border-b border-edge shrink-0 space-y-2">
           {tab === 'single' ? (
             <>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <FilterInput placeholder="Vendor" value={singleF.vendor} onChange={v => setSingle('vendor', v)} autoFocus />
                 <FilterInput placeholder="Model"  value={singleF.model}  onChange={v => setSingle('model', v)} />
+                <FilterInput placeholder="Serial number" value={singleF.serial} onChange={v => setSingle('serial', v)} />
               </div>
               <div className="text-[11px] text-subtle">Only assets without a node are listed.</div>
             </>

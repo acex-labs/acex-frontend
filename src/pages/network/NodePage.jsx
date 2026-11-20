@@ -332,6 +332,17 @@ function ManagementConnectionsCard({ nodeId }) {
         )}
       </div>
 
+      {setPrimaryMutation.isError && (
+        <div role="alert" className="px-4 py-2 border-b border-edge/50 text-[11px] text-red-400">
+          Failed to set the primary connection.
+        </div>
+      )}
+      {deleteMutation.isError && (
+        <div role="alert" className="px-4 py-2 border-b border-edge/50 text-[11px] text-red-400">
+          Failed to delete the connection.
+        </div>
+      )}
+
       {isLoading ? (
         <div className="px-4 py-3 text-xs text-subtle animate-pulse">Loading…</div>
       ) : connections.length === 0 && !adding ? (

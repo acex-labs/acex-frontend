@@ -815,8 +815,6 @@ export default function NodePage() {
       {showChangeAsset && (
         <ChangeAssetModal
           nodeId={id}
-          currentAssetId={data?.asset_ref_id}
-          currentAssetType={data?.asset_ref_type}
           onClose={() => setShowChangeAsset(false)}
         />
       )}

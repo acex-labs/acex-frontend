@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Check } from 'lucide-react'
 import { fetchAssets, fetchAssetClusters, updateNodeInstance } from '../../api/inventory'
+import { parseApiError } from '../../api/apiError'
 import VendorIcon from '../ui/VendorIcon'
+import { FormError } from '../ui/ApiError'
 
 function FilterInput({ placeholder, value, onChange, autoFocus }) {
   return (
@@ -17,27 +19,7 @@ function FilterInput({ placeholder, value, onChange, autoFocus }) {
   )
 }
 
-function UnassignedToggle({ value, onChange }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      className={[
-        'flex items-center gap-2 px-2.5 py-1.5 rounded border text-xs font-medium transition-colors',
-        value ? 'bg-brand/10 border-brand/40 text-brand' : 'border-edge text-subtle hover:text-content',
-      ].join(' ')}
-    >
-      <span className={[
-        'w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0',
-        value ? 'bg-brand border-brand' : 'border-subtle',
-      ].join(' ')}>
-        {value && <Check size={9} className="text-white" strokeWidth={3} />}
-      </span>
-      Unassigned only
-    </button>
-  )
-}
-
-function AssetRow({ asset, isCurrent, isSelected, onClick }) {
+function AssetRow({ asset, isSelected, onClick }) {
   const sublabel = [
     asset.ned_id,
     asset.serial_number && `SN: ${asset.serial_number}`,
@@ -57,7 +39,6 @@ function AssetRow({ asset, isCurrent, isSelected, onClick }) {
           <span className="text-xs font-medium text-content truncate">
             {[asset.vendor, asset.hardware_model].filter(Boolean).join(' ') || '—'}
           </span>
-          {isCurrent && <span className="text-[10px] text-brand font-semibold shrink-0">current</span>}
         </div>
         {isSelected && <Check size={12} className="text-brand shrink-0" />}
       </div>
@@ -66,7 +47,7 @@ function AssetRow({ asset, isCurrent, isSelected, onClick }) {
   )
 }
 
-function ClusterRow({ cluster, isCurrent, isSelected, onClick }) {
+function ClusterRow({ cluster, isSelected, onClick }) {
   const units = cluster.assets ?? []
   return (
     <button
@@ -79,7 +60,6 @@ function ClusterRow({ cluster, isCurrent, isSelected, onClick }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-medium text-content truncate">{cluster.name || '—'}</span>
-          {isCurrent && <span className="text-[10px] text-brand font-semibold shrink-0">current</span>}
         </div>
         {isSelected && <Check size={12} className="text-brand shrink-0" />}
       </div>
@@ -106,13 +86,13 @@ function EmptyState({ text }) {
 }
 
 
-export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetType, onClose }) {
+export default function ChangeAssetModal({ nodeId, onClose }) {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState('single')
   const [selected, setSelected] = useState(null)
 
-  const [singleF, setSingleF] = useState({ vendor: '', model: '', unassigned: true })
-  const [clusterF, setClusterF] = useState({ name: '', unassigned: true })
+  const [singleF, setSingleF] = useState({ vendor: '', model: '' })
+  const [clusterF, setClusterF] = useState({ name: '' })
   const [dSingle, setDSingle] = useState(singleF)
   const [dCluster, setDCluster] = useState(clusterF)
 
@@ -129,20 +109,21 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
   const setSingle = (key, val) => setSingleF(p => ({ ...p, [key]: val }))
   const setCluster = (key, val) => setClusterF(p => ({ ...p, [key]: val }))
 
+  // Only assets and clusters without a node instance can be picked: an asset backs at most one node.
   const { data: assetsData, isLoading: assetsLoading } = useQuery({
     queryKey: ['assets-picker', dSingle],
     queryFn: () => fetchAssets({
       vendor:         dSingle.vendor || undefined,
       hardware_model: dSingle.model || undefined,
-      assigned:       dSingle.unassigned ? false : undefined,
+      assigned:       false,
       limit: 100,
     }),
     enabled: tab === 'single',
   })
 
   const { data: clustersData, isLoading: clustersLoading } = useQuery({
-    queryKey: ['asset-clusters-picker', dCluster.unassigned],
-    queryFn: () => fetchAssetClusters({ assigned: dCluster.unassigned ? false : undefined, limit: 200 }),
+    queryKey: ['asset-clusters-picker', 'unassigned'],
+    queryFn: () => fetchAssetClusters({ assigned: false, limit: 200 }),
     enabled: tab === 'cluster',
   })
 
@@ -152,6 +133,12 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', String(nodeId)] })
       onClose()
+    },
+    onError: (error) => {
+      // A pick may have been taken meanwhile: refresh the lists.
+      queryClient.invalidateQueries({ queryKey: ['assets-picker'] })
+      queryClient.invalidateQueries({ queryKey: ['asset-clusters-picker'] })
+      if (parseApiError(error).duplicate) setSelected(null)
     },
   })
 
@@ -205,12 +192,12 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
                 <FilterInput placeholder="Vendor" value={singleF.vendor} onChange={v => setSingle('vendor', v)} autoFocus />
                 <FilterInput placeholder="Model"  value={singleF.model}  onChange={v => setSingle('model', v)} />
               </div>
-              <UnassignedToggle value={singleF.unassigned} onChange={v => setSingle('unassigned', v)} />
+              <div className="text-[11px] text-subtle">Only assets without a node are listed.</div>
             </>
           ) : (
             <>
               <FilterInput placeholder="Cluster name" value={clusterF.name} onChange={v => setCluster('name', v)} autoFocus />
-              <UnassignedToggle value={clusterF.unassigned} onChange={v => setCluster('unassigned', v)} />
+              <div className="text-[11px] text-subtle">Only clusters without a node are listed.</div>
             </>
           )}
         </div>
@@ -221,15 +208,14 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
             assetsLoading ? (
               <div className="p-4 text-xs text-subtle animate-pulse">Loading…</div>
             ) : assets.length === 0 ? (
-              <EmptyState text="No assets found." />
+              <EmptyState text="No unassigned assets found." />
             ) : (
               assets.map(asset => (
                 <AssetRow
                   key={asset.id}
                   asset={asset}
-                  isCurrent={currentAssetType !== 'asset_cluster' && asset.id === currentAssetId}
                   isSelected={selected?.type !== 'asset_cluster' && selected?.id === asset.id}
-                  onClick={() => setSelected({ ...asset, type: 'asset' })}
+                  onClick={() => { setSelected({ ...asset, type: 'asset' }); mutation.reset() }}
                 />
               ))
             )
@@ -237,15 +223,14 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
             clustersLoading ? (
               <div className="p-4 text-xs text-subtle animate-pulse">Loading…</div>
             ) : clusters.length === 0 ? (
-              <EmptyState text="No clusters found." />
+              <EmptyState text="No unassigned clusters found." />
             ) : (
               clusters.map(cluster => (
                 <ClusterRow
                   key={cluster.id}
                   cluster={cluster}
-                  isCurrent={currentAssetType === 'asset_cluster' && cluster.id === currentAssetId}
                   isSelected={selected?.type === 'asset_cluster' && selected?.id === cluster.id}
-                  onClick={() => setSelected({ ...cluster, type: 'asset_cluster' })}
+                  onClick={() => { setSelected({ ...cluster, type: 'asset_cluster' }); mutation.reset() }}
                 />
               ))
             )
@@ -254,9 +239,7 @@ export default function ChangeAssetModal({ nodeId, currentAssetId, currentAssetT
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-edge shrink-0">
-          {mutation.isError && (
-            <span className="text-xs text-red-400">Failed to update asset.</span>
-          )}
+          <FormError error={mutation.error} fallback="Failed to update asset." className="text-xs text-red-400" />
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={onClose}

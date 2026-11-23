@@ -6,6 +6,7 @@ import {
   fetchSoftwarePolicies, fetchVersionsInUse, createSoftwarePolicy, updateSoftwarePolicy, deleteSoftwarePolicy,
 } from '../../api/policies'
 import { fetchPlatforms } from '../../api/inventory'
+import { SOFTWARE_ASSETS_KEY } from '../../api/compliance'
 import { formatTime } from '../../components/jobs/jobs'
 import PageHeader from '../../components/ui/PageHeader'
 
@@ -76,6 +77,7 @@ function AddVersion({ offered, versions, examples }) {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['policies', 'software'] })
+      queryClient.invalidateQueries({ queryKey: SOFTWARE_ASSETS_KEY })
       setForm(f => ({ ...f, os_version: '', golden: false }))
     },
   })
@@ -140,7 +142,10 @@ function AddVersion({ offered, versions, examples }) {
 
 function VersionRow({ version, golden }) {
   const queryClient = useQueryClient()
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['policies', 'software'] })
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['policies', 'software'] })
+    queryClient.invalidateQueries({ queryKey: SOFTWARE_ASSETS_KEY })
+  }
   const update = useMutation({ mutationFn: changes => updateSoftwarePolicy(version.id, changes), onSuccess: invalidate })
   const remove = useMutation({ mutationFn: () => deleteSoftwarePolicy(version.id), onSuccess: invalidate })
   return (

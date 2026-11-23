@@ -4,7 +4,8 @@ import { fetchSiteCompliance } from '../../api/compliance'
 import { fetchNodes } from '../../api/inventory'
 import ComplianceBar from '../../components/compliance/ComplianceBar'
 import SegmentedBar from '../../components/compliance/SegmentedBar'
-import { SOFTWARE_PARTS, formatPct, softwareParts } from '../../components/compliance/compliance'
+import SoftwareStatus from '../../components/compliance/SoftwareStatus'
+import { formatPct, softwareParts } from '../../components/compliance/compliance'
 
 function StatTile({ label, value, hint }) {
   return (
@@ -61,19 +62,6 @@ const SOFTWARE_COLUMNS = [
   { label: 'Golden' },
   { label: 'Status' },
 ]
-
-const STATUS = Object.fromEntries(SOFTWARE_PARTS.map(p => [p.key, p]))
-
-// An asset's software status: its swatch and its name, never the color alone.
-function SoftwareStatus({ status }) {
-  const part = STATUS[status]
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-content">
-      <span className={`inline-block w-2 h-2 rounded-full ${part.fill}`} aria-hidden="true" />
-      {part.label}
-    </span>
-  )
-}
 
 function ConfigurationSection({ summary, rows, navigate }) {
   const pct = summary.compliance_percentage ?? null

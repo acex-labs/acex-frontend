@@ -78,7 +78,7 @@ export default function DashboardPage() {
             summary={compliance.data?.summary.software}
             loading={compliance.isLoading}
             error={compliance.isError}
-            to="/compliance/overview"
+            to="/compliance/software"
           />
         </div>
 

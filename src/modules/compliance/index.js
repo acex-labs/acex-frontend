@@ -1,4 +1,4 @@
-import { ShieldCheck, ScrollText, Gauge } from 'lucide-react'
+import { ShieldCheck, ScrollText, Gauge, PackageCheck } from 'lucide-react'
 
 export const ComplianceModule = {
   id: 'compliance',
@@ -6,10 +6,12 @@ export const ComplianceModule = {
   icon: ShieldCheck,
   nav: [
     { to: '/compliance/overview', text: 'Overview', icon: Gauge },
+    { to: '/compliance/software', text: 'Software', icon: PackageCheck },
     { to: '/compliance/policies', text: 'Policies', icon: ScrollText },
   ],
   routes: [
     { path: '/compliance/overview', load: () => import('../../pages/compliance/OverviewPage') },
+    { path: '/compliance/software', load: () => import('../../pages/compliance/SoftwareAssetsPage') },
     { path: '/compliance/policies', load: () => import('../../pages/compliance/PoliciesPage') },
   ],
 }

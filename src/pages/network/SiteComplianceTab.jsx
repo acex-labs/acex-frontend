@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { fetchSiteCompliance } from '../../api/compliance'
 import { fetchNodes } from '../../api/inventory'
 import ComplianceBar from '../../components/compliance/ComplianceBar'
@@ -69,7 +70,7 @@ function ConfigurationSection({ summary, rows, navigate }) {
     (a, b) => (a.compliance.configuration.compliance_percentage ?? Infinity) - (b.compliance.configuration.compliance_percentage ?? Infinity),
   )
   return (
-    <section className="space-y-4">
+    <section id="configuration" className="space-y-4">
       <SectionHeading>Configuration compliance</SectionHeading>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Configuration compliance" value={formatPct(pct)} />
@@ -116,7 +117,7 @@ function SoftwareSection({ summary, rows, navigate }) {
     .flatMap(({ id, node, compliance }) => compliance.software.assets.map(asset => ({ id, node, asset })))
     .sort((a, b) => STATUS_ORDER.indexOf(a.asset.status) - STATUS_ORDER.indexOf(b.asset.status))
   return (
-    <section className="space-y-4">
+    <section id="software" className="space-y-4">
       <SectionHeading>Software compliance</SectionHeading>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Software compliance" value={formatPct(summary.compliance_percentage ?? null)} />
@@ -166,6 +167,14 @@ export default function SiteComplianceTab({ siteName }) {
     queryFn: () => fetchNodes({ site: siteName, limit: 100 }),
     enabled: !!siteName,
   })
+
+  // The rankings on the compliance overview link to a section (#configuration or #software). The sections only
+  // exist once the site's compliance has been read, so the page scrolls to the one in the address after that.
+  const { hash } = useLocation()
+  const hasNodes = Object.keys(data?.nodes ?? {}).length > 0
+  useEffect(() => {
+    if (hasNodes && hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [hasNodes, hash])
 
   if (isLoading) return <div className="p-6 text-xs text-subtle animate-pulse">Checking compliance…</div>
   if (isError) return <div className="p-6 text-xs text-subtle">Compliance unavailable.</div>

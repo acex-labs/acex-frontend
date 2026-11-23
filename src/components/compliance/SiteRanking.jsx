@@ -5,7 +5,8 @@ import ComplianceBar from './ComplianceBar'
 import { formatPct } from './compliance'
 
 // The best or worst sites by one compliance KPI, as a meter list: name, bar and figure per row. Sites with
-// nothing measured for the KPI are left out.
+// nothing measured for the KPI are left out. A name opens the Compliance tab of the site, at the section of the
+// same KPI, where its nodes are listed.
 // sites: { [siteName]: compliance summary }; kind: 'configuration' | 'software'; order: 'best' | 'worst'.
 export default function SiteRanking({ sites, kind, order, limit = 5, title, loading }) {
   // Sites are opened by id; compliance names them. Shares its cache with the dashboard map.
@@ -32,8 +33,16 @@ export default function SiteRanking({ sites, kind, order, limit = 5, title, load
           {rows.map(r => (
             <li key={r.name} className="grid grid-cols-[minmax(0,8rem)_1fr_3.5rem] items-center gap-3 text-xs">
               {idOf.has(r.name)
-                ? <Link to={`/network/sites/${idOf.get(r.name)}`} className="truncate text-content hover:text-brand">{r.name}</Link>
-                : <span className="truncate text-content">{r.name}</span>}
+                ? (
+                  <Link
+                    to={`/network/sites/${idOf.get(r.name)}?tab=compliance#${kind}`}
+                    title={r.name}
+                    className="truncate text-brand hover:underline"
+                  >
+                    {r.name}
+                  </Link>
+                )
+                : <span className="truncate text-content" title={r.name}>{r.name}</span>}
               <ComplianceBar pct={r.pct} />
               <span className="text-right tabular-nums text-content">{formatPct(r.pct)}</span>
             </li>

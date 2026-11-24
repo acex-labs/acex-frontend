@@ -102,8 +102,8 @@ export const createRegionAssignment = ({ region_name, site_name }) =>
 export const deleteRegionAssignment = (id) =>
   apiFetch(`/api/v1/inventory/region_assignments/${id}`, { method: 'DELETE' })
 
-export const fetchLogicalNodes = ({ hostname, site, role, assigned, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, role, assigned, limit, offset })}`)
+export const fetchLogicalNodes = ({ hostname, site, region, role, assigned, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, region, role, assigned, limit, offset })}`)
 
 export const fetchLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`)

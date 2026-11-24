@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Check, Search } from 'lucide-react'
 import { fetchLogicalNodes, updateNodeInstance } from '../../api/inventory'
+import { parseApiError } from '../../api/apiError'
 import { useDebounce } from '../../hooks/useDebounce'
+import { FormError } from '../ui/ApiError'
 
 const INPUT_CLS = 'h-7 px-2.5 text-xs rounded border border-edge bg-surface-hi text-content placeholder:text-subtle focus:outline-none focus:border-brand/50 transition-colors w-full'
 
@@ -56,6 +58,11 @@ export default function ChangeLogicalNodeModal({ nodeId, currentHostname, onClos
       queryClient.invalidateQueries({ queryKey: ['logical-nodes'] })
       onClose()
     },
+    onError: (error) => {
+      // A pick may have been taken meanwhile: refresh the list.
+      queryClient.invalidateQueries({ queryKey: ['logical-nodes', 'unassigned'] })
+      if (parseApiError(error).duplicate) setSelected(null)
+    },
   })
 
   return (
@@ -108,16 +115,14 @@ export default function ChangeLogicalNodeModal({ nodeId, currentHostname, onClos
                 key={ln.id}
                 ln={ln}
                 isSelected={selected?.id === ln.id}
-                onClick={() => setSelected(ln)}
+                onClick={() => { setSelected(ln); mutation.reset() }}
               />
             ))
           )}
         </div>
 
         <div className="flex items-center justify-between px-4 py-3 border-t border-edge shrink-0">
-          {mutation.isError && (
-            <span className="text-xs text-red-400">Failed to change logical node.</span>
-          )}
+          <FormError error={mutation.error} fallback="Failed to change logical node." className="text-xs text-red-400" />
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={onClose}

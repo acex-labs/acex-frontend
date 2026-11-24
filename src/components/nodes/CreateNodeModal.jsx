@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Check } from 'lucide-react'
 import { fetchLogicalNodes, fetchAssets, fetchAssetClusters, createNodeInstance } from '../../api/inventory'
+import { parseApiError } from '../../api/apiError'
+import { useDebounce } from '../../hooks/useDebounce'
+import FormField from '../ui/FormField'
+import { FormError } from '../ui/ApiError'
 import VendorIcon from '../ui/VendorIcon'
 import { ADMIN_STATUSES } from './nodeStatus'
 
@@ -12,17 +16,6 @@ const PROVISION_OPTIONS = [
   { value: 'unprovisioned', label: 'New device — provision later' },
   { value: 'adopted',       label: 'Existing device — adopt as brownfield' },
 ]
-
-function FormField({ label, required, children }) {
-  return (
-    <div className="mb-3">
-      <label className="block text-[11px] text-subtle mb-1">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
 
 function LogicalNodeRow({ node, isSelected, onClick }) {
   const sublabel = [node.site, node.role].filter(Boolean).join(' · ')
@@ -93,11 +86,14 @@ function ClusterRow({ cluster, isSelected, onClick }) {
 }
 
 export default function CreateNodeModal({ onClose, onSuccess }) {
+  const queryClient = useQueryClient()
   const [hostnameFilter, setHostnameFilter] = useState('')
   const [dHostnameFilter, setDHostnameFilter] = useState('')
   const [selectedLogicalNode, setSelectedLogicalNode] = useState(null)
 
   const [assetTab, setAssetTab] = useState('single')
+  const [assetSearch, setAssetSearch] = useState('')
+  const dAssetSearch = useDebounce(assetSearch.trim(), 300)
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [adminStatus, setAdminStatus] = useState('planned')
   const [provisionStatus, setProvisionStatus] = useState('unprovisioned')
@@ -107,18 +103,20 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
     return () => clearTimeout(t)
   }, [hostnameFilter])
 
+  // Only logical nodes without a node instance can be picked: a logical node has at most one.
   const { data: logicalNodesData, isLoading: logicalNodesLoading } = useQuery({
-    queryKey: ['logical-nodes-picker', dHostnameFilter],
-    queryFn: () => fetchLogicalNodes({ hostname: dHostnameFilter || undefined, limit: 100 }),
+    queryKey: ['logical-nodes-picker', 'unassigned', dHostnameFilter],
+    queryFn: () => fetchLogicalNodes({ hostname: dHostnameFilter || undefined, assigned: false, limit: 100 }),
   })
   const logicalNodes = logicalNodesData?.items ?? []
 
   const { data: assetsData, isLoading: assetsLoading } = useQuery({
-    queryKey: ['assets-picker', 'unassigned-for-node'],
-    queryFn: () => fetchAssets({ assigned: false, limit: 200 }),
+    queryKey: ['assets-picker', 'unassigned-for-node', dAssetSearch],
+    queryFn: () => fetchAssets({ assigned: false, q: dAssetSearch || undefined, sort: 'serial_number', limit: 200 }),
     enabled: assetTab === 'single',
   })
   const assets = assetsData?.items ?? []
+  const assetsTotal = assetsData?.total ?? assets.length
 
   const { data: clustersData, isLoading: clustersLoading } = useQuery({
     queryKey: ['asset-clusters-picker', 'unassigned-for-node'],
@@ -130,6 +128,15 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
   const mutation = useMutation({
     mutationFn: (payload) => createNodeInstance(payload),
     onSuccess: (created) => { onSuccess(created); onClose() },
+    onError: (error) => {
+      // A pick may have been taken meanwhile: refresh the lists and drop it.
+      queryClient.invalidateQueries({ queryKey: ['logical-nodes-picker'] })
+      queryClient.invalidateQueries({ queryKey: ['assets-picker'] })
+      queryClient.invalidateQueries({ queryKey: ['asset-clusters-picker'] })
+      const { duplicate } = parseApiError(error)
+      if (duplicate?.field === 'logical_node_id') setSelectedLogicalNode(null)
+      if (duplicate?.field === 'asset_ref_id') setSelectedAsset(null)
+    },
   })
 
   const submit = () => {
@@ -178,14 +185,14 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
               {logicalNodesLoading ? (
                 <div className="px-3 py-3 text-xs text-subtle animate-pulse">Loading…</div>
               ) : logicalNodes.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-subtle">No logical nodes found.</div>
+                <div className="px-3 py-3 text-xs text-subtle">No unassigned logical nodes found.</div>
               ) : (
                 logicalNodes.map(ln => (
                   <LogicalNodeRow
                     key={ln.id}
                     node={ln}
                     isSelected={selectedLogicalNode?.id === ln.id}
-                    onClick={() => setSelectedLogicalNode(ln)}
+                    onClick={() => { setSelectedLogicalNode(ln); mutation.reset() }}
                   />
                 ))
               )}
@@ -210,20 +217,31 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
                   </button>
                 ))}
               </div>
+              {assetTab === 'single' && (
+                <input
+                  type="text"
+                  placeholder="Search serial, vendor, model…"
+                  value={assetSearch}
+                  onChange={e => setAssetSearch(e.target.value)}
+                  className={`${INPUT_CLS} mt-2`}
+                />
+              )}
             </FormField>
             <div className="border border-edge rounded max-h-72 overflow-y-auto">
               {assetTab === 'single' ? (
                 assetsLoading ? (
                   <div className="px-3 py-3 text-xs text-subtle animate-pulse">Loading…</div>
                 ) : assets.length === 0 ? (
-                  <div className="px-3 py-3 text-xs text-subtle">No unassigned assets available.</div>
+                  <div className="px-3 py-3 text-xs text-subtle">
+                    {dAssetSearch ? 'No unassigned assets match your search.' : 'No unassigned assets available.'}
+                  </div>
                 ) : (
                   assets.map(asset => (
                     <AssetRow
                       key={asset.id}
                       asset={asset}
                       isSelected={selectedAsset?.type !== 'asset_cluster' && selectedAsset?.id === asset.id}
-                      onClick={() => setSelectedAsset({ ...asset, type: 'asset' })}
+                      onClick={() => { setSelectedAsset({ ...asset, type: 'asset' }); mutation.reset() }}
                     />
                   ))
                 )
@@ -238,12 +256,17 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
                       key={cluster.id}
                       cluster={cluster}
                       isSelected={selectedAsset?.type === 'asset_cluster' && selectedAsset?.id === cluster.id}
-                      onClick={() => setSelectedAsset({ ...cluster, type: 'asset_cluster' })}
+                      onClick={() => { setSelectedAsset({ ...cluster, type: 'asset_cluster' }); mutation.reset() }}
                     />
                   ))
                 )
               )}
             </div>
+            {assetTab === 'single' && !assetsLoading && assetsTotal > assets.length && (
+              <div className="mt-1 text-[11px] text-subtle">
+                Showing {assets.length} of {assetsTotal} — refine your search
+              </div>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -268,9 +291,7 @@ export default function CreateNodeModal({ onClose, onSuccess }) {
               </FormField>
             </div>
 
-            {mutation.isError && (
-              <p className="text-[11px] text-red-400">Failed to create node.</p>
-            )}
+            <FormError error={mutation.error} fallback="Failed to create node." className="text-[11px] text-red-400" />
           </div>
         </div>
 

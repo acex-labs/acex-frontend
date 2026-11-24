@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Pencil, Trash2, X, Check } from 'lucide-react'
 import { fetchLogicalNode, updateLogicalNode, deleteLogicalNode, fetchNodes } from '../../api/inventory'
+import { FieldError, FormError } from '../../components/ui/ApiError'
 
 function Field({ label, value }) {
   if (value === undefined || value === null || value === '') return null
@@ -14,16 +15,20 @@ function Field({ label, value }) {
   )
 }
 
-function EditField({ label, value, onChange, type = 'text' }) {
+function EditField({ label, value, onChange, type = 'text', error }) {
   return (
-    <div className="flex gap-4 py-1.5 border-b border-edge last:border-0 items-center">
-      <label className="w-28 shrink-0 text-[11px] text-subtle">{label}</label>
-      <input
-        type={type}
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
-      />
+    <div className="py-1.5 border-b border-edge last:border-0">
+      <div className="flex gap-4 items-center">
+        <label className="w-28 shrink-0 text-[11px] text-subtle">{label}</label>
+        <input
+          type={type}
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value)}
+          className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
+        />
+      </div>
+      {/* Indented past the label: w-28 plus the gap. */}
+      {error && <div className="ml-32 text-[10px] text-red-400">{error}</div>}
     </div>
   )
 }
@@ -185,9 +190,12 @@ export default function LogicalNodePage() {
 
           {editing && (
             <div className="flex items-center gap-2">
-              {mutation.isError && (
-                <span className="text-[11px] text-red-400">Save failed.</span>
-              )}
+              <FormError
+                error={mutation.error}
+                fallback="Save failed."
+                fields={['hostname']}
+                className="text-[11px] text-red-400"
+              />
               <button
                 onClick={cancelEdit}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
@@ -222,7 +230,15 @@ export default function LogicalNodePage() {
               <div className="px-4 py-3">
                 {editing ? (
                   <>
-                    <EditField label="Hostname" value={draft.hostname} onChange={v => setDraft(d => ({ ...d, hostname: v }))} />
+                    <EditField
+                      label="Hostname"
+                      value={draft.hostname}
+                      onChange={v => {
+                        setDraft(d => ({ ...d, hostname: v }))
+                        if (mutation.isError) mutation.reset()
+                      }}
+                      error={<FieldError error={mutation.error} field="hostname" />}
+                    />
                     <EditField label="Role" value={draft.role} onChange={v => setDraft(d => ({ ...d, role: v }))} />
                     <EditField label="Site" value={draft.site} onChange={v => setDraft(d => ({ ...d, site: v }))} />
                     <EditField label="Sequence" type="number" value={draft.sequence} onChange={v => setDraft(d => ({ ...d, sequence: v }))} />

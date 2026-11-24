@@ -2,33 +2,13 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { createAsset, fetchPlatforms } from '../../api/inventory'
+import FormField from '../ui/FormField'
+import { FieldError, FormError } from '../ui/ApiError'
 
 const INPUT_CLS = 'w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors'
 
 // The backend requires these; anything else is optional.
 const REQUIRED = ['vendor', 'os', 'hardware_model', 'serial_number', 'os_version']
-
-function FormField({ label, required, hint, children }) {
-  return (
-    <div className="mb-3">
-      <label className="block text-[11px] text-subtle mb-1">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && <p className="mt-1 text-[10px] text-subtle">{hint}</p>}
-    </div>
-  )
-}
-
-function errorMessage(error) {
-  const { detail } = error ?? {}
-  if (typeof detail === 'string') return detail
-  // FastAPI validation errors arrive as a list of {loc, msg}.
-  if (Array.isArray(detail)) {
-    return detail.map(d => `${d.loc?.slice(1).join('.') ?? 'field'}: ${d.msg}`).join(' · ')
-  }
-  return 'Failed to create asset.'
-}
 
 export default function CreateAssetModal({ onClose, onSuccess }) {
   const [values, setValues] = useState({})
@@ -157,11 +137,18 @@ export default function CreateAssetModal({ onClose, onSuccess }) {
             />
           </FormField>
 
-          <FormField label="Serial Number" required>
+          <FormField
+            label="Serial Number"
+            required
+            error={<FieldError error={mutation.error} field="serial_number" />}
+          >
             <input
               type="text"
               value={values.serial_number ?? ''}
-              onChange={e => setField('serial_number', e.target.value)}
+              onChange={e => {
+                setField('serial_number', e.target.value)
+                if (mutation.isError) mutation.reset()
+              }}
               className={INPUT_CLS}
             />
           </FormField>
@@ -178,9 +165,7 @@ export default function CreateAssetModal({ onClose, onSuccess }) {
           {catalogFailed && (
             <p className="mt-2 text-[11px] text-red-400">Could not load the platform catalog.</p>
           )}
-          {mutation.isError && (
-            <p className="mt-2 text-[11px] text-red-400">{errorMessage(mutation.error)}</p>
-          )}
+          <FormError error={mutation.error} fallback="Failed to create asset." fields={['serial_number']} />
         </div>
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-edge shrink-0">

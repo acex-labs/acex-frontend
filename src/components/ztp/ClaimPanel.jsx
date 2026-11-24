@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { claimAsset } from '../../api/ztp'
 import VendorIcon from '../ui/VendorIcon'
+import { FormError } from '../ui/ApiError'
 import LogicalNodePicker from './LogicalNodePicker'
 
 // Claims one approved asset, by the discovery that approved it: pick the logical node it
@@ -74,11 +75,7 @@ export default function ClaimPanel({ discovery, onClaimed, onClose }) {
               {busy ? 'Claiming…' : target.assigned ? 'Replace device' : 'Claim'}
             </button>
           </div>
-          {mutation.isError && (
-            <p className="text-[11px] text-red-400">
-              {typeof mutation.error.detail === 'string' ? mutation.error.detail : mutation.error.message}
-            </p>
-          )}
+          <FormError error={mutation.error} fallback={mutation.error?.message} className="text-[11px] text-red-400" />
         </div>
       ) : (
         <div className="flex-1 min-h-0">

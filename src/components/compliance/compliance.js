@@ -20,6 +20,8 @@ export const SOFTWARE_PARTS = [
   { key: 'no_policy', count: 'no_policy_count', label: 'No policy', fill: 'bg-cmp-unmeasured' },
 ]
 
+export const SOFTWARE_PART_BY_KEY = Object.fromEntries(SOFTWARE_PARTS.map(p => [p.key, p]))
+
 export const softwareParts = summary => SOFTWARE_PARTS.map(p => ({ ...p, value: summary?.[p.count] ?? 0 }))
 
 // The desired configuration components of measured nodes, split by whether the device matches them.

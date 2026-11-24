@@ -1,10 +1,12 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { fetchSiteCompliance } from '../../api/compliance'
 import { fetchNodes } from '../../api/inventory'
 import ComplianceBar from '../../components/compliance/ComplianceBar'
 import SegmentedBar from '../../components/compliance/SegmentedBar'
-import { SOFTWARE_PARTS, formatPct, softwareParts } from '../../components/compliance/compliance'
+import SoftwareStatus from '../../components/compliance/SoftwareStatus'
+import { formatPct, softwareParts } from '../../components/compliance/compliance'
 
 function StatTile({ label, value, hint }) {
   return (
@@ -62,26 +64,13 @@ const SOFTWARE_COLUMNS = [
   { label: 'Status' },
 ]
 
-const STATUS = Object.fromEntries(SOFTWARE_PARTS.map(p => [p.key, p]))
-
-// An asset's software status: its swatch and its name, never the color alone.
-function SoftwareStatus({ status }) {
-  const part = STATUS[status]
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-content">
-      <span className={`inline-block w-2 h-2 rounded-full ${part.fill}`} aria-hidden="true" />
-      {part.label}
-    </span>
-  )
-}
-
 function ConfigurationSection({ summary, rows, navigate }) {
   const pct = summary.compliance_percentage ?? null
   const sorted = [...rows].sort(
     (a, b) => (a.compliance.configuration.compliance_percentage ?? Infinity) - (b.compliance.configuration.compliance_percentage ?? Infinity),
   )
   return (
-    <section className="space-y-4">
+    <section id="configuration" className="space-y-4">
       <SectionHeading>Configuration compliance</SectionHeading>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Configuration compliance" value={formatPct(pct)} />
@@ -128,7 +117,7 @@ function SoftwareSection({ summary, rows, navigate }) {
     .flatMap(({ id, node, compliance }) => compliance.software.assets.map(asset => ({ id, node, asset })))
     .sort((a, b) => STATUS_ORDER.indexOf(a.asset.status) - STATUS_ORDER.indexOf(b.asset.status))
   return (
-    <section className="space-y-4">
+    <section id="software" className="space-y-4">
       <SectionHeading>Software compliance</SectionHeading>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Software compliance" value={formatPct(summary.compliance_percentage ?? null)} />
@@ -178,6 +167,14 @@ export default function SiteComplianceTab({ siteName }) {
     queryFn: () => fetchNodes({ site: siteName, limit: 100 }),
     enabled: !!siteName,
   })
+
+  // The rankings on the compliance overview link to a section (#configuration or #software). The sections only
+  // exist once the site's compliance has been read, so the page scrolls to the one in the address after that.
+  const { hash } = useLocation()
+  const hasNodes = Object.keys(data?.nodes ?? {}).length > 0
+  useEffect(() => {
+    if (hasNodes && hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [hasNodes, hash])
 
   if (isLoading) return <div className="p-6 text-xs text-subtle animate-pulse">Checking compliance…</div>
   if (isError) return <div className="p-6 text-xs text-subtle">Compliance unavailable.</div>

@@ -21,14 +21,15 @@ const normalizeNode = (n) => ({
   asset_ref_id:   n.asset_ref_id,
   asset_ref_type: n.asset_ref_type,
   logical_node_id: n.logical_node_id,
+  collection:     n.collection ?? null,
 })
 
-export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, logical_node_id, management_connection_ip, admin_status, provision_status, sort, order, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
@@ -122,8 +123,9 @@ export const updateLogicalNode = (id, patch) =>
 export const deleteLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`, { method: 'DELETE' })
 
-export const fetchAssets = ({ vendor, os, hardware_model, serial_number, assigned, sort, order, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, serial_number, assigned, sort, order, limit, offset })}`)
+// `q` is one search text matched against serial, vendor, model and driver (NED id).
+export const fetchAssets = ({ vendor, os, hardware_model, serial_number, q, assigned, sort, order, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/assets?${buildQs({ vendor, os, hardware_model, serial_number, q, assigned, sort, order, limit, offset })}`)
 
 export const fetchAsset = (id) =>
   apiFetch(`/api/v1/inventory/assets/${id}`)
@@ -227,6 +229,10 @@ export const updateContact = (id, data) =>
   })
 
 // ── Collection Agents ────────────────────────────────────────────────────────
+
+// How many of the nodes an agent made the last attempt on were collected, and why the others were not.
+export const fetchCollectionAgentCollection = (id) =>
+  apiFetch(`/api/v1/inventory/collection_agents/${id}/collection`)
 
 export const fetchCollectionAgents = ({ name, limit = 50, offset = 0 } = {}) =>
   apiFetch(`/api/v1/inventory/collection_agents?${buildQs({ name, limit, offset })}`)

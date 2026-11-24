@@ -4,15 +4,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Pencil, Trash2, X, Check } from 'lucide-react'
 import { fetchAsset, updateAsset, deleteAsset, fetchNodes } from '../../api/inventory'
 import VendorIcon from '../../components/ui/VendorIcon'
+import { FieldError, FormError } from '../../components/ui/ApiError'
 
 const FIELDS = [
   { key: 'vendor',         label: 'Vendor',        required: true },
   { key: 'hardware_model', label: 'Model' },
   { key: 'os',             label: 'OS' },
   { key: 'os_version',     label: 'OS Version' },
-  { key: 'serial_number',  label: 'Serial Number' },
+  { key: 'serial_number',  label: 'Serial Number', required: true },
   { key: 'ned_id',         label: 'Driver (NED)' },
 ]
+const FIELD_KEYS = FIELDS.map(f => f.key)
 
 function Field({ label, value }) {
   if (value === undefined || value === null || value === '') return null
@@ -24,17 +26,21 @@ function Field({ label, value }) {
   )
 }
 
-function EditField({ field, value, onChange }) {
+function EditField({ field, value, onChange, error }) {
   return (
-    <div className="flex gap-4 py-1.5 border-b border-edge last:border-0 items-center">
-      <label className="w-32 shrink-0 text-[11px] text-subtle">{field.label}</label>
-      <input
-        type="text"
-        value={value ?? ''}
-        onChange={e => onChange(field.key, e.target.value)}
-        required={field.required}
-        className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
-      />
+    <div className="py-1.5 border-b border-edge last:border-0">
+      <div className="flex gap-4 items-center">
+        <label className="w-32 shrink-0 text-[11px] text-subtle">{field.label}</label>
+        <input
+          type="text"
+          value={value ?? ''}
+          onChange={e => onChange(field.key, e.target.value)}
+          required={field.required}
+          className="flex-1 bg-surface-hi border border-edge rounded px-2 py-1 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors"
+        />
+      </div>
+      {/* Indented past the label: w-32 plus the gap. */}
+      {error && <div className="ml-36 text-[10px] text-red-400">{error}</div>}
     </div>
   )
 }
@@ -54,7 +60,7 @@ export default function AssetPage() {
 
   const { data: boundNodeData } = useQuery({
     queryKey: ['nodes', 'by-asset', id],
-    queryFn: () => fetchNodes({ asset_ref_id: id, limit: 1 }),
+    queryFn: () => fetchNodes({ asset_ref_id: id, asset_ref_type: 'asset', limit: 1 }),
     enabled: !!id,
   })
   const boundNode = boundNodeData?.items?.[0] ?? null
@@ -87,10 +93,16 @@ export default function AssetPage() {
     mutation.reset()
   }
 
-  const setField = (key, value) => setDraft(d => ({ ...d, [key]: value || null }))
+  const setField = (key, value) => {
+    setDraft(d => ({ ...d, [key]: value || null }))
+    if (mutation.isError) mutation.reset()
+  }
+
+  // A blank value is sent as null, which the backend refuses for these.
+  const complete = !!draft?.vendor?.trim() && !!draft?.serial_number?.trim()
 
   const save = () => {
-    if (!draft.vendor?.trim()) return
+    if (!complete) return
     mutation.mutate(draft)
   }
 
@@ -156,9 +168,12 @@ export default function AssetPage() {
 
           {editing && (
             <div className="flex items-center gap-2">
-              {mutation.isError && (
-                <span className="text-[11px] text-red-400">Save failed.</span>
-              )}
+              <FormError
+                error={mutation.error}
+                fallback="Save failed."
+                fields={FIELD_KEYS}
+                className="text-[11px] text-red-400"
+              />
               <button
                 onClick={cancelEdit}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-edge text-subtle hover:text-content transition-colors"
@@ -168,7 +183,7 @@ export default function AssetPage() {
               </button>
               <button
                 onClick={save}
-                disabled={mutation.isPending || !draft?.vendor?.trim()}
+                disabled={mutation.isPending || !complete}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs bg-brand text-white font-semibold disabled:opacity-40 transition-opacity"
               >
                 <Check size={11} />
@@ -189,7 +204,13 @@ export default function AssetPage() {
             <div className="px-4 py-3">
               {editing
                 ? FIELDS.map(f => (
-                    <EditField key={f.key} field={f} value={draft[f.key]} onChange={setField} />
+                    <EditField
+                      key={f.key}
+                      field={f}
+                      value={draft[f.key]}
+                      onChange={setField}
+                      error={<FieldError error={mutation.error} field={f.key} />}
+                    />
                   ))
                 : (
                   <dl>

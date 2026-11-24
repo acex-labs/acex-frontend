@@ -22,7 +22,7 @@ export default function OverviewPage() {
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ConfigurationComplianceCard summary={data?.summary.configuration} loading={isLoading} error={isError} />
-          <SoftwareComplianceCard summary={data?.summary.software} loading={isLoading} error={isError} to="/compliance/policies" />
+          <SoftwareComplianceCard summary={data?.summary.software} loading={isLoading} error={isError} to="/compliance/software" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

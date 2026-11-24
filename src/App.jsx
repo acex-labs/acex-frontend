@@ -4,7 +4,7 @@ import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
 import { AiProvider } from './context/AiContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { MODULES } from './modules'
+import { MODULES, isModuleAvailable } from './modules'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 
@@ -17,9 +17,11 @@ function Placeholder({ title }) {
   )
 }
 
-// Build route elements from all registered modules
+// Build route elements from all registered modules. Built once here, as lazy()
+// must be; which of them this deployment has is decided while rendering.
 const moduleRoutes = MODULES.flatMap(m =>
   m.routes.map(r => ({
+    module: m,
     path: r.path,
     element: r.load
       ? lazy(r.load)
@@ -36,7 +38,7 @@ export default function App() {
       <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-        {moduleRoutes.map(({ path, element: Component }) => (
+        {moduleRoutes.filter(r => isModuleAvailable(r.module)).map(({ path, element: Component }) => (
           <Route key={path} path={path} element={<Component />} />
         ))}
       </Routes>

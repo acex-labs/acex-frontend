@@ -1,7 +1,7 @@
 import { useState, Fragment } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { fetchRegions, fetchSites } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
 import PageHeader from '../../components/ui/PageHeader'
@@ -19,7 +19,19 @@ const FILTERS = [
 ]
 
 const COLUMNS = [
-  { key: 'name',         label: 'Name',         sortable: true },
+  {
+    key: 'name', label: 'Name', sortable: true,
+    render: (name, row) => (
+      <Link
+        to={`/network/regions/${row.id}`}
+        onClick={e => e.stopPropagation()}
+        title="Open the region"
+        className="font-medium text-brand hover:underline"
+      >
+        {name}
+      </Link>
+    ),
+  },
   { key: 'display_name', label: 'Display Name' },
   { key: 'description',  label: 'Description' },
 ]

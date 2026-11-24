@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchComplianceOverview, COMPLIANCE_STALE_TIME } from '../../api/compliance'
+import { fetchRegions } from '../../api/inventory'
 import { ConfigurationComplianceCard, SoftwareComplianceCard } from '../../components/compliance/ComplianceCards'
 import SiteRanking from '../../components/compliance/SiteRanking'
-import RegionTable from '../../components/compliance/RegionTable'
+import ComplianceTable from '../../components/compliance/ComplianceTable'
 import PageHeader from '../../components/ui/PageHeader'
 
 export default function OverviewPage() {
@@ -12,6 +13,20 @@ export default function OverviewPage() {
     staleTime: COMPLIANCE_STALE_TIME,
   })
   const sites = data?.sites
+
+  // Regions are opened by id; compliance names them. Shares its cache with the software compliance page.
+  const { data: regionData } = useQuery({
+    queryKey: ['regions', 'all'],
+    queryFn: () => fetchRegions({ limit: 1000 }),
+    staleTime: 120_000,
+  })
+  const regionId = new Map((regionData?.items ?? []).map(r => [r.name, r.id]))
+  const regionRows = Object.entries(data?.regions ?? {}).map(([name, summary]) => ({
+    key: name,
+    name,
+    summary,
+    to: regionId.has(name) ? `/network/regions/${regionId.get(name)}` : undefined,
+  }))
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -32,7 +47,13 @@ export default function OverviewPage() {
           <SiteRanking sites={sites} kind="software" order="worst" title="5 worst sites · software" loading={isLoading} />
         </div>
 
-        <RegionTable regions={data?.regions} loading={isLoading} />
+        <ComplianceTable
+          title="Compliance per region"
+          nameLabel="Region"
+          rows={regionRows}
+          loading={isLoading}
+          emptyText="No regions with sites yet."
+        />
       </div>
     </div>
   )

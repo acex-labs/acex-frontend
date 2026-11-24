@@ -19,6 +19,7 @@ export const NetworkModule = {
     { path: '/network/sites',             load: () => import('../../pages/network/SitesPage') },
     { path: '/network/sites/:id',         load: () => import('../../pages/network/SitePage') },
     { path: '/network/regions',           load: () => import('../../pages/network/RegionsPage') },
+    { path: '/network/regions/:id',       load: () => import('../../pages/network/RegionPage') },
     { path: '/network/logical-nodes',     load: () => import('../../pages/network/LogicalNodesPage') },
     { path: '/network/logical-nodes/:id', load: () => import('../../pages/network/LogicalNodePage') },
     { path: '/network/assets',            load: () => import('../../pages/network/AssetsPage') },

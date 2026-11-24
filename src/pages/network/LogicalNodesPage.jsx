@@ -14,13 +14,14 @@ import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
 import CreateLogicalNodeModal from '../../components/logicalNodes/CreateLogicalNodeModal'
 
 const DEFAULTS = {
-  hostname: '', site: '',
+  hostname: '', site: '', region: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
 const FILTERS = [
   { key: 'hostname', label: 'Hostname', width: '180px' },
   { key: 'site',     label: 'Site',     width: '140px' },
+  { key: 'region',   label: 'Region',   width: '130px' },
 ]
 
 const COLUMNS = [
@@ -83,7 +84,7 @@ export default function LogicalNodesPage() {
       />
       <TableToolbar
         filters={FILTERS}
-        values={{ hostname: params.hostname, site: params.site }}
+        values={{ hostname: params.hostname, site: params.site, region: params.region }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
       {bulk.bulkMode && (

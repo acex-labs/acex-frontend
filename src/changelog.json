@@ -4,6 +4,162 @@
   "name": "ACEX web interface",
   "releases": [
     {
+      "version": "0.8.0",
+      "date": "2026-11-25",
+      "entries": [
+        {
+          "id": "20261125-a-git-repository-can-be-limited-to-one",
+          "kind": "added",
+          "title": "A git repository can be limited to one site",
+          "description": "Add Repository and Edit have a Site field that suggests the sites that exist. Set, the ConfigMaps in the repository apply to the logical nodes of that site only, so each site can work from a repository of its own. The list has a Site column, and the detail panel names the site. Clearing the field takes the limit away. Needs a backend that has the site on git repositories; an older backend ignores the field.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261123-regions-have-a-page-of-their-own-with",
+          "kind": "added",
+          "title": "Regions have a page of their own, with their compliance and sites",
+          "description": "A region name now opens a page that shows how the region looks. Click it in the compliance overview, in the Regions list or in a search result.\n\nThe page counts the region's sites, node instances, logical nodes and assets; each count opens that list already filtered to the region. It shows the region's configuration and software compliance, a table of its sites with the one furthest from compliance first (a site name opens that site's Compliance tab), and a map zoomed to the sites. Edit and delete are in the page header.\n\nThe Logical Nodes list has a Region filter, next to the ones on Nodes and Sites.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261125-pick-the-site-in-a-filter-and-choose",
+          "kind": "changed",
+          "title": "Pick the site in a filter, and choose whether all or any filter must match",
+          "description": "The filter rows of the Config Builder, Reconcile and the Config Translator now offer the attribute as a choice (role, site, hostname or sequence), and a site filter suggests the sites that exist. When there are several filters, Match decides whether a node has to match all of them or any one; All is the default. Needs a backend with `filter_match`; an older backend ignores it and combines the filters as before.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261125-reading-a-login-in-the-clear-says-why-it",
+          "kind": "fixed",
+          "title": "Reading a login in the clear says why it is not shown when the API refuses it",
+          "description": "On Settings > Credentials, Reveal and Copy to clipboard did nothing when the API would not hand over the login. They now show a message under the credential name. A 403 says that you are not allowed to read a login in the clear and names the roles the API asks for (`acex-admin` or `acex-service`, when the backend runs with `ACEX_AUTHZ_MODE=enforce`); other answers say that the session has ended, that the credential no longer exists, or that the login could not be read.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": []
+        }
+      ]
+    },
+    {
+      "version": "0.7.0",
+      "date": "2026-11-24",
+      "entries": [
+        {
+          "id": "20261113-assets-can-be-searched-when-creating-a",
+          "kind": "added",
+          "title": "Assets can be searched when creating a node",
+          "description": "The asset list in New Node has a search box, like the one for logical nodes. Type part of a serial number, vendor, model or driver to narrow the list. When more assets match than fit, the list says how many there are.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261118-change-asset-can-be-searched-by-serial-number",
+          "kind": "added",
+          "title": "Change Asset can be searched by serial number",
+          "description": "Change Asset has a Serial number box next to Vendor and Model. Type all or part of a serial number to narrow the list to the assets that match. The boxes can be combined.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261117-forms-say-when-a-serial-number-hostname",
+          "kind": "added",
+          "title": "Forms say when a serial number, hostname or node already exists",
+          "description": "Creating or editing an asset, logical node or node now tells you when the serial number, hostname or logical node is already taken. The message appears under the field it is about, with a link to open the existing record. Saving an asset with a blank serial number is no longer possible. Claiming assets from the Unclaimed Assets page also shows the reason the server gave when a claim fails, instead of a bare \"API error 409\".",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261117-nodes-the-collection-agent-cannot-reach",
+          "kind": "added",
+          "title": "Nodes the collection agent cannot reach are marked",
+          "description": "A node the collection agent could not collect on its last try gets a red label next to its name, with the reason: unreachable, login failed, privilege level, SSH algorithm, no driver, no IP address, no credentials or empty config. Hover the label to see since when, how many attempts in a row and the message from the agent. The Overview tab has a Collection card beside Node Instance with the status (green when the node was collected, red with the reason when it was not), since when the node has not been collected, the attempts in a row, the reason, the last attempt, the collection agent that made it, and when its configuration was last synced and last changed (these two moved there from Node Instance). The agent's name is a link to its page under Settings > Collection Agents, which now opens on an agent from its address and has a Collection section: how many of the nodes the agent made the last attempt on were collected, how many were not and for which reasons, and a list of the nodes that were not, each linked to its page. The Nodes tab of a site shows the collection agent of each node, as a link to the same page. The Nodes list has a Collection filter to find the nodes that are not collected.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "2026-11-12-samruai-section-in-the-sidebar",
+          "kind": "added",
+          "title": "SamruAI section in the sidebar when the backend names a SamruAI service",
+          "description": "When the ACEX backend has `ACEX_SERVICES_SAMRUAI_URL` set, a SamruAI section\nappears in the sidebar. Its Overview page shows whether SamruAI is reachable\nand whether it accepts your login. The web interface learns the address from\nthe backend at startup, so nothing about SamruAI is configured on the web\ninterface itself. SamruAI is called with the same Keycloak token as ACEX, so it\nmust trust the same realm and accept the token's audience. Without the setting\nnothing changes.",
+          "breaking": false,
+          "audience": "admin",
+          "refs": []
+        },
+        {
+          "id": "20261119-software-compliance-has-a-page-of-the",
+          "kind": "added",
+          "title": "Software compliance has a page of the assets and their versions",
+          "description": "Compliance > Software lists every asset on a node with its software status: not allowed, unknown version, no policy, accepted or golden. Each row shows the node, site, model, serial number, the version the asset runs and the golden version to aim for. Pick one or more statuses with the buttons above the list, each with how many assets it would show, and narrow it further by site or region or with the search field, which looks through node, site, serial number, model, version and cluster. Sort by any of the main columns. Click an asset to open it, or its node name to open the node. The choices are kept in the address, so a view can be shared. Details on the Software compliance cards on the dashboard and on the compliance overview now open this page. The software policy is one click away at the top right.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261117-the-columns-of-the-nodes-list-can-be",
+          "kind": "added",
+          "title": "The columns of the Nodes list can be chosen",
+          "description": "The Nodes list has a Configure Table button. Pick the columns to show from a list of available ones, remove the ones you do not need and move them up or down, then Apply. Reset goes back to the columns the list had before. The choice is kept in this browser. New columns are available for the collection of a node: its status, since when it has not been collected and the collection agent that made the last attempt. The Collection filter is offered together with the Collection column, so a list that does not show collection has no filter for it either.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261117-change-asset-only-lists-assets-and",
+          "kind": "changed",
+          "title": "Change Asset only lists assets and clusters without a node",
+          "description": "An asset or cluster can belong to only one node. The \"Unassigned only\" switch in Change Asset is gone, because picking an asset that another node already uses would be refused. If someone else takes the one you picked, you are told which node has it, with a link, and the list refreshes.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261120-a-failed-set-primary-or-delete-says-so",
+          "kind": "fixed",
+          "title": "A failed Set primary or delete on a management connection says so",
+          "description": "On a node's Management Connections card, Set primary and the delete button did nothing visible when the server refused the change. The card now shows \"Failed to set the primary connection.\" or \"Failed to delete the connection.\" above the list. Set primary itself needs the backend route that changes a connection; until the backend has it, the message is what you see.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261119-an-asset-page-shows-only-its-own-node",
+          "kind": "fixed",
+          "title": "An asset's page no longer shows the node of a cluster with the same number",
+          "description": "The Node field on an asset's page could link to a node that belongs to an asset cluster, when the asset and the cluster happened to have the same number. It now shows only the node that is bound to that asset itself, and stays empty when the asset has none.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261117-new-node-only-offers-logical-nodes",
+          "kind": "fixed",
+          "title": "New Node only offers logical nodes without a node",
+          "description": "A logical node can have only one node. The logical node list in New Node no longer includes logical nodes that already have one, so you cannot pick one that will be refused.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        },
+        {
+          "id": "20261123-site-names-in-the-compliance-rankings",
+          "kind": "fixed",
+          "title": "Site names in the compliance rankings open the site's compliance details",
+          "description": "On the Compliance overview, the site names in the top and worst site lists looked like plain text and opened the site's Overview tab. They are now shown as links, and a click opens the Compliance tab of the site, scrolled to the configuration or the software section, depending on the list. There the site's nodes are listed, the ones furthest from compliance first.",
+          "breaking": false,
+          "audience": "user",
+          "refs": []
+        }
+      ]
+    },
+    {
       "version": "0.6.0",
       "date": "2026-11-12",
       "summary": "Compliance gets its own section and policies, the dashboard shows it and can search the inventory, and ConfigMaps can be synced from git.",

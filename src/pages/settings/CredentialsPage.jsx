@@ -319,11 +319,27 @@ function EditModal({ credential, onClose, onSuccess }) {
   )
 }
 
+// What to tell the person when the API will not give the login in the clear. A 403 means the token lacks the role the
+// API asks for (the API's own words, which name the roles, follow).
+function secretErrorMessage(err) {
+  switch (err?.status) {
+    case 403:
+      return `You are not allowed to read a login in the clear.${err.detail ? ` ${err.detail}.` : ''}`
+    case 401:
+      return 'Your session has ended. Log in again to read a login.'
+    case 404:
+      return 'This credential no longer exists.'
+    default:
+      return `The login could not be read${err?.status ? ` (error ${err.status})` : ''}. Try again.`
+  }
+}
+
 function DetailPanel({ credential, onClose, onEdit, onDelete }) {
   const [secretFields, setSecretFields] = useState(null)
   const [revealed, setRevealed] = useState(false)
   const [copyStates, setCopyStates] = useState({})
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [secretError, setSecretError] = useState(null)
 
   const typeDef = CRED_TYPES[credential.credential_type] ?? { fields: [] }
   const hasSensitive = typeDef.fields.some(f => f.sensitive)
@@ -336,16 +352,29 @@ function DetailPanel({ credential, onClose, onEdit, onDelete }) {
   }
 
   const handleRevealDown = async () => {
-    await loadSecret()
-    setRevealed(true)
+    setSecretError(null)
+    try {
+      await loadSecret()
+      setRevealed(true)
+    } catch (err) {
+      setSecretError(secretErrorMessage(err))
+    }
   }
 
   const handleRevealUp = () => setRevealed(false)
 
   const copyField = async (fieldName) => {
+    setSecretError(null)
     setCopyStates(s => ({ ...s, [fieldName]: 'loading' }))
+    let fields
     try {
-      const fields = await loadSecret()
+      fields = await loadSecret()
+    } catch (err) {
+      setSecretError(secretErrorMessage(err))
+      setCopyStates(s => ({ ...s, [fieldName]: undefined }))
+      return
+    }
+    try {
       await navigator.clipboard.writeText(fields[fieldName] ?? '')
       setCopyStates(s => ({ ...s, [fieldName]: 'copied' }))
       setTimeout(() => setCopyStates(s => ({ ...s, [fieldName]: undefined })), 1500)
@@ -439,6 +468,9 @@ function DetailPanel({ credential, onClose, onEdit, onDelete }) {
       </div>
 
       <div className="px-4 py-3">
+        {secretError && (
+          <div role="alert" className="mb-2 text-[11px] text-red-400">{secretError}</div>
+        )}
         {credential.source === 'vault' ? (
           <div className="text-[11px] text-subtle">
             Vault path:{' '}

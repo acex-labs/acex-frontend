@@ -16,6 +16,7 @@ export default function BuilderTab() {
   const counter = useRef(0)
   const [className,  setClassName]  = useState('MyConfigMap')
   const [filters,    setFilters]    = useState([])
+  const [filterMatch, setFilterMatch] = useState('all')
   const [instances,  setInstances]  = useState([])
   const [code,       setCode]       = useState('')
   const [generating, setGenerating] = useState(false)
@@ -55,6 +56,7 @@ export default function BuilderTab() {
       const body = {
         class_name: className,
         filter: filters,
+        filter_match: filterMatch,
         components: instances.map(i => ({
           component:     i.component,
           variable_name: i.variableName,
@@ -99,7 +101,7 @@ export default function BuilderTab() {
           </div>
 
           {/* Filter */}
-          <FilterEditor value={filters} onChange={setFilters} multiple />
+          <FilterEditor value={filters} onChange={setFilters} multiple match={filterMatch} onMatchChange={setFilterMatch} />
         </div>
 
         {/* Instance list */}

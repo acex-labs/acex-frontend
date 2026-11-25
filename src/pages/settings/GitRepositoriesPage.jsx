@@ -8,7 +8,7 @@ import {
   deleteGitRepository,
   syncGitRepository,
 } from '../../api/gitRepositories'
-import { fetchCredentials, createCredential, updateCredential, deleteCredential } from '../../api/inventory'
+import { fetchCredentials, createCredential, updateCredential, deleteCredential, fetchSites } from '../../api/inventory'
 import PageHeader from '../../components/ui/PageHeader'
 
 const INPUT_CLS = 'w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors'
@@ -92,6 +92,7 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
     url: repo?.url ?? '',
     branch: repo?.branch ?? 'main',
     path: repo?.path ?? '',
+    site: repo?.site ?? '',
     auth_method: repo?.auth_method ?? 'https_token',
     credential: repo?.credential_id != null ? String(repo.credential_id) : (tokenCredentials.length ? '' : NEW_TOKEN),
     username: repo?.username ?? '',
@@ -99,6 +100,11 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
     enabled: repo?.enabled ?? true,
   })
   const [showTls, setShowTls] = useState(Boolean(repo?.ca_certificate))
+  const { data: sites } = useQuery({
+    queryKey: ['git-repository-sites'],
+    queryFn: () => fetchSites({ limit: 1000 }).then(page => (page.items ?? []).map(site => site.name)),
+    staleTime: 5 * 60_000,
+  })
   const [token, setToken] = useState('')
   const [credentialName, setCredentialName] = useState('')
   const [replaceToken, setReplaceToken] = useState(false)
@@ -127,6 +133,8 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
         url: form.url.trim(),
         branch: form.branch.trim(),
         path: form.path.trim(),
+        // Null takes the limit away from a repository that had one.
+        site: form.site.trim() || null,
         auth_method: form.auth_method,
         credential_id: usesToken ? credentialId : null,
         username: form.username.trim() || null,
@@ -196,6 +204,23 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
           />
         </FormField>
       </div>
+
+      <FormField
+        label="Site"
+        hint="Only the logical nodes of this site are reached by the ConfigMaps in the repository, whatever their filters say. Leave empty for any site."
+      >
+        <input
+          type="text"
+          list="git-repository-sites"
+          value={form.site}
+          onChange={e => set('site', e.target.value)}
+          placeholder="Any site"
+          className={INPUT_CLS}
+        />
+        <datalist id="git-repository-sites">
+          {(sites ?? []).map(name => <option key={name} value={name} />)}
+        </datalist>
+      </FormField>
 
       <FormField label="Authentication" required>
         <select value={form.auth_method} onChange={e => set('auth_method', e.target.value)} className={INPUT_CLS}>
@@ -369,6 +394,9 @@ function DetailPanel({ repo, credentialName, onClose, onEdit, onDeleted, onSynce
           <Detail label="Branch / directory">
             <span className="font-mono">{repo.branch}{repo.path ? ` : ${repo.path}` : ''}</span>
           </Detail>
+          <Detail label="Site">
+            {repo.site ? <span className="font-mono">{repo.site}</span> : "Any, as the ConfigMaps' filters say"}
+          </Detail>
           <Detail label="Authentication">
             {AUTH_METHODS[repo.auth_method] ?? repo.auth_method}
             {repo.credential_id != null && <> · {credentialName ?? `credential ${repo.credential_id}`}</>}
@@ -447,7 +475,7 @@ export default function GitRepositoriesPage() {
           <table className="w-full text-xs border-collapse">
             <thead className="sticky top-0 bg-canvas z-10">
               <tr className="border-b border-edge">
-                {['Name', 'Repository', 'Status', 'ConfigMaps', 'Commit', 'Last checked'].map(h => (
+                {['Name', 'Site', 'Repository', 'Status', 'ConfigMaps', 'Commit', 'Last checked'].map(h => (
                   <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider text-subtle px-4 py-2.5 first:pl-6">
                     {h}
                   </th>
@@ -458,9 +486,9 @@ export default function GitRepositoriesPage() {
               {isLoading
                 ? Array.from({ length: 3 }, (_, i) => (
                     <tr key={i} className="border-b border-edge/50">
-                      {[1, 2, 3, 4, 5, 6].map(j => (
+                      {[1, 2, 3, 4, 5, 6, 7].map(j => (
                         <td key={j} className="px-4 py-2.5 first:pl-6">
-                          <div className="h-3 bg-surface-hi rounded animate-pulse" style={{ width: j === 2 ? '60%' : '60px' }} />
+                          <div className="h-3 bg-surface-hi rounded animate-pulse" style={{ width: j === 3 ? '60%' : '60px' }} />
                         </td>
                       ))}
                     </tr>
@@ -475,6 +503,11 @@ export default function GitRepositoriesPage() {
                       ].join(' ')}
                     >
                       <td className="px-4 py-2.5 pl-6 text-content font-medium">{repo.name}</td>
+                      <td className="px-4 py-2.5 text-[11px]">
+                        {repo.site
+                          ? <span className="font-mono text-content">{repo.site}</span>
+                          : <span className="text-subtle">Any</span>}
+                      </td>
                       <td className="px-4 py-2.5 font-mono text-[11px] text-subtle max-w-0 w-[40%]">
                         <div className="truncate" title={repo.url}>{repo.url}</div>
                         <div className="flex items-center gap-1 text-[10px]">

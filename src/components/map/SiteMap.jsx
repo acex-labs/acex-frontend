@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet'
+import { useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTheme } from '../../context/ThemeContext'
@@ -16,7 +17,20 @@ function makeSiteIcon() {
   })
 }
 
-export default function SiteMap({ sites = [], onSiteClick }) {
+// Zooms the map to the sites, once they are known and whenever their places change.
+function FitSites({ sites }) {
+  const map = useMap()
+  const places = sites.map(s => `${s.latitude},${s.longitude}`).join(';')
+  useEffect(() => {
+    if (!places) return
+    const bounds = L.latLngBounds(places.split(';').map(p => p.split(',').map(Number)))
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 })
+  }, [map, places])
+  return null
+}
+
+// `fit` zooms to the sites; without it the map shows the world.
+export default function SiteMap({ sites = [], onSiteClick, fit = false }) {
   const { resolved } = useTheme()
   const mappable = sites.filter(s => s.latitude != null && s.longitude != null)
 
@@ -42,6 +56,8 @@ export default function SiteMap({ sites = [], onSiteClick }) {
           ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
           : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'}
       />
+
+      {fit && <FitSites sites={mappable} />}
 
       {mappable.map(site => (
         <Marker

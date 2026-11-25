@@ -21,6 +21,7 @@ export default function TranslatorPage() {
   const [nedId,      setNedId]      = useState('')
   const [configText, setConfigText] = useState('')
   const [filters,    setFilters]    = useState([])
+  const [filterMatch, setFilterMatch] = useState('all')
   const [code,       setCode]       = useState('')
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState(null)
@@ -42,6 +43,7 @@ export default function TranslatorPage() {
         ned_id:      nedId,
         config_text: configText,
         filter:      filters,
+        filter_match: filterMatch,
       })
       setCode(result.code ?? result)
     } catch (e) {
@@ -85,7 +87,7 @@ export default function TranslatorPage() {
             </select>
 
             <div className="flex-1">
-              <FilterEditor value={filters} onChange={setFilters} multiple />
+              <FilterEditor value={filters} onChange={setFilters} multiple match={filterMatch} onMatchChange={setFilterMatch} />
             </div>
 
             <button

@@ -5,12 +5,11 @@ import { Search, Cloud, Server, MapPin, Globe, Package, Boxes, BookUser, Loader2
 import { searchInventory, SEARCH_MIN_LENGTH } from '../../api/search'
 import { useDebounce } from '../../hooks/useDebounce'
 
-// Regions have no page of their own; a hit opens the list.
 const TYPES = {
   logical_node:  { label: 'Logical nodes',  icon: Cloud,    href: hit => `/network/logical-nodes/${hit.id}` },
   node_instance: { label: 'Nodes',          icon: Server,   href: hit => `/network/nodes/${hit.id}` },
   site:          { label: 'Sites',          icon: MapPin,   href: hit => `/network/sites/${hit.id}` },
-  region:        { label: 'Regions',        icon: Globe,    href: () => '/network/regions' },
+  region:        { label: 'Regions',        icon: Globe,    href: hit => `/network/regions/${hit.id}` },
   asset:         { label: 'Assets',         icon: Package,  href: hit => `/network/assets/${hit.id}` },
   asset_cluster: { label: 'Asset clusters', icon: Boxes,    href: hit => `/network/asset-clusters/${hit.id}` },
   contact:       { label: 'Contacts',       icon: BookUser, href: hit => `/network/contacts/${hit.id}` },

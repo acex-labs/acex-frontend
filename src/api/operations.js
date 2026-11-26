@@ -11,6 +11,9 @@ export const executeCommands = (nodeIds, commands) =>
     body: JSON.stringify({ node_ids: nodeIds, commands }),
   })
 
+// Every action, from devkit's one list: its label, the JSON schemas of its params and result, and its rows.
+export const fetchActions = () => apiFetch('/api/v1/operations/actions')
+
 // An abstract action (e.g. "ping") with its params on each node; answers the run.
 export const runAction = (action, nodeIds, params) =>
   apiFetch(`/api/v1/operations/actions/${action}`, {

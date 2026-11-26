@@ -16,7 +16,7 @@ const SECTIONS = [
   {
     key: 'standard',
     label: 'Standard Actions',
-    about: 'Vendor-agnostic methods: the same parameters and the same result on every device, whatever its driver. Ping for now; more will follow.',
+    about: 'Vendor-agnostic methods for troubleshooting and collecting data: the same parameters and the same result on every device, whatever its driver. They never change a device\'s configuration.',
     Panel: StandardActions,
   },
   {

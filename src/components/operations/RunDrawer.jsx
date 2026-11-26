@@ -6,6 +6,8 @@ import JobStateBadge from '../jobs/JobStateBadge'
 import { formatDuration, formatTime } from '../jobs/jobs'
 import { PatchChanges, PatchText, Unrendered } from './PatchParts'
 import { FINISHED, runDuration, runProgress, runSummary } from './runs'
+import ActionResult from './ActionResult'
+import { actionOfRun, actionSummary, useActions } from './actions'
 
 // What one node answered to raw commands: each command and its masked output.
 function CommandOutputs({ outputs }) {
@@ -54,23 +56,23 @@ function PatchResult({ result }) {
 
 const isPatch = result => !!result && ('patch_hash' in result || 'outcome' in result)
 
-// A node's answer in one line, for its collapsed row: the error, the ping's outcome, how many commands answered,
-// or what a patch changes and how its apply went.
-function responseSummary(response) {
+// A node's answer in one line, for its collapsed row: the error, how many commands answered, what a patch changes
+// and how its apply went, or an action's answer.
+function responseSummary(response, action) {
   if (response.error) return response.error.split('\n')[0]
   const result = response.result
   if (!result) return null
   if (result.outputs) return `${result.outputs.length} command${result.outputs.length === 1 ? '' : 's'}`
-  if ('sent' in result) return `${result.received}/${result.sent} received · ${result.success_rate}%`
   if ('outcome' in result) return result.outcome
   if ('patch_hash' in result) return result.in_sync ? 'in sync' : `${result.changes.length} change${result.changes.length === 1 ? '' : 's'}`
-  return null
+  return actionSummary(result, action)
 }
 
-// One node's response: a row with its outcome in short, opening to the full output.
-function Response({ response }) {
+// One node's response: a row with its outcome in short, opening to the full output. `action` is the action the
+// run ran, if it ran one.
+function Response({ response, action }) {
   const [open, setOpen] = useState(false)
-  const summary = responseSummary(response)
+  const summary = responseSummary(response, action)
   const hasDetail = !!(response.error || response.result)
   return (
     <div className="border border-edge rounded-md overflow-hidden">
@@ -95,6 +97,7 @@ function Response({ response }) {
       )}
       {open && response.result?.outputs && <CommandOutputs outputs={response.result.outputs} />}
       {open && response.result && 'sent' in response.result && <PingResult result={response.result} />}
+      {open && response.result && action && !('sent' in response.result) && <ActionResult result={response.result} action={action} />}
       {open && isPatch(response.result) && <PatchResult result={response.result} />}
     </div>
   )
@@ -114,6 +117,8 @@ export default function RunDrawer({ runId, onClose }) {
     refetchInterval: query => (FINISHED.includes(query.state.data?.state) ? false : 2000),
   })
   const progress = run ? runProgress(run) : null
+  const { byName } = useActions()
+  const action = byName[actionOfRun(run?.type)]
 
   // While the run is going, its running time counts up every second.
   const running = !!run && !FINISHED.includes(run.state)
@@ -162,7 +167,7 @@ export default function RunDrawer({ runId, onClose }) {
               ))}
             </div>
             <div className="space-y-2">
-              {run.responses.map(r => <Response key={r.job_id} response={r} />)}
+              {run.responses.map(r => <Response key={r.job_id} response={r} action={action} />)}
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ChevronRight, Plus, X } from 'lucide-react'
-import { ACTIONS, NAME_PATTERN, RESERVED, STEP_TYPES } from './steps'
+import { NAME_PATTERN, RESERVED, STEP_TYPES } from './steps'
+import { paramFields, resultFields, useActions } from '../operations/actions'
 
 // Without a width, for fields sized by where they sit; INPUT fills its row.
 const BOX = 'px-3 py-2 text-xs bg-surface-hi border border-edge rounded-md text-content placeholder:text-subtle focus:outline-none focus:border-brand/50'
@@ -91,21 +92,24 @@ function ExecuteFields({ step, set, picker }) {
   )
 }
 
+// The action and its params, from the API's list of actions. Every param takes text, so a value can come from an
+// earlier step: `{target_ip}`.
 function ActionFields({ step, set, picker }) {
-  const action = ACTIONS[step.action] ?? { params: [] }
+  const { actions, byName } = useActions()
+  const action = byName[step.action]
   const setParam = key => value => set({ params: { ...step.params, [key]: value } })
   return (
     <>
-      <Field label="Action">
+      <Field label="Action" hint={action?.description}>
         <select value={step.action} onChange={e => set({ action: e.target.value, params: {} })} className={INPUT}>
-          {!ACTIONS[step.action] && <option value={step.action}>{step.action}</option>}
-          {Object.entries(ACTIONS).map(([key, a]) => <option key={key} value={key}>{a.label}</option>)}
+          {!action && <option value={step.action}>{step.action}</option>}
+          {actions.map(a => <option key={a.name} value={a.name}>{a.label}</option>)}
         </select>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        {action.params.map(p => (
-          <Field key={p.key} label={p.label} hint={p.hint}>
-            <Insertable braces picker={picker} value={String(step.params[p.key] ?? '')} onChange={setParam(p.key)} placeholder={p.placeholder} className={MONO} />
+        {paramFields(action).map(p => (
+          <Field key={p.key} label={p.required ? `${p.label} *` : p.label} hint={p.hint}>
+            <Insertable braces picker={picker} value={String(step.params[p.key] ?? '')} onChange={setParam(p.key)} placeholder={p.default != null ? String(p.default) : p.kind === 'list' ? '10, 20' : ''} className={MONO} />
           </Field>
         ))}
       </div>
@@ -165,6 +169,9 @@ const FIELDS = { execute: ExecuteFields, action: ActionFields, probe: ProbeField
 // just did. A name must be unique in the workflow; `taken` holds those of the other steps.
 function Artifacts({ step, set, picker, taken }) {
   const kind = STEP_TYPES[step.type]
+  const { byName } = useActions()
+  // What `result` holds: an action's are its action's fields.
+  const result = step.type === 'action' ? resultFields(byName[step.action]).map(f => `result.${f}`).join(', ') || null : kind.result
   const rows = step.artifacts
   const setRow = (i, patch) => set({ artifacts: rows.map((row, j) => (j === i ? { ...row, ...patch } : row)) })
   const problem = (name, i) => {
@@ -177,16 +184,16 @@ function Artifacts({ step, set, picker, taken }) {
   return (
     <div className="space-y-2">
       <div className={LABEL}>Leaves artifacts</div>
-      {kind.result && (
+      {result && (
         <p className="text-[10px] text-subtle">
-          Leave the expression empty to keep all of what this step did, or pick from <code className="text-content">{kind.result}</code>.
+          Leave the expression empty to keep all of what this step did, or pick from <code className="text-content">{result}</code>.
         </p>
       )}
       {rows.map((row, i) => (
         <div key={i} className="space-y-1">
           <div className="flex gap-2">
             <input value={row.name} onChange={e => setRow(i, { name: e.target.value })} placeholder="name" className={`${BOX} font-mono w-36 shrink-0`} />
-            <Insertable picker={picker} value={row.expression} onChange={v => setRow(i, { expression: v })} placeholder={kind.result ? 'Empty: all of result' : 'column(lines(output, "down"), 1)'} className={`${BOX} font-mono flex-1 min-w-0`} />
+            <Insertable picker={picker} value={row.expression} onChange={v => setRow(i, { expression: v })} placeholder={result ? 'Empty: all of result' : 'column(lines(output, "down"), 1)'} className={`${BOX} font-mono flex-1 min-w-0`} />
             <button type="button" onClick={() => set({ artifacts: rows.filter((_, j) => j !== i) })} className="text-subtle hover:text-red-400" title="Remove"><X size={13} /></button>
           </div>
           {problem(row.name, i) && <p className="text-[10px] text-red-400">{problem(row.name, i)}</p>}

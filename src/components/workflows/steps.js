@@ -15,8 +15,9 @@ export const STEP_TYPES = {
     label: 'Action',
     icon: Activity,
     onNodes: 'always',
-    about: 'A vendor-agnostic action run from each node, the same whatever the driver. Ping from the node for now.',
-    result: 'result.success, result.success_rate, result.sent, result.received, result.rtt_avg_ms',
+    about: 'A vendor-agnostic action run from each node, the same whatever the driver: ping, a table such as the MAC or ARP table, a lookup, traceroute.',
+    // An action's result fields are its action's, from the API's list of actions.
+    result: null,
     config: () => ({ type: 'action', action: 'ping', params: {}, artifacts: [] }),
   },
   probe: {
@@ -64,22 +65,6 @@ export const STEP_TYPES = {
 // How a run goes: through, pausing after each step, or without reaching any device.
 export const MODES = { run: 'Run', evaluate: 'Evaluate', dry_run: 'Dry run' }
 
-// The abstract actions an action step can run, with their params. Every param takes text, so a value can come
-// from an earlier step: `{target_ip}`.
-export const ACTIONS = {
-  ping: {
-    label: 'Ping from the node',
-    params: [
-      { key: 'target', label: 'Target', placeholder: '10.0.0.1 or {address}' },
-      { key: 'count', label: 'Count', placeholder: '1', hint: '1–100' },
-      { key: 'timeout', label: 'Timeout', placeholder: '2', hint: 'Seconds per reply' },
-      { key: 'vrf', label: 'VRF', placeholder: 'Global table' },
-      { key: 'source', label: 'Source interface', placeholder: 'Loopback0' },
-      { key: 'size', label: 'Size', placeholder: 'Default', hint: '36–9216 bytes' },
-    ],
-  },
-}
-
 // Whether a box runs on nodes, as the backend decides it.
 export function onNodes(step, targets) {
   const kind = STEP_TYPES[step.type].onNodes
@@ -113,7 +98,7 @@ export function cleanStep(step) {
 // What a step does, in one line.
 export function stepSummary(step) {
   if (step.type === 'execute') return step.commands.join('; ')
-  if (step.type === 'action') return [step.action, step.params?.target].filter(Boolean).join(' ')
+  if (step.type === 'action') return [step.action, step.params?.target ?? step.params?.prefix ?? step.params?.mac ?? step.params?.ip].filter(Boolean).join(' ')
   if (step.type === 'probe') return `ping ${step.address || 'management IP'}`
   if (step.type === 'compute') return step.artifacts.map(a => a.name).filter(Boolean).join(', ')
   if (step.type === 'assert') return step.checks.join(step.require === 'all' ? ' and ' : ' or ')

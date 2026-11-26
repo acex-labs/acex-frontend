@@ -8,8 +8,10 @@ export function runSummary(run) {
   if (request.commands) return request.commands.join('; ')
   const action = run.type.split('.').pop()
   const p = request.params ?? {}
-  return [action, p.target, p.vrf && `vrf ${p.vrf}`, p.count > 1 && `×${p.count}`, p.size && `${p.size} B`]
-    .filter(Boolean).join(' ')
+  return [
+    action, p.target ?? p.prefix ?? p.mac ?? p.ip, p.interface, p.vlan && `vlan ${p.vlan}`, p.vlans && `vlans ${p.vlans.join(',')}`,
+    p.vrf && `vrf ${p.vrf}`, p.count > 1 && `×${p.count}`, p.size && `${p.size} B`,
+  ].filter(Boolean).join(' ')
 }
 
 export const FINISHED = ['succeeded', 'failed', 'cancelled']

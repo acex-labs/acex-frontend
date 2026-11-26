@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Pencil, Trash2, RefreshCw, GitBranch } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, RefreshCw, GitBranch, Copy, Check } from 'lucide-react'
 import {
   fetchGitRepositories,
   createGitRepository,
@@ -10,6 +10,7 @@ import {
 } from '../../api/gitRepositories'
 import { fetchCredentials, createCredential, updateCredential, deleteCredential, fetchSites } from '../../api/inventory'
 import PageHeader from '../../components/ui/PageHeader'
+import { API_URL } from '../../config.js'
 
 const INPUT_CLS = 'w-full bg-surface-hi border border-edge rounded px-2 py-1.5 text-xs text-content placeholder:text-subtle outline-none focus:border-brand/50 transition-colors'
 const BTN_CLS = 'flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-edge text-subtle hover:text-content disabled:opacity-40 transition-colors'
@@ -20,6 +21,34 @@ const AUTH_METHODS = {
 }
 
 const NEW_TOKEN = 'new'
+
+/** A long random secret for a webhook: 24 random bytes as hex. */
+function newSecret() {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** The address the git host calls when a branch has a new commit. */
+const webhookUrl = (repo) => `${API_URL}/api/v1/git_repositories/${repo.id}/webhook`
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // No clipboard in this context: the address stays on screen to be selected.
+    }
+  }
+  return (
+    <button type="button" onClick={copy} title="Copy" className="inline-flex items-center align-middle ml-1.5 text-subtle hover:text-content transition-colors">
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+    </button>
+  )
+}
 
 // Timestamps come without a zone from the backend; they are UTC.
 function ago(iso) {
@@ -97,6 +126,7 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
     credential: repo?.credential_id != null ? String(repo.credential_id) : (tokenCredentials.length ? '' : NEW_TOKEN),
     username: repo?.username ?? '',
     ca_certificate: repo?.ca_certificate ?? '',
+    webhook: repo?.webhook_credential_id != null ? String(repo.webhook_credential_id) : '',
     enabled: repo?.enabled ?? true,
   })
   const [showTls, setShowTls] = useState(Boolean(repo?.ca_certificate))
@@ -108,44 +138,68 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
   const [token, setToken] = useState('')
   const [credentialName, setCredentialName] = useState('')
   const [replaceToken, setReplaceToken] = useState(false)
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [webhookName, setWebhookName] = useState('')
+  const [replaceWebhook, setReplaceWebhook] = useState(false)
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
 
   const usesToken = form.auth_method === 'https_token'
   const newToken = usesToken && form.credential === NEW_TOKEN
   const currentCredential = tokenCredentials.find(c => String(c.id) === form.credential)
+  const newWebhook = form.webhook === NEW_TOKEN
+  const currentWebhook = tokenCredentials.find(c => String(c.id) === form.webhook)
+  // The token that reads the repository is not a secret for the webhook.
+  const webhookChoices = tokenCredentials.filter(c => String(c.id) !== form.credential || String(c.id) === form.webhook)
 
   const mutation = useMutation({
     mutationFn: async () => {
       let credentialId = usesToken && !newToken && form.credential ? Number(form.credential) : null
-      let created = null
-      if (newToken) {
-        created = await createCredential({
-          name: (credentialName || `git-${form.name}`).trim(),
-          credential_type: 'token',
-          fields: { token },
-        })
-        credentialId = created.id
-      } else if (replaceToken && credentialId != null && token) {
-        await updateCredential(credentialId, { fields: { token } })
-      }
-      const payload = {
-        name: form.name.trim(),
-        url: form.url.trim(),
-        branch: form.branch.trim(),
-        path: form.path.trim(),
-        // Null takes the limit away from a repository that had one.
-        site: form.site.trim() || null,
-        auth_method: form.auth_method,
-        credential_id: usesToken ? credentialId : null,
-        username: form.username.trim() || null,
-        ca_certificate: form.ca_certificate.trim() || null,
-        enabled: form.enabled,
-      }
+      let webhookId = form.webhook && !newWebhook ? Number(form.webhook) : null
+      const created = []
       try {
+        if (newToken) {
+          const made = await createCredential({
+            name: (credentialName || `git-${form.name}`).trim(),
+            credential_type: 'token',
+            fields: { token },
+          })
+          created.push(made.id)
+          credentialId = made.id
+        } else if (replaceToken && credentialId != null && token) {
+          await updateCredential(credentialId, { fields: { token } })
+        }
+        // A secret with a stray space or line break would never match the one in the git host.
+        const secret = webhookSecret.trim()
+        if (newWebhook) {
+          const made = await createCredential({
+            name: (webhookName || `webhook-${form.name}`).trim(),
+            credential_type: 'token',
+            fields: { token: secret },
+          })
+          created.push(made.id)
+          webhookId = made.id
+        } else if (replaceWebhook && webhookId != null && secret) {
+          await updateCredential(webhookId, { fields: { token: secret } })
+        }
+        const payload = {
+          name: form.name.trim(),
+          url: form.url.trim(),
+          branch: form.branch.trim(),
+          path: form.path.trim(),
+          // Null takes the limit away from a repository that had one.
+          site: form.site.trim() || null,
+          auth_method: form.auth_method,
+          credential_id: usesToken ? credentialId : null,
+          username: form.username.trim() || null,
+          ca_certificate: form.ca_certificate.trim() || null,
+          // Null takes the webhook away: the repository is then only checked on an interval.
+          webhook_credential_id: webhookId,
+          enabled: form.enabled,
+        }
         return editing ? await updateGitRepository(repo.id, payload) : await createGitRepository(payload)
       } catch (err) {
         // Don't leave a credential behind for a repository that was never saved.
-        if (created) await deleteCredential(created.id).catch(() => {})
+        await Promise.all(created.map(id => deleteCredential(id).catch(() => {})))
         throw err
       }
     },
@@ -155,7 +209,8 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
   const canSave =
     form.name.trim() && form.url.trim() && form.branch.trim() &&
     (!usesToken || (newToken ? token : form.credential)) &&
-    !(replaceToken && !token)
+    !(replaceToken && !token) &&
+    !((newWebhook || replaceWebhook) && !webhookSecret.trim())
 
   return (
     <Modal
@@ -307,6 +362,86 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
         </button>
       )}
 
+      <FormField
+        label="Webhook secret"
+        hint="Lets the git host tell ACEX at once that the branch has a new commit, instead of ACEX finding out at the next check. Without one the repository is only checked on an interval."
+      >
+        <select
+          value={form.webhook}
+          onChange={e => { set('webhook', e.target.value); setReplaceWebhook(false); setWebhookSecret('') }}
+          className={INPUT_CLS}
+        >
+          <option value="">No webhook</option>
+          {webhookChoices.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+          <option value={NEW_TOKEN}>+ New secret…</option>
+        </select>
+      </FormField>
+
+      {newWebhook && (
+        <>
+          <FormField
+            label="Secret"
+            required
+            hint="Put the same secret in the git host's webhook: GitLab's Secret token, GitHub's Secret. It is stored encrypted under Settings > Credentials."
+          >
+            <div className="flex gap-2">
+              <input
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={webhookSecret}
+                onChange={e => setWebhookSecret(e.target.value)}
+                className={`${INPUT_CLS} font-mono`}
+              />
+              <button type="button" onClick={() => setWebhookSecret(newSecret())} className={`${BTN_CLS} shrink-0`}>Generate</button>
+            </div>
+          </FormField>
+          <FormField label="Save secret as credential" hint="Stored encrypted under Settings > Credentials.">
+            <input
+              type="text"
+              value={webhookName}
+              onChange={e => setWebhookName(e.target.value)}
+              placeholder={`webhook-${form.name || 'repository'}`}
+              className={INPUT_CLS}
+            />
+          </FormField>
+        </>
+      )}
+
+      {editing && currentWebhook && (
+        replaceWebhook ? (
+          <FormField
+            label="New secret"
+            required
+            hint={`Replaces the secret in credential ${currentWebhook.name}, also for anything else that uses it. Change it in the git host too.`}
+          >
+            <div className="flex gap-2">
+              <input
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                value={webhookSecret}
+                onChange={e => setWebhookSecret(e.target.value)}
+                className={`${INPUT_CLS} font-mono`}
+              />
+              <button type="button" onClick={() => setWebhookSecret(newSecret())} className={`${BTN_CLS} shrink-0`}>Generate</button>
+            </div>
+          </FormField>
+        ) : (
+          <button onClick={() => setReplaceWebhook(true)} className="-mt-1 mb-3 block text-[11px] text-brand hover:underline">
+            Replace the secret in {currentWebhook.name}
+          </button>
+        )
+      )}
+
+      {form.webhook && (
+        <p className="-mt-1 mb-3 text-[10px] text-subtle">
+          {editing
+            ? <>The git host calls <span className="font-mono text-content break-all">{webhookUrl(repo)}</span> for push events<CopyButton text={webhookUrl(repo)} />.</>
+            : 'The address for the git host to call is shown once the repository is saved.'}
+        </p>
+      )}
+
       <label className="flex items-center gap-2 text-xs text-content">
         <input type="checkbox" checked={form.enabled} onChange={e => set('enabled', e.target.checked)} />
         Enabled: sync this repository and use its ConfigMaps
@@ -328,7 +463,7 @@ function Detail({ label, children }) {
   )
 }
 
-function DetailPanel({ repo, credentialName, onClose, onEdit, onDeleted, onSynced }) {
+function DetailPanel({ repo, credentialName, webhookCredentialName, onClose, onEdit, onDeleted, onSynced }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const sync = useMutation({ mutationFn: () => syncGitRepository(repo.id), onSuccess: onSynced })
@@ -403,6 +538,15 @@ function DetailPanel({ repo, credentialName, onClose, onEdit, onDeleted, onSynce
             {repo.username && <> · as {repo.username}</>}
           </Detail>
           <Detail label="TLS">{repo.ca_certificate ? 'Trusts its own CA certificate' : 'Public CAs'}</Detail>
+          <Detail label="Webhook">
+            {repo.webhook_credential_id != null ? (
+              <>
+                <span className="font-mono">{webhookUrl(repo)}</span>
+                <CopyButton text={webhookUrl(repo)} />
+                <> · secret in {webhookCredentialName ?? `credential ${repo.webhook_credential_id}`}</>
+              </>
+            ) : 'None: checked on an interval'}
+          </Detail>
           <Detail label="Loaded commit"><span className="font-mono">{repo.commit ? repo.commit.slice(0, 12) : '—'}</span></Detail>
           <Detail label="Last loaded">{ago(repo.last_synced_at)}</Detail>
           <Detail label="Last checked">{ago(repo.last_checked_at)}</Detail>
@@ -538,6 +682,7 @@ export default function GitRepositoriesPage() {
             key={selected.id}
             repo={selected}
             credentialName={credentialNames[selected.credential_id]}
+            webhookCredentialName={credentialNames[selected.webhook_credential_id]}
             onClose={() => setSelectedId(null)}
             onEdit={() => setModal('edit')}
             onSynced={refresh}

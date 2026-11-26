@@ -49,20 +49,35 @@ function resolvePageName(pathname) {
   return null
 }
 
+// The parts of a node page the model can point at (navigate_to `view`), and
+// where each lives in the UI. The model names what to show; this table is the
+// only place that knows the tab layout, so moving a tab means changing it here.
+const NODE_VIEWS = {
+  overview:        '?tab=overview',
+  desired_config:  '?tab=configuration&sub=desired',
+  observed_config: '?tab=configuration&sub=observed',
+  config_drift:    '?tab=configuration&sub=diff',
+  config_history:  '?tab=configuration&sub=history',
+  hardware:        '?tab=hardware',
+  lldp:            '?tab=lldp',
+}
+
 // Resolves a navigate_to tool call (see backend NAVIGATE_TOOL) to an actual
 // route. The model usually only knows a site/node by name, not its internal
 // id, so name-based calls are looked up here. Returns null for anything
 // malformed or unresolvable — the button is only rendered when this
 // resolves, so a bad or ambiguous suggestion just silently doesn't show one.
+// An unknown view opens the node without picking a tab.
 async function resolveNavPath(nav) {
   if (!nav?.page) return null
   switch (nav.page) {
     case 'node_detail': {
-      if (nav.id) return `/network/nodes/${nav.id}${nav.tab ? `?tab=${nav.tab}` : ''}`
+      const view = NODE_VIEWS[nav.view] ?? ''
+      if (nav.id) return `/network/nodes/${nav.id}${view}`
       if (!nav.name) return null
       const { items } = await fetchNodes({ hostname: nav.name, limit: 5 })
       const match = items.find(n => n.hostname?.toLowerCase() === nav.name.toLowerCase()) ?? (items.length === 1 ? items[0] : null)
-      return match ? `/network/nodes/${match.id}${nav.tab ? `?tab=${nav.tab}` : ''}` : null
+      return match ? `/network/nodes/${match.id}${view}` : null
     }
     case 'site_detail': {
       if (nav.id) return `/network/sites/${nav.id}`

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Layers, Plus } from 'lucide-react'
 import { fetchSites } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
+import { useSiteRegionFilters } from '../../hooks/useSiteRegionFilters'
 import { useBulkSelect } from '../../hooks/useBulkSelect'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
@@ -14,16 +15,17 @@ import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
 import CreateSiteModal from '../../components/sites/CreateSiteModal'
 
 const DEFAULTS = {
-  name: '', city: '', country: '', region: '',
+  q: '', region: '',
   sort: 'name', order: 'asc', limit: 50, offset: 0,
 }
 
-const FILTERS = [
-  { key: 'name',    label: 'Name',    width: '160px' },
-  { key: 'city',    label: 'City',    width: '130px' },
-  { key: 'country', label: 'Country', width: '130px' },
-  { key: 'region',  label: 'Region',  width: '130px' },
-]
+// Addresses from before the one search box named a field each; their text is searched for in every field now.
+const OLD_FILTERS = ['name', 'city', 'country']
+
+const SEARCH = {
+  key: 'q', label: 'Search sites…', search: true,
+  hint: 'Matches name, display name, city, country and address.',
+}
 
 const COLUMNS = [
   { key: 'name',         label: 'Name',         sortable: true },
@@ -35,7 +37,8 @@ const COLUMNS = [
 export default function SitesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_FILTERS })
+  const filters = [SEARCH, ...useSiteRegionFilters(params, { sites: false })]
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -85,8 +88,8 @@ export default function SitesPage() {
         }
       />
       <TableToolbar
-        filters={FILTERS}
-        values={{ name: params.name, city: params.city, country: params.country, region: params.region }}
+        filters={filters}
+        values={{ q: params.q, region: params.region }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
       {bulk.bulkMode && (

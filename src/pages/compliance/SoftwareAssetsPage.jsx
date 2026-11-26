@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { ScrollText } from 'lucide-react'
 import { fetchSoftwareAssets, SOFTWARE_ASSETS_KEY } from '../../api/compliance'
-import { fetchAllSites, fetchRegions } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
+import { useSiteRegionFilters } from '../../hooks/useSiteRegionFilters'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
 import DataTable from '../../components/table/DataTable'
@@ -29,8 +29,6 @@ const STATUS_HINTS = {
   accepted: 'On an approved version that is not the golden one.',
   golden: 'On the golden version.',
 }
-
-const sorted = names => [...new Set(names)].sort((a, b) => a.localeCompare(b))
 
 const COLUMNS = [
   { key: 'status', label: 'Status', sortable: true, render: status => <SoftwareStatus status={status} /> },
@@ -132,19 +130,9 @@ export default function SoftwareAssetsPage() {
     placeholderData: keepPreviousData,
   })
 
-  // Shared with the dashboard map and the site rankings.
-  const { data: allSites = [] } = useQuery({ queryKey: ['all-sites'], queryFn: fetchAllSites, staleTime: 120_000 })
-  const { data: regionData } = useQuery({
-    queryKey: ['regions', 'all'],
-    queryFn: () => fetchRegions({ limit: 1000 }),
-    staleTime: 120_000,
-  })
-
-  // A site or region in the address is always among the choices, so the filter it sets can be seen and cleared.
   const filters = [
-    { key: 'q', label: 'Search node, serial, model, version…', width: '280px' },
-    { key: 'site', label: 'All sites', width: '150px', options: sorted([...allSites.map(s => s.name), ...(params.site ? [params.site] : [])]) },
-    { key: 'region', label: 'All regions', width: '150px', options: sorted([...(regionData?.items ?? []).map(r => r.name), ...(params.region ? [params.region] : [])]) },
+    { key: 'q', label: 'Search assets…', search: true, hint: 'Matches node, serial number, model and version.' },
+    ...useSiteRegionFilters(params),
   ]
 
   const total = data?.total ?? 0

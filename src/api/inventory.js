@@ -24,12 +24,12 @@ const normalizeNode = (n) => ({
   collection:     n.collection ?? null,
 })
 
-export const fetchNodes = ({ hostname, site, region, vendor, role, id, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit = 50, offset = 0 } = {}) => {
+export const fetchNodes = ({ q, hostname, site, region, vendor, role, id, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit = 50, offset = 0 } = {}) => {
   if (id) {
     return apiFetch(`/api/v1/inventory/node_instances/${id}`)
       .then(data => ({ items: [normalizeNode(data)], total: 1 }))
   }
-  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ hostname, site, region, vendor, role, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit, offset })}`)
+  return apiFetch(`/api/v1/inventory/node_instances?${buildQs({ q, hostname, site, region, vendor, role, asset_ref_id, asset_ref_type, logical_node_id, management_connection_ip, admin_status, provision_status, collection_status, collection_agent_id, sort, order, limit, offset })}`)
     .then(data => ({ ...data, items: data.items.map(normalizeNode) }))
 }
 
@@ -48,8 +48,8 @@ export const fetchAllNodes = async (filters, pageSize = 500) => {
 export const fetchNode = (id) =>
   apiFetch(`/api/v1/inventory/node_instances/${id}`)
 
-export const fetchSites = ({ name, city, country, region, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/sites?${buildQs({ name, city, country, region, limit, offset })}`)
+export const fetchSites = ({ q, name, city, country, region, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/sites?${buildQs({ q, name, city, country, region, limit, offset })}`)
 
 export const fetchSite = (id) =>
   apiFetch(`/api/v1/inventory/sites/${id}`)
@@ -69,8 +69,8 @@ export const updateSite = (id, patch) =>
 export const deleteSite = (id) =>
   apiFetch(`/api/v1/inventory/sites/${id}`, { method: 'DELETE' })
 
-export const fetchRegions = ({ name, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/regions?${buildQs({ name, limit, offset })}`)
+export const fetchRegions = ({ q, name, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/regions?${buildQs({ q, name, limit, offset })}`)
 
 export const fetchRegion = (id) =>
   apiFetch(`/api/v1/inventory/regions/${id}`)
@@ -102,8 +102,8 @@ export const createRegionAssignment = ({ region_name, site_name }) =>
 export const deleteRegionAssignment = (id) =>
   apiFetch(`/api/v1/inventory/region_assignments/${id}`, { method: 'DELETE' })
 
-export const fetchLogicalNodes = ({ hostname, site, region, role, assigned, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ hostname, site, region, role, assigned, limit, offset })}`)
+export const fetchLogicalNodes = ({ q, hostname, site, region, role, assigned, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/logical_nodes?${buildQs({ q, hostname, site, region, role, assigned, limit, offset })}`)
 
 export const fetchLogicalNode = (id) =>
   apiFetch(`/api/v1/inventory/logical_nodes/${id}`)
@@ -210,8 +210,8 @@ export const fetchAllSites = () =>
   apiFetch('/api/v1/inventory/sites?limit=10000')
     .then(d => d.items ?? [])
 
-export const fetchContacts = ({ name, limit = 50, offset = 0 } = {}) =>
-  apiFetch(`/api/v1/inventory/contacts?${buildQs({ name, limit, offset })}`)
+export const fetchContacts = ({ q, name, limit = 50, offset = 0 } = {}) =>
+  apiFetch(`/api/v1/inventory/contacts?${buildQs({ q, name, limit, offset })}`)
 
 export const fetchContact = (id) =>
   apiFetch(`/api/v1/inventory/contacts/${id}`)

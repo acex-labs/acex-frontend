@@ -32,7 +32,12 @@ export function AuthProvider({ children }) {
   }, [])
 
   const um = getUserManager()
-  const login = um ? () => um.signinRedirect() : () => {}
+  // Remember the current page so the callback can send the user back to it.
+  const login = um
+    ? () => um.signinRedirect({
+        url_state: window.location.pathname + window.location.search + window.location.hash,
+      })
+    : () => {}
   const logout = um ? () => um.signoutRedirect() : () => {}
   // `um` is only ever set (in main.jsx's bootstrap) when the backend's own
   // GET /api/v1/auth/config reports `enabled: true` — so `!um` isn't a

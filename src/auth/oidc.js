@@ -20,3 +20,9 @@ export function initUserManager({ authority, clientId }) {
 export function getUserManager() {
   return _userManager
 }
+
+// Where to go after the login callback: the page the user was on when login was
+// started. Only a path on this site is accepted ("/x", never "//host" or a URL).
+export function safeReturnPath(path) {
+  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//') ? path : '/'
+}

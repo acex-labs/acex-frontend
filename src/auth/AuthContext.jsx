@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getUserManager } from './oidc'
+import { getUserManager, loginReturnPath } from './oidc'
 
 const AuthContext = createContext(null)
 
@@ -34,9 +34,7 @@ export function AuthProvider({ children }) {
   const um = getUserManager()
   // Remember the current page so the callback can send the user back to it.
   const login = um
-    ? () => um.signinRedirect({
-        url_state: window.location.pathname + window.location.search + window.location.hash,
-      })
+    ? () => um.signinRedirect({ url_state: loginReturnPath() })
     : () => {}
   const logout = um ? () => um.signoutRedirect() : () => {}
   // `um` is only ever set (in main.jsx's bootstrap) when the backend's own

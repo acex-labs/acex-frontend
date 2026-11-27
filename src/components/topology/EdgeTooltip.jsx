@@ -34,10 +34,36 @@ export default function EdgeTooltip({ tooltip }) {
       minWidth: 180,
       boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
     }}>
-      <Row label="Local"    value={data.localInterface} mono />
-      <Row label="Remote"   value={data.remoteInterface} mono />
-      <Row label="Protocol" value={(data.protocol ?? 'lldp').toUpperCase()} />
-      {data.collectedAt && <Row label="Seen" value={timeAgo(data.collectedAt)} />}
+      <Row label="Layer"    value={data.layer} />
+      {data.links ? <LinkList links={data.links} /> : (
+        <>
+          <Row label="Local"    value={data.localInterface} mono />
+          <Row label="Remote"   value={data.remoteInterface} mono />
+          <Row label="Protocol" value={(data.protocol ?? 'lldp').toUpperCase()} />
+          {data.collectedAt && <Row label="Seen" value={timeAgo(data.collectedAt)} />}
+        </>
+      )}
+    </div>
+  )
+}
+
+const MAX_LISTED = 8
+
+// The links folded into an edge between two groups.
+function LinkList({ links }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+        {links.length} {links.length === 1 ? 'link' : 'links'}
+      </div>
+      {links.slice(0, MAX_LISTED).map((l, i) => (
+        <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--content)', whiteSpace: 'nowrap', marginBottom: 2 }}>
+          {l.a} ↔ {l.b}
+        </div>
+      ))}
+      {links.length > MAX_LISTED && (
+        <div style={{ fontSize: 10, color: 'var(--subtle)' }}>+{links.length - MAX_LISTED} more</div>
+      )}
     </div>
   )
 }

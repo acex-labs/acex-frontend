@@ -32,16 +32,27 @@ function getSide(node, borderPoint) {
     : (dy > 0 ? Position.Bottom : Position.Top)
 }
 
-export default function FloatingEdge({ id, source, target, style, label }) {
+// Moves a point sideways from the line a→b, so parallel edges of one pair don't overlap.
+function shift(point, a, b, offset) {
+  if (!offset) return point
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const len = Math.hypot(dx, dy) || 1
+  return { x: point.x - (dy / len) * offset, y: point.y + (dx / len) * offset }
+}
+
+export default function FloatingEdge({ id, source, target, style, label, data }) {
   const srcNode = useInternalNode(source)
   const tgtNode = useInternalNode(target)
 
   if (!srcNode?.internals?.positionAbsolute || !tgtNode?.internals?.positionAbsolute) return null
 
+  // Offsets are measured along one direction of the pair, whichever node is the source.
+  const offset = (data?.offset ?? 0) * (source < target ? 1 : -1)
   const sc = getCenter(srcNode)
   const tc = getCenter(tgtNode)
-  const sp = getBorderPoint(srcNode, tc)
-  const tp = getBorderPoint(tgtNode, sc)
+  const sp = shift(getBorderPoint(srcNode, tc), sc, tc, offset)
+  const tp = shift(getBorderPoint(tgtNode, sc), sc, tc, offset)
 
   const [path, lx, ly] = getBezierPath({
     sourceX:         sp.x,

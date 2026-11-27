@@ -117,5 +117,6 @@ export function actionSummary(result, action) {
   }
   if ('found' in result) parts.push(result.found ? 'found' : 'not found')
   if ('reached' in result) parts.push(result.reached ? 'reached' : 'not reached')
+  if (typeof result.config === 'string') parts.push(`${result.config.split('\n').length} lines`)
   return parts.join(' · ') || null
 }

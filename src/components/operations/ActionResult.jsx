@@ -34,14 +34,24 @@ export default function ActionResult({ result, action }) {
       </div>
     )
   }
+  // Text over several lines, such as a configuration, keeps its lines under the fields.
+  const multiline = c => typeof result[c] === 'string' && result[c].includes('\n')
+  const fields = action.columns.filter(c => !multiline(c))
   return (
-    <dl className="px-3 py-2 border-t border-edge grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[11px] font-mono">
-      {action.columns.map(c => (
-        <div key={c} className="contents">
-          <dt className="text-subtle">{humanize(c)}</dt>
-          <dd className="text-content break-all">{formatValue(result[c], c)}</dd>
-        </div>
+    <div className="border-t border-edge">
+      {fields.length > 0 && (
+        <dl className="px-3 py-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[11px] font-mono">
+          {fields.map(c => (
+            <div key={c} className="contents">
+              <dt className="text-subtle">{humanize(c)}</dt>
+              <dd className="text-content break-all">{formatValue(result[c], c)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {action.columns.filter(multiline).map(c => (
+        <pre key={c} className="px-3 py-2 text-[11px] font-mono whitespace-pre-wrap break-all text-content max-h-[60vh] overflow-auto">{result[c]}</pre>
       ))}
-    </dl>
+    </div>
   )
 }

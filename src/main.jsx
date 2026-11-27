@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext.jsx'
-import { initUserManager, getUserManager } from './auth/oidc.js'
+import { initUserManager, getUserManager, safeReturnPath } from './auth/oidc.js'
 import { installFetchInterceptor } from './auth/fetchInterceptor.js'
 import { API_URL } from './config.js'
 import { loadServices } from './services.js'
@@ -43,20 +43,23 @@ async function bootstrap() {
       const params = new URLSearchParams(window.location.search)
       if (params.has('code') && params.has('state')) {
         try {
-          await getUserManager().signinRedirectCallback()
-          window.history.replaceState({}, '', '/')
+          const user = await getUserManager().signinRedirectCallback()
+          // Back to the page the login was started from (see AuthContext login()).
+          window.history.replaceState({}, '', safeReturnPath(user.url_state))
         } catch (err) {
           console.error('OIDC callback error:', err)
           await getUserManager().clearStaleState()
         }
       } else if (params.has('state') && !params.has('code')) {
-        // Post-logout redirect from KC — clear local session state
+        // Post-logout redirect from KC — clear local session state. A page can
+        // have its own ?state= filter (jobs), so only a state that matches a
+        // sign-out request we made counts; otherwise leave the URL alone.
         try {
           await getUserManager().signoutRedirectCallback()
+          window.history.replaceState({}, '', '/')
         } catch {
           // Not a logout callback, ignore
         }
-        window.history.replaceState({}, '', '/')
       }
     }
   } catch (err) {

@@ -1,9 +1,25 @@
 import { useSearchParams } from 'react-router-dom'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
-export function useQueryParams(defaults) {
+// `fold` names the params a page used to filter on, one for each field, before it had one search box. An address
+// that still carries one (a bookmark, a shared link) has its text moved into `q`, which looks in all those fields,
+// so the link keeps finding what it did instead of showing everything with no filter in sight.
+export function useQueryParams(defaults, { fold = [] } = {}) {
   const defaultsRef = useRef(defaults)
+  const foldRef = useRef(fold)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const old = foldRef.current.filter(key => searchParams.get(key))
+    if (old.length === 0) return
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      const text = next.get('q') || next.get(old[0])
+      old.forEach(key => next.delete(key))
+      next.set('q', text)
+      return next
+    }, { replace: true })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- once, for the address the page was opened with
 
   const params = useMemo(() => {
     const result = { ...defaultsRef.current }

@@ -5,6 +5,7 @@ import { Columns3, Layers, Plus } from 'lucide-react'
 import { fetchNodes } from '../../api/inventory'
 import { apiFetch } from '../../api/client'
 import { useQueryParams } from '../../hooks/useQueryParams'
+import { useSiteRegionFilters } from '../../hooks/useSiteRegionFilters'
 import { useTableColumns } from '../../hooks/useTableColumns'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
@@ -20,34 +21,24 @@ import CreateNodeModal from '../../components/nodes/CreateNodeModal'
 import { ADMIN_STATUSES, PROVISION_STATUSES, COLLECTION_FILTER_OPTIONS } from '../../components/nodes/nodeStatus'
 
 const DEFAULTS = {
-  hostname: '', site: '', region: '', role: '', id: '', management_connection_ip: '',
+  q: '', region: '',
   admin_status: '', provision_status: '', collection_status: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
-const PRIVATE_IP_PREFIXES = [
-  /^10(\.|$)/,                        // 10.0.0.0/8
-  /^172\.(1[6-9]|2\d|3[01])(\.|$)/,  // 172.16.0.0/12
-  /^192\.168(\.|$)/,                  // 192.168.0.0/16
-]
+// Addresses from before the one search box named a field each; their text is searched for in every field now.
+const OLD_FILTERS = ['hostname', 'management_connection_ip', 'id', 'role', 'site']
 
-function shouldQueryIP(ip) {
-  if (!ip) return true
-  if (PRIVATE_IP_PREFIXES.some(r => r.test(ip))) return true
-  if ((ip.match(/\./g) ?? []).length >= 3) return true  // complete IP
-  return false
+// The one search box, then the filters that choose from a fixed set of values. There is no site choice: the server
+// matches a site name as part of a name, so picking `hq` would also list `hq-2`; the search box finds a site as text.
+const SEARCH = {
+  key: 'q', label: 'Search nodes…', search: true,
+  hint: 'Matches hostname, IP address, serial number, hardware model, vendor, site and role. A number also matches the ID.',
 }
-
-const FILTERS = [
-  { key: 'hostname', label: 'Hostname', width: '160px' },
-  { key: 'management_connection_ip',       label: 'IP Address', width: '130px' },
-  { key: 'site',     label: 'Site',     width: '120px' },
-  { key: 'region',   label: 'Region',   width: '120px' },
-  { key: 'role',     label: 'Role',     width: '120px' },
+const STATUS_FILTERS = [
   { key: 'admin_status',     label: 'Admin',        width: '120px', options: ADMIN_STATUSES },
   { key: 'provision_status', label: 'Provisioning', width: '130px', options: PROVISION_STATUSES },
   { key: 'collection_status', label: 'Collection',  width: '140px', options: COLLECTION_FILTER_OPTIONS, column: 'collection' },
-  { key: 'id',       label: 'ID',       width: '90px'  },
 ]
 
 // A badge with the reason when the node was not collected; a node no agent has reported on shows a dash.
@@ -82,13 +73,18 @@ const DEFAULT_COLUMN_KEYS = ['hostname', 'ip', 'site', 'role', 'admin_status', '
 export default function NodesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_FILTERS })
   const { columns, keys: columnKeys, choose: chooseColumns } = useTableColumns('nodes', COLUMNS, DEFAULT_COLUMN_KEYS)
   const [showColumns, setShowColumns] = useState(false)
 
   // A filter that belongs to a column is offered while the column is shown, and while it is in use, so that a filter
   // with a value (from a shared address, say) is never hidden.
-  const filters = FILTERS.filter(f => !f.column || columnKeys.includes(f.column) || params[f.key])
+  const regionFilters = useSiteRegionFilters(params, { sites: false })
+  const filters = [
+    SEARCH,
+    ...regionFilters,
+    ...STATUS_FILTERS.filter(f => !f.column || columnKeys.includes(f.column) || params[f.key]),
+  ]
 
   // ── Bulk mode ─────────────────────────────────────────────────
   const [bulkMode, setBulkMode]     = useState(false)
@@ -118,7 +114,6 @@ export default function NodesPage() {
   const { data, isFetching } = useQuery({
     queryKey: ['nodes', params],
     queryFn: () => fetchNodes(params),
-    enabled: shouldQueryIP(params.management_connection_ip),
     placeholderData: keepPreviousData,
   })
 
@@ -165,14 +160,11 @@ export default function NodesPage() {
     let offset = 0
     const allIds = new Set()
 
-    // Build query without the id path-param shortcut
-    const { id: _skip, ...filterParams } = params
-
     while (offset < total) {
       if (cancelSelectAll.current) break
       try {
         const qs = new URLSearchParams()
-        Object.entries({ ...filterParams, limit: PAGE, offset }).forEach(([k, v]) => {
+        Object.entries({ ...params, limit: PAGE, offset }).forEach(([k, v]) => {
           if (v !== '' && v !== undefined && v !== null) qs.append(k, v)
         })
         const data = await apiFetch(`/api/v1/inventory/node_instances?${qs}`)
@@ -261,7 +253,7 @@ export default function NodesPage() {
 
       <TableToolbar
         filters={filters}
-        values={{ hostname: params.hostname, site: params.site, region: params.region, role: params.role, id: params.id, management_connection_ip: params.management_connection_ip, admin_status: params.admin_status, provision_status: params.provision_status, collection_status: params.collection_status }}
+        values={{ q: params.q, region: params.region, admin_status: params.admin_status, provision_status: params.provision_status, collection_status: params.collection_status }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 

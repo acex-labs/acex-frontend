@@ -18,15 +18,19 @@ import CreateAssetClusterModal from '../../components/assets/CreateAssetClusterM
 
 const DEFAULTS = {
   view: 'assets',
-  vendor: '', os: '', serial_number: '', name: '',
+  q: '', name: '',
   assigned: '',
   sort: 'vendor', order: 'asc', limit: 50, offset: 0,
 }
 
+// Addresses from before the one search box named a field each; their text is searched for in every field now.
+const OLD_ASSET_FILTERS = ['serial_number', 'vendor', 'os']
+
 const ASSET_FILTERS = [
-  { key: 'vendor',        label: 'Vendor', width: '140px' },
-  { key: 'os',            label: 'OS',     width: '140px' },
-  { key: 'serial_number', label: 'Serial', width: '160px' },
+  {
+    key: 'q', label: 'Search assets…', search: true,
+    hint: 'Matches serial number, vendor, hardware model, operating system and its version, and driver.',
+  },
 ]
 
 const CLUSTER_FILTERS = [
@@ -57,7 +61,7 @@ const VIEWS = [
 export default function AssetsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_ASSET_FILTERS })
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [actionSpec, setActionSpec] = useState(null)
   const [showCreateAsset, setShowCreateAsset] = useState(false)
@@ -71,7 +75,6 @@ export default function AssetsPage() {
     queryKey: ['assets', params],
     queryFn: () => fetchAssets({
       ...params,
-      serial_number: params.serial_number || undefined,
       assigned: assignedFilter,
     }),
     placeholderData: keepPreviousData,
@@ -213,7 +216,7 @@ export default function AssetsPage() {
 
       <TableToolbar
         filters={isAssetsView ? ASSET_FILTERS : CLUSTER_FILTERS}
-        values={isAssetsView ? { vendor: params.vendor, os: params.os, serial_number: params.serial_number } : { name: params.name }}
+        values={isAssetsView ? { q: params.q } : { name: params.name }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
 

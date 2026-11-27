@@ -11,11 +11,14 @@ import SiteMap from '../../components/map/SiteMap'
 import RegionFormModal from '../../components/regions/RegionFormModal'
 
 const DEFAULTS = {
-  name: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
+  q: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
 }
 
+// Addresses from before the search box was called q carry the name.
+const OLD_FILTERS = ['name']
+
 const FILTERS = [
-  { key: 'name', label: 'Name', width: '180px' },
+  { key: 'q', label: 'Search regions…', search: true, hint: 'Matches name and display name.' },
 ]
 
 const COLUMNS = [
@@ -76,7 +79,7 @@ function RegionSites({ regionName }) {
 
 export default function RegionsPage() {
   const queryClient = useQueryClient()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_FILTERS })
   const [expanded, setExpanded] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editRegion, setEditRegion] = useState(null)
@@ -139,7 +142,7 @@ export default function RegionsPage() {
       />
       <TableToolbar
         filters={FILTERS}
-        values={{ name: params.name }}
+        values={{ q: params.q }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
       <div className="flex-1 overflow-auto">

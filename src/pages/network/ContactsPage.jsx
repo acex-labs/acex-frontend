@@ -10,17 +10,20 @@ import Pagination from '../../components/table/Pagination'
 import CreateContactModal from '../../components/contacts/CreateContactModal'
 
 const DEFAULTS = {
-  name: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
+  q: '', sort: 'name', order: 'asc', limit: 50, offset: 0,
 }
 
+// Addresses from before the search box was called q carry the name.
+const OLD_FILTERS = ['name']
+
 const FILTERS = [
-  { key: 'name', label: 'Name', width: '180px' },
+  { key: 'q', label: 'Search contacts…', search: true, hint: 'Matches name, first and family name, email and phone.' },
 ]
 
 export default function ContactsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_FILTERS })
   const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -49,7 +52,7 @@ export default function ContactsPage() {
       />
       <TableToolbar
         filters={FILTERS}
-        values={{ name: params.name }}
+        values={{ q: params.q }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
       <div className="flex-1 overflow-auto">

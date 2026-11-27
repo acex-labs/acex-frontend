@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Layers, Plus } from 'lucide-react'
 import { fetchLogicalNodes } from '../../api/inventory'
 import { useQueryParams } from '../../hooks/useQueryParams'
+import { useSiteRegionFilters } from '../../hooks/useSiteRegionFilters'
 import { useBulkSelect } from '../../hooks/useBulkSelect'
 import PageHeader from '../../components/ui/PageHeader'
 import TableToolbar from '../../components/table/TableToolbar'
@@ -14,15 +15,19 @@ import BulkPlaceholderModal from '../../components/bulk/BulkPlaceholderModal'
 import CreateLogicalNodeModal from '../../components/logicalNodes/CreateLogicalNodeModal'
 
 const DEFAULTS = {
-  hostname: '', site: '', region: '',
+  q: '', region: '',
   sort: 'hostname', order: 'asc', limit: 50, offset: 0,
 }
 
-const FILTERS = [
-  { key: 'hostname', label: 'Hostname', width: '180px' },
-  { key: 'site',     label: 'Site',     width: '140px' },
-  { key: 'region',   label: 'Region',   width: '130px' },
-]
+// Addresses from before the one search box named a field each; their text is searched for in every field now.
+const OLD_FILTERS = ['hostname', 'site']
+
+// There is no site choice: the server matches a site name as part of a name, so picking `hq` would also list `hq-2`.
+// The search box finds a site as text.
+const SEARCH = {
+  key: 'q', label: 'Search logical nodes…', search: true,
+  hint: 'Matches hostname, site and role. A number also matches the ID.',
+}
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname', sortable: true },
@@ -34,7 +39,8 @@ const COLUMNS = [
 
 export default function LogicalNodesPage() {
   const navigate = useNavigate()
-  const [params, setParams] = useQueryParams(DEFAULTS)
+  const [params, setParams] = useQueryParams(DEFAULTS, { fold: OLD_FILTERS })
+  const filters = [SEARCH, ...useSiteRegionFilters(params, { sites: false })]
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -83,8 +89,8 @@ export default function LogicalNodesPage() {
         }
       />
       <TableToolbar
-        filters={FILTERS}
-        values={{ hostname: params.hostname, site: params.site, region: params.region }}
+        filters={filters}
+        values={{ q: params.q, region: params.region }}
         onChange={vals => setParams({ ...vals, offset: 0 })}
       />
       {bulk.bulkMode && (

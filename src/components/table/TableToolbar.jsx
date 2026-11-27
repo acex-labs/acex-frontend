@@ -1,9 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { useState, useEffect, useRef, useId } from 'react'
+import { Search, X } from 'lucide-react'
 
+// A filter without `options` is a text box. One flagged `search: true` is the page's quick search: it has a search
+// icon and takes the room the other filters leave, instead of a width of its own. Its `hint` names the fields it
+// looks in, so the placeholder can stay short: a note under the box, shown while the pointer is over it or while it
+// has focus and nothing is typed yet.
 export default function TableToolbar({ filters = [], values = {}, onChange, actions }) {
   const [local, setLocal] = useState(values)
   const timerRef = useRef(null)
+  const hintId = useId()
 
   // Sync from URL on browser back/forward
   useEffect(() => {
@@ -53,18 +58,36 @@ export default function TableToolbar({ filters = [], values = {}, onChange, acti
             : <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : (
-        <div key={f.key} className="relative">
+        <div key={f.key} className={f.search ? 'group relative flex-1 min-w-[16rem] max-w-xl' : 'relative'}>
+          {f.search && (
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle pointer-events-none" />
+          )}
           <input
             type="text"
             value={local[f.key] ?? ''}
             onChange={e => handleChange(f.key, e.target.value)}
             placeholder={f.label}
+            aria-describedby={f.hint ? hintId : undefined}
             className={[
-              'h-7 pl-2.5 pr-6 text-xs rounded border transition-colors bg-surface-hi text-content placeholder:text-subtle focus:outline-none',
+              'h-7 pr-6 text-xs rounded border transition-colors bg-surface-hi text-content placeholder:text-subtle focus:outline-none',
+              f.search ? 'w-full pl-7' : 'pl-2.5',
               local[f.key] ? 'border-brand/50' : 'border-edge focus:border-brand',
             ].join(' ')}
-            style={{ width: f.width ?? '140px' }}
+            style={f.search ? undefined : { width: f.width ?? '140px' }}
           />
+          {f.hint && (
+            <div
+              id={hintId}
+              role="tooltip"
+              className={[
+                'hidden group-hover:block absolute left-0 top-full z-20 mt-1 max-w-full px-2.5 py-1.5 rounded border',
+                'border-edge bg-surface-hi text-[11px] leading-snug text-subtle shadow-lg pointer-events-none',
+                local[f.key] ? '' : 'group-focus-within:block',
+              ].join(' ')}
+            >
+              {f.hint}
+            </div>
+          )}
           {local[f.key] && (
             <button
               onClick={() => handleClear(f.key)}

@@ -2,18 +2,17 @@ import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { fetchAllNodes, fetchNodes } from '../../api/inventory'
+import { useSiteRegionFilters } from '../../hooks/useSiteRegionFilters'
 import TableToolbar from '../table/TableToolbar'
 import DataTable from '../table/DataTable'
 import Pagination from '../table/Pagination'
 
 const LIMIT = 25
 
-const FILTERS = [
-  { key: 'hostname', label: 'Hostname', width: '160px' },
-  { key: 'site',     label: 'Site',     width: '120px' },
-  { key: 'region',   label: 'Region',   width: '120px' },
-  { key: 'vendor',   label: 'Vendor',   width: '120px' },
-]
+const SEARCH = {
+  key: 'q', label: 'Search nodes…', search: true,
+  hint: 'Matches hostname, IP address, serial number, hardware model, vendor, site and role.',
+}
 
 const COLUMNS = [
   { key: 'hostname', label: 'Hostname' },
@@ -23,16 +22,17 @@ const COLUMNS = [
   { key: 'ned_id', label: 'Driver', render: v => v ?? '—' },
 ]
 
-// Nodes to run operations on, found by hostname, site, region and vendor, one page at a time or every node the
+// Nodes to run operations on, found by one search text and a region, one page at a time or every node the
 // filters match at once. `selected` maps node id to the node, so a choice survives filtering and paging; which of
 // them an operation can run on is the operation's to say.
 export default function NodePicker({ selected, onChange }) {
-  const [filters, setFilters] = useState({ hostname: '', site: '', region: '', vendor: '' })
+  const [filters, setFilters] = useState({ q: '', region: '' })
   const [offset, setOffset] = useState(0)
   // Every node the current filters match, once fetched for selecting them all.
   const [matching, setMatching] = useState(null)
   const [fetchingAll, setFetchingAll] = useState(false)
 
+  const filterDefinitions = [SEARCH, ...useSiteRegionFilters(filters, { sites: false })]
   const query = { ...filters, offset, limit: LIMIT, sort: 'hostname', order: 'asc' }
   const { data, isFetching } = useQuery({
     queryKey: ['nodes', query],
@@ -74,7 +74,7 @@ export default function NodePicker({ selected, onChange }) {
   return (
     <div className="flex flex-col border border-edge rounded-md overflow-hidden min-h-0">
       <TableToolbar
-        filters={FILTERS}
+        filters={filterDefinitions}
         values={filters}
         onChange={filter}
         actions={

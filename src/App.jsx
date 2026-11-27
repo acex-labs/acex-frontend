@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import RequireAuth from './auth/RequireAuth'
+import SessionExpiredDialog from './auth/SessionExpiredDialog'
 import { AiProvider } from './context/AiContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { MODULES, isModuleAvailable } from './modules'
@@ -46,6 +47,7 @@ export default function App() {
       </Layout>
       </AiProvider>
       </ThemeProvider>
+      <SessionExpiredDialog />
     </RequireAuth>
   )
 }

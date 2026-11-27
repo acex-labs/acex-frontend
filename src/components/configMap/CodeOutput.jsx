@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, GitPullRequest } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
 import { useTheme } from '../../context/ThemeContext'
+import MergeRequestDialog from './MergeRequestDialog'
 
 function PythonCode({ code }) {
   const { resolved } = useTheme()
@@ -31,6 +32,7 @@ function PythonCode({ code }) {
 
 export default function CodeOutput({ code, loading, placeholder = 'Generated code will appear here…' }) {
   const [copied, setCopied] = useState(false)
+  const [sending, setSending] = useState(false)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
@@ -45,14 +47,24 @@ export default function CodeOutput({ code, loading, placeholder = 'Generated cod
           Python
         </span>
         {code && (
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 text-[11px] transition-colors"
-            style={{ color: copied ? '#16a34a' : 'var(--color-subtle)' }}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSending(true)}
+              title="Send this code to a git repository as a merge request"
+              className="flex items-center gap-1.5 text-[11px] text-subtle hover:text-content transition-colors"
+            >
+              <GitPullRequest size={12} />
+              Create merge request
+            </button>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 text-[11px] transition-colors"
+              style={{ color: copied ? '#16a34a' : 'var(--color-subtle)' }}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -69,6 +81,8 @@ export default function CodeOutput({ code, loading, placeholder = 'Generated cod
           </p>
         )}
       </div>
+
+      {sending && <MergeRequestDialog code={code} onClose={() => setSending(false)} />}
     </div>
   )
 }

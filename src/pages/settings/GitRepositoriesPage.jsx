@@ -127,6 +127,7 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
     username: repo?.username ?? '',
     ca_certificate: repo?.ca_certificate ?? '',
     webhook: repo?.webhook_credential_id != null ? String(repo.webhook_credential_id) : '',
+    mergeRequest: repo?.merge_request_credential_id != null ? String(repo.merge_request_credential_id) : '',
     enabled: repo?.enabled ?? true,
   })
   const [showTls, setShowTls] = useState(Boolean(repo?.ca_certificate))
@@ -141,6 +142,9 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
   const [webhookSecret, setWebhookSecret] = useState('')
   const [webhookName, setWebhookName] = useState('')
   const [replaceWebhook, setReplaceWebhook] = useState(false)
+  const [mergeRequestToken, setMergeRequestToken] = useState('')
+  const [mergeRequestName, setMergeRequestName] = useState('')
+  const [replaceMergeRequest, setReplaceMergeRequest] = useState(false)
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
 
   const usesToken = form.auth_method === 'https_token'
@@ -148,13 +152,18 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
   const currentCredential = tokenCredentials.find(c => String(c.id) === form.credential)
   const newWebhook = form.webhook === NEW_TOKEN
   const currentWebhook = tokenCredentials.find(c => String(c.id) === form.webhook)
-  // The token that reads the repository is not a secret for the webhook.
-  const webhookChoices = tokenCredentials.filter(c => String(c.id) !== form.credential || String(c.id) === form.webhook)
+  const newMergeRequest = form.mergeRequest === NEW_TOKEN
+  const currentMergeRequest = tokenCredentials.find(c => String(c.id) === form.mergeRequest)
+  // A token of the git host is not a secret for the webhook, and the secret of the webhook is no token of the host.
+  const webhookChoices = tokenCredentials.filter(c =>
+    String(c.id) === form.webhook || ![form.credential, form.mergeRequest].includes(String(c.id)))
+  const mergeRequestChoices = tokenCredentials.filter(c => String(c.id) !== form.webhook || String(c.id) === form.mergeRequest)
 
   const mutation = useMutation({
     mutationFn: async () => {
       let credentialId = usesToken && !newToken && form.credential ? Number(form.credential) : null
       let webhookId = form.webhook && !newWebhook ? Number(form.webhook) : null
+      let mergeRequestId = form.mergeRequest && !newMergeRequest ? Number(form.mergeRequest) : null
       const created = []
       try {
         if (newToken) {
@@ -181,6 +190,18 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
         } else if (replaceWebhook && webhookId != null && secret) {
           await updateCredential(webhookId, { fields: { token: secret } })
         }
+        const writeToken = mergeRequestToken.trim()
+        if (newMergeRequest) {
+          const made = await createCredential({
+            name: (mergeRequestName || `merge-requests-${form.name}`).trim(),
+            credential_type: 'token',
+            fields: { token: writeToken },
+          })
+          created.push(made.id)
+          mergeRequestId = made.id
+        } else if (replaceMergeRequest && mergeRequestId != null && writeToken) {
+          await updateCredential(mergeRequestId, { fields: { token: writeToken } })
+        }
         const payload = {
           name: form.name.trim(),
           url: form.url.trim(),
@@ -194,6 +215,8 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
           ca_certificate: form.ca_certificate.trim() || null,
           // Null takes the webhook away: the repository is then only checked on an interval.
           webhook_credential_id: webhookId,
+          // Null: no merge request can be sent to the repository.
+          merge_request_credential_id: mergeRequestId,
           enabled: form.enabled,
         }
         return editing ? await updateGitRepository(repo.id, payload) : await createGitRepository(payload)
@@ -210,7 +233,8 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
     form.name.trim() && form.url.trim() && form.branch.trim() &&
     (!usesToken || (newToken ? token : form.credential)) &&
     !(replaceToken && !token) &&
-    !((newWebhook || replaceWebhook) && !webhookSecret.trim())
+    !((newWebhook || replaceWebhook) && !webhookSecret.trim()) &&
+    !((newMergeRequest || replaceMergeRequest) && !mergeRequestToken.trim())
 
   return (
     <Modal
@@ -442,6 +466,66 @@ function RepositoryModal({ repo, tokenCredentials, onClose, onSaved }) {
         </p>
       )}
 
+      <FormField
+        label="Merge request token"
+        hint="Lets ACEX send a ConfigMap to the repository as a merge request. Needs a GitLab token with the scope api and at least the role Developer: the token the repository is read with is not enough."
+      >
+        <select
+          value={form.mergeRequest}
+          onChange={e => { set('mergeRequest', e.target.value); setReplaceMergeRequest(false); setMergeRequestToken('') }}
+          className={INPUT_CLS}
+        >
+          <option value="">No merge requests</option>
+          {mergeRequestChoices.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+          <option value={NEW_TOKEN}>+ Paste a new token…</option>
+        </select>
+      </FormField>
+
+      {newMergeRequest && (
+        <>
+          <FormField label="GitLab token" required hint="A project access token is enough. It is stored encrypted under Settings > Credentials.">
+            <input
+              type="password"
+              autoComplete="off"
+              value={mergeRequestToken}
+              onChange={e => setMergeRequestToken(e.target.value)}
+              className={INPUT_CLS}
+            />
+          </FormField>
+          <FormField label="Save token as credential">
+            <input
+              type="text"
+              value={mergeRequestName}
+              onChange={e => setMergeRequestName(e.target.value)}
+              placeholder={`merge-requests-${form.name || 'repository'}`}
+              className={INPUT_CLS}
+            />
+          </FormField>
+        </>
+      )}
+
+      {editing && currentMergeRequest && (
+        replaceMergeRequest ? (
+          <FormField
+            label="New GitLab token"
+            required
+            hint={`Replaces the token in credential ${currentMergeRequest.name}, also for anything else that uses it.`}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={mergeRequestToken}
+              onChange={e => setMergeRequestToken(e.target.value)}
+              className={INPUT_CLS}
+            />
+          </FormField>
+        ) : (
+          <button onClick={() => setReplaceMergeRequest(true)} className="-mt-1 mb-3 block text-[11px] text-brand hover:underline">
+            Replace the token in {currentMergeRequest.name}
+          </button>
+        )
+      )}
+
       <label className="flex items-center gap-2 text-xs text-content">
         <input type="checkbox" checked={form.enabled} onChange={e => set('enabled', e.target.checked)} />
         Enabled: sync this repository and use its ConfigMaps
@@ -463,7 +547,7 @@ function Detail({ label, children }) {
   )
 }
 
-function DetailPanel({ repo, credentialName, webhookCredentialName, onClose, onEdit, onDeleted, onSynced }) {
+function DetailPanel({ repo, credentialName, webhookCredentialName, mergeRequestCredentialName, onClose, onEdit, onDeleted, onSynced }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const sync = useMutation({ mutationFn: () => syncGitRepository(repo.id), onSuccess: onSynced })
@@ -546,6 +630,11 @@ function DetailPanel({ repo, credentialName, webhookCredentialName, onClose, onE
                 <> · secret in {webhookCredentialName ?? `credential ${repo.webhook_credential_id}`}</>
               </>
             ) : 'None: checked on an interval'}
+          </Detail>
+          <Detail label="Merge requests">
+            {repo.merge_request_credential_id != null
+              ? <>Sent with {mergeRequestCredentialName ?? `credential ${repo.merge_request_credential_id}`}</>
+              : 'None: no token to send them with'}
           </Detail>
           <Detail label="Loaded commit"><span className="font-mono">{repo.commit ? repo.commit.slice(0, 12) : '—'}</span></Detail>
           <Detail label="Last loaded">{ago(repo.last_synced_at)}</Detail>
@@ -683,6 +772,7 @@ export default function GitRepositoriesPage() {
             repo={selected}
             credentialName={credentialNames[selected.credential_id]}
             webhookCredentialName={credentialNames[selected.webhook_credential_id]}
+            mergeRequestCredentialName={credentialNames[selected.merge_request_credential_id]}
             onClose={() => setSelectedId(null)}
             onEdit={() => setModal('edit')}
             onSynced={refresh}

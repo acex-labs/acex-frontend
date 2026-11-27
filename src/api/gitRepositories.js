@@ -18,3 +18,10 @@ export const deleteGitRepository = (id) =>
 /** Fetch and load the branch's latest commit now. */
 export const syncGitRepository = (id) =>
   apiFetch(`${BASE}/${id}/sync`, { method: 'POST' })
+
+/** The directories and files on the branch the repository follows, as its git host lists them now. */
+export const fetchGitRepositoryTree = (id) => apiFetch(`${BASE}/${id}/tree`)
+
+/** Send a file to the repository as a merge request into the branch it follows. */
+export const createMergeRequest = (id, data) =>
+  apiFetch(`${BASE}/${id}/merge_requests`, { method: 'POST', body: JSON.stringify(data) })
